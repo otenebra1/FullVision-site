@@ -63,13 +63,13 @@ const Footer = () => {
                 {/* Mapeia de forma dinâmica: se a página tiver só 1 logo, renderiza apenas ela perfeitamente centralizada */}
                 {dupla.map((parceiro, itemIdx) => (
                   <div key={itemIdx} className='relative w-1/2 max-w-[180px] h-[70px]'>
-                    <Image 
-                      src={parceiro.image} 
-                      alt={parceiro.name} 
-                      layout='fill' 
-                      objectFit='contain' 
-                      className='filter hover:brightness-125 transition-all duration-300' 
-                    />
+                    
+<Image 
+  src={parceiro.image} 
+  alt={parceiro.name} 
+  fill
+  className='object-contain filter hover:brightness-125 transition-all duration-300' 
+/>
                   </div>
                 ))}
               </div>
