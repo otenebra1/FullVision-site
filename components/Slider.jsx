@@ -42,13 +42,12 @@ const Slider = ({ slides }) => {
           >
             {/* Imagem de base */}
             <Image
-              src={slide.image}
-              alt={slide.heading || `Slide ${index + 1}`}
-              layout='fill'
-              objectFit='cover'
-              className='select-none object-center'
-              priority={index === 0}
-            />
+  src={slide.image}
+  alt={slide.heading || `Slide ${index + 1}`}
+  fill
+  className='select-none object-cover object-center'
+  priority={index === 0}
+/>
 
             {/* Overlay escuro individual */}
             <div className='absolute inset-0 bg-black/40 z-[1]' />

@@ -9,13 +9,16 @@ const Footer = () => {
     { name: 'Parceiro 4', image: '/images/emp4.avif' },
     { name: 'Parceiro 5', image: '/images/emp5.png' },
     { name: 'Parceiro 6', image: '/images/emp6.png' },
+    { name: 'Parceiro 7', image: '/images/emp7.png' },
+    { name: 'Parceiro 8', image: '/images/emp8.png' },
+    { name: 'Parceiro 9', image: '/images/emp9.jpeg' },
   ];
 
-  const duplas = [
-    [partners[0], partners[1]],
-    [partners[2], partners[3]],
-    [partners[4], partners[5]],
-  ];
+  // Lógica Automática: Cria as páginas fatiando a lista de 2 em 2 com segurança
+  const duplas = [];
+  for (let i = 0; i < partners.length; i += 2) {
+    duplas.push(partners.slice(i, i + 2));
+  }
 
   const [currentDupla, setCurrentDupla] = useState(0);
 
@@ -24,15 +27,14 @@ const Footer = () => {
       setCurrentDupla((prev) => (prev + 1) % duplas.length);
     }, 4000);
     return () => clearInterval(timer);
-  }, [currentDupla, duplas.length]);
+  }, [duplas.length]);
 
   return (
-    <footer className='w-full bg-[#0a0a0a] text-white py-12 px-4 border-t border-gray-800'>
+    <footer className='w-full bg-[#0a0a0a] text-white py-12 px-4 border-t border-gray-800 select-none'>
       <div className='max-w-[1240px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-8 items-center'>
         
         {/* Coluna da Esquerda: Informações */}
         <div>
-          {/* COR ALTERADA: border-orange-500 para border-blue-500 */}
           <h3 className='text-2xl font-bold tracking-wider mb-3 border-l-4 border-blue-500 pl-3 uppercase'>
             FullVision
           </h3>
@@ -54,16 +56,22 @@ const Footer = () => {
             {duplas.map((dupla, index) => (
               <div
                 key={index}
-                className={`absolute top-0 left-0 w-full h-full flex items-center justify-around gap-6 px-6 transition-opacity duration-1000 ease-in-out ${
-                  index === currentDupla ? 'opacity-100 z-10' : 'opacity-0 z-0'
+                className={`absolute top-0 left-0 w-full h-full flex items-center justify-center gap-6 px-6 transition-opacity duration-1000 ease-in-out ${
+                  index === currentDupla ? 'opacity-100 z-10 pointer-events-auto' : 'opacity-0 z-0 pointer-events-none'
                 }`}
               >
-                <div className='relative w-1/2 h-[70px]'>
-                  <Image src={dupla[0].image} alt={dupla[0].name} layout='fill' objectFit='contain' className='filter hover:brightness-125 transition-all duration-300' />
-                </div>
-                <div className='relative w-1/2 h-[70px]'>
-                  <Image src={dupla[1].image} alt={dupla[1].name} layout='fill' objectFit='contain' className='filter hover:brightness-125 transition-all duration-300' />
-                </div>
+                {/* Mapeia de forma dinâmica: se a página tiver só 1 logo, renderiza apenas ela perfeitamente centralizada */}
+                {dupla.map((parceiro, itemIdx) => (
+                  <div key={itemIdx} className='relative w-1/2 max-w-[180px] h-[70px]'>
+                    <Image 
+                      src={parceiro.image} 
+                      alt={parceiro.name} 
+                      layout='fill' 
+                      objectFit='contain' 
+                      className='filter hover:brightness-125 transition-all duration-300' 
+                    />
+                  </div>
+                ))}
               </div>
             ))}
           </div>
@@ -74,7 +82,6 @@ const Footer = () => {
               <span
                 key={idx}
                 onClick={() => setCurrentDupla(idx)}
-                /* COR ALTERADA: bg-orange-500 para bg-blue-500 */
                 className={`h-2 rounded-full cursor-pointer transition-all duration-500 ${
                   idx === currentDupla ? 'bg-blue-500 w-8' : 'bg-gray-700 hover:bg-gray-500 w-2'
                 }`}
