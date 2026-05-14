@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html {
+  scroll-behavior: smooth;
+  font-family: 'Raleway', sans-serif; 
+}
+
+.img-custom {
+  background-image: url('../public/images/Banner.jpg');
+  background-position: center;
+}
