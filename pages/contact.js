@@ -15,7 +15,9 @@ export default function Contact() {
   });
 
   const [submitted, setSubmitted] = useState(false);
-
+const handleChange = (e) => {
+  setFormData({ ...formData, [e.target.name]: e.target.value });
+};
  
 
 const handleSubmit = async (e) => {
