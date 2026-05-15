@@ -37,7 +37,7 @@ const handleSubmit = async (e) => {
       }),
       // EmailJS
       emailjs.send(
-  'service_4wkrubr',
+  'service_i9sgmo6',
   'template_uc14m3r',
   formData,
   'NIEzrhfqfvFiUd6wI'
