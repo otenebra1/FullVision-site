@@ -37,11 +37,11 @@ const handleSubmit = async (e) => {
       }),
       // EmailJS
       emailjs.send(
-        process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
-        process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
-        formData,
-        process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY
-      )
+  'service_4wkrubr',
+  'template_uc14m3r',
+  formData,
+  'NIEzrhfqfvFiUd6wI'
+)
     ]);
 
     setSubmitted(true);
