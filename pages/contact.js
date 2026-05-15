@@ -16,7 +16,7 @@ export default function Contact() {
 
   const [submitted, setSubmitted] = useState(false);
 
-  import emailjs from '@emailjs/browser';
+ 
 
 const handleSubmit = async (e) => {
   e.preventDefault();
