@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import emailjs from '@emailjs/browser';
 import Head from 'next/head';
 import Footer from '@/components/Footer';
 import { FaEnvelope, FaWhatsapp, FaMapMarkerAlt, FaClock } from 'react-icons/fa';
@@ -15,35 +16,41 @@ export default function Contact() {
 
   const [submitted, setSubmitted] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  import emailjs from '@emailjs/browser';
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    // URL do seu Web App do Google Apps Script
-    const googleScriptUrl = "https://script.google.com/macros/s/AKfycbw_OZoTX9c1jhTDIdlaakXjOiIz6s5NQQ5gjX8gj1ITaXuHOS5ifj4FIOnD9yoKPvSdPA/exec";
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  const googleScriptUrl = "https://script.google.com/macros/s/AKfycbw_OZoTX9c1jhTDIdlaakXjOiIz6s5NQQ5gjX8gj1ITaXuHOS5ifj4FIOnD9yoKPvSdPA/exec";
 
-    try {
-      await fetch(googleScriptUrl, {
+  try {
+    // Envia para os dois ao mesmo tempo
+    await Promise.all([
+      // Google Apps Script
+      fetch(googleScriptUrl, {
         method: 'POST',
-        mode: 'no-cors', 
-        headers: {
-          'Content-Type': 'text/plain;charset=utf-8', 
-        },
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify(formData),
-      });
+      }),
+      // EmailJS
+      emailjs.send(
+        process.env.NEXT_PUBLIC_EMAILJS_SERVICE_ID,
+        process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID,
+        formData,
+        process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY
+      )
+    ]);
 
-      setSubmitted(true);
-      setFormData({ name: '', email: '', phone: '', company: '', vehicles: '', message: '' });
-      setTimeout(() => setSubmitted(false), 5000);
-      
-    } catch (error) {
-      console.error("Erro no envio:", error);
-      alert("Ocorreu um erro ao enviar a mensagem. Verifique sua conexão com a internet.");
-    }
-  };
+    setSubmitted(true);
+    setFormData({ name: '', email: '', phone: '', company: '', vehicles: '', message: '' });
+    setTimeout(() => setSubmitted(false), 5000);
+
+  } catch (error) {
+    console.error("Erro no envio:", error);
+    alert("Erro ao enviar. Tente novamente.");
+  }
+};
 
   return (
     <div className="flex flex-col min-h-screen bg-[#000000] text-white select-none">
