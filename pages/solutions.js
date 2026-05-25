@@ -1,25 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import Footer from '@/components/Footer';
-import { FaMapMarkedAlt, FaShieldAlt, FaChartLine, FaServer, FaTimes } from 'react-icons/fa';
+import { 
+  FaMapMarkedAlt, FaShieldAlt, FaChartLine, FaServer, FaTimes, 
+  FaDesktop, FaMicrochip, FaSatellite, FaSignal, FaThermometerHalf, FaSlidersH 
+} from 'react-icons/fa';
 
 export default function Solutions() {
-  // Estado para controlar qual o modal aberto (guarda o índice do item ou null se estiver fechado)
+  const [activeTab, setActiveTab] = useState('services');
   const [activeModal, setActiveModal] = useState(null);
 
-  // Fecha o modal ao pressionar Escape
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape') setActiveModal(null);
-    };
-    if (activeModal !== null) {
-      document.addEventListener('keydown', handleKeyDown);
-    }
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [activeModal]);
-
-  // Lista de soluções enriquecida com pormenores técnicos para a janela flutuante
   const solutionsList = [
     {
       icon: <FaMapMarkedAlt className="text-blue-500 text-4xl mb-4" />,
@@ -67,70 +58,201 @@ export default function Solutions() {
     }
   ];
 
+  const panelFeatures = [
+    {
+      icon: <FaDesktop className="text-blue-500 text-2xl" />,
+      title: "Interface Analytics de Alta Performance",
+      desc: "Painel de controle centralizado baseado em nuvem de alta disponibilidade, focado na experiência do usuário para tomadas de decisão rápidas."
+    },
+    {
+      icon: <FaThermometerHalf className="text-blue-500 text-2xl" />,
+      title: "Gráfico de Eventos de Temperatura",
+      desc: "Módulo avançado para cargas refrigeradas. Gráficos de linha contínuos em tempo real interligando sensores para auditoria térmica rigorosa de cada placa."
+    },
+    {
+      icon: <FaSlidersH className="text-blue-500 text-2xl" />,
+      title: "Roteirizador inteligente com Filtros",
+      desc: "Ferramenta nativa que permite filtrar clientes específicos por área e criar janelas dinâmicas de carregamento e cubagem de baú."
+    }
+  ];
+
+  const technologyCatalog = [
+    {
+      icon: <FaSignal className="text-blue-500 text-3xl" />,
+      title: "FV-Smart 4G (Rastreador Veicular)",
+      tech: "Nosso rastreador padrão ouro para frotas urbanas e rodoviárias. Utiliza conectividade celular Multi-operadora (4G/2G) com chaveamento automático de sinal.",
+      specs: [
+        "Módulo de Telemetria integrado (leitura de velocidade e RPM).",
+        "Bloqueio de ignição remoto e seguro via satélite/GSM.",
+        "Bateria interna de backup com duração de até 48 horas offline.",
+        "Entradas para sensores de porta, painel e botão de pânico."
+      ]
+    },
+    {
+      icon: <FaSatellite className="text-blue-500 text-3xl" />,
+      title: "FV-Sat Autônomo (Satelital Híbrido)",
+      tech: "Equipamento blindado de alta tecnologia voltado para transporte de cargas críticas e rotas de longa distância com áreas de sombra de celular.",
+      specs: [
+        "Comunicação bidirecional via constelação de Satélites Iridium.",
+        "Antena GPS de alta sensibilidade com precisão militar.",
+        "Resistente à água e poeira (Certificação IP67).",
+        "Inteligência embarcada contra bloqueadores de sinal (Anti-Jammer)."
+      ]
+    },
+    {
+      icon: <FaMicrochip className="text-blue-500 text-3xl" />,
+      title: "FV-Cargo Micro (Isca de Carga)",
+      tech: "Dispositivo miniaturizado de monitoramento velado para caixas, paletes e encomendas de alto valor. Ideal para auditoria de transportadoras.",
+      specs: [
+        "Localização híbrida por triangulação de antenas celular (LBS) + GPS.",
+        "Modo ultra-econômico: ativação apenas quando há movimento.",
+        "Autonomia estendida: bateria interna inteligente de até 60 dias.",
+        "Carcaça magnética para fixação rápida e discreta no baú."
+      ]
+    }
+  ];
+
   return (
-    // Adicionado overflow-hidden para evitar barras de scroll horizontais durante a animação
     <div className="flex flex-col min-h-screen bg-[#000000] text-white select-none relative overflow-hidden">
       <Head>
-        <title>Soluções | FullVision Tracking</title>
-        <meta name="description" content="Rastreamento em tempo real, segurança de frota, gestão logística e plataforma customizada para o seu negócio." />
-        <meta property="og:title" content="Soluções | FullVision Tracking" />
-        <meta property="og:description" content="Rastreamento em tempo real, segurança de frota, gestão logística e plataforma customizada para o seu negócio." />
-        <meta property="og:type" content="website" />
-        <meta property="og:url" content="https://fullvision.one/solutions" />
-        <meta name="twitter:card" content="summary_large_image" />
+        <title>Soluções e Tecnologias | FullVision Tracking</title>
       </Head>
 
-      {/* Conteúdo Principal */}
       <main className="flex-grow w-full pt-[120px] pb-16 px-4">
         <div className="max-w-[1240px] mx-auto">
           
-          {/* Cabeçalho da Página */}
-          <div className="text-center max-w-[800px] mx-auto mb-16">
+          <div className="text-center max-w-[800px] mx-auto mb-12">
             <h1 data-aos="fade-down" className="text-4xl md:text-5xl font-bold tracking-wider mb-4 border-b-2 border-blue-500 pb-4 inline-block">
-              NOSSAS SOLUÇÕES
+              TECNOLOGIA & OPERAÇÃO
             </h1>
-            <p data-aos="fade-up" data-aos-delay="150" className="text-gray-300 text-lg md:text-xl leading-relaxed mt-4">
-              Tecnologia de ponta em gestão de operação logística e segurança da frota para elevar o patamar do seu negócio.
+            <p data-aos="fade-up" data-aos-delay="150" className="text-gray-300 text-base md:text-lg leading-relaxed mt-2">
+              Explore nossa infraestrutura de software, hardware e inteligência integrada para proteção de frotas.
             </p>
           </div>
 
-          {/* Grid de Soluções */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16">
-            {solutionsList.map((item, index) => (
-              <div 
-                key={index} 
-                data-aos="fade-up"
-                data-aos-delay={index * 150} // 0ms, 150ms, 300ms, 450ms (Efeito Cascata)
-                onClick={() => setActiveModal(index)}
-                className="bg-white/5 border border-white/10 rounded-lg p-8 hover:border-blue-500 transition-all duration-300 hover:bg-white/10 cursor-pointer flex flex-col justify-between group"
-              >
-                <div>
-                  {item.icon}
-                  <h3 className="text-2xl font-semibold mb-3 tracking-wide text-gray-100 group-hover:text-blue-400 transition-colors">
-                    {item.title}
-                  </h3>
-                  <p className="text-gray-400 leading-relaxed mb-6">
-                    {item.description}
-                  </p>
-                </div>
-                
-                {/* Indicador visual de clique */}
-                <div className="border-t border-white/5 pt-4 flex items-center justify-between text-sm text-blue-500 font-medium">
-                  <span>Especificações Técnicas</span>
-                  <span className="group-hover:translate-x-1 transition-transform duration-300">Saiba mais &rarr;</span>
-                </div>
-              </div>
-            ))}
+          <div data-aos="fade-up" className="flex flex-wrap justify-center items-center gap-2 md:gap-4 mb-16 border-b border-white/10 pb-4">
+            <button
+              onClick={() => setActiveTab('services')}
+              className={`px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 ${
+                activeTab === 'services' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              Soluções e Serviços
+            </button>
+            <button
+              onClick={() => setActiveTab('panel')}
+              className={`px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 ${
+                activeTab === 'panel' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              💻 Nosso Painel Web
+            </button>
+            <button
+              onClick={() => setActiveTab('catalog')}
+              className={`px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 ${
+                activeTab === 'catalog' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+              }`}
+            >
+              🛰️ Catálogo de Hardware
+            </button>
           </div>
 
-          {/* Chamada para Ação */}
+          <div className="transition-all duration-500">
+            
+            {activeTab === 'services' && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16 animate-fade-in">
+                {solutionsList.map((item, index) => (
+                  <div 
+                    key={index} 
+                    onClick={() => setActiveModal(index)}
+                    className="bg-white/5 border border-white/10 rounded-lg p-8 hover:border-blue-500 transition-all duration-300 hover:bg-white/10 cursor-pointer flex flex-col justify-between group"
+                  >
+                    <div>
+                      {item.icon}
+                      <h3 className="text-2xl font-semibold mb-3 tracking-wide text-gray-100 group-hover:text-blue-400 transition-colors">
+                        {item.title}
+                      </h3>
+                      <p className="text-gray-400 leading-relaxed mb-6 text-sm">
+                        {item.description}
+                      </p>
+                    </div>
+                    <div className="border-t border-white/5 pt-4 flex items-center justify-between text-sm text-blue-500 font-medium">
+                      <span>Especificações Técnicas</span>
+                      <span className="group-hover:translate-x-1 transition-transform duration-300">Saiba mais &rarr;</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {activeTab === 'panel' && (
+              <div className="space-y-12 max-w-[900px] mx-auto mb-16 animate-fade-in">
+                <div className="bg-gradient-to-r from-blue-950/30 to-white/5 p-6 rounded-xl border border-white/10 flex flex-col md:flex-row items-center gap-6">
+                  <div className="text-5xl text-blue-500"><FaDesktop /></div>
+                  <div>
+                    <h3 className="text-xl font-bold mb-2">Central Logística em Tempo Real</h3>
+                    <p className="text-gray-400 text-sm leading-relaxed">
+                      Nossa plataforma foi desenhada sob rígidos conceitos corporativos. Ela compila telemetria, mapas dinâmicos e disparo automático de comandos de segurança em milissegundos.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {panelFeatures.map((feat, idx) => (
+                    <div key={idx} className="bg-white/5 border border-white/5 rounded-lg p-6 hover:border-blue-500/40 transition-colors">
+                      <div className="mb-4">{feat.icon}</div>
+                      <h4 className="text-lg font-bold mb-2 text-gray-200">{feat.title}</h4>
+                      <p className="text-gray-400 text-xs leading-relaxed">{feat.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'catalog' && (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 animate-fade-in">
+                {technologyCatalog.map((tech, idx) => (
+                  <div key={idx} className="bg-[#0f0f0f] border border-white/10 rounded-xl p-6 flex flex-col justify-between hover:border-blue-500/40 hover:scale-[1.02] transition-all duration-300">
+                    <div>
+                      <div className="mb-4 bg-blue-500/10 w-14 h-14 rounded-lg flex items-center justify-center">
+                        {tech.icon}
+                      </div>
+                      
+                      <h3 className="text-xl font-bold mb-2 text-white">{tech.title}</h3>
+                      <p className="text-gray-400 text-xs leading-relaxed mb-4">{tech.tech}</p>
+                      
+                      <div className="border-t border-white/5 pt-4 mt-2">
+                        <h4 className="text-[11px] font-bold text-blue-500 uppercase tracking-widest mb-2">
+                          Especificações Técnicas:
+                        </h4>
+                        <ul className="space-y-1.5">
+                          {tech.specs.map((spec, sIdx) => (
+                            <li key={sIdx} className="text-gray-300 text-[11px] md:text-xs flex items-start gap-2">
+                              <span className="text-blue-500 font-bold shrink-0">✓</span>
+                              <span>{spec}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+
+                    <div className="mt-6 text-xs text-blue-500 font-semibold uppercase tracking-wider border-t border-white/5 pt-3">
+                      🟢 Equipamento Homologado ANATEL
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+          </div>
+
           <div data-aos="zoom-in" data-aos-delay="200" className="bg-gradient-to-r from-blue-600/20 to-blue-900/20 border border-white/10 rounded-lg p-8 text-center max-w-[900px] mx-auto">
             <h2 className="text-2xl md:text-3xl font-bold mb-4 text-white">Pronto para transformar a sua operação?</h2>
-            <p className="text-gray-300 mb-6 max-w-[600px] mx-auto">
+            <p className="text-gray-300 mb-6 max-w-[600px] mx-auto text-sm">
               Entre em contacto com a nossa equipa comercial e descubra como implementar o FullVision Tracker à medida da sua empresa.
             </p>
             <Link href="/contact">
-              <button className="px-8 py-3 bg-blue-600 text-white font-semibold rounded hover:bg-white hover:text-black transition-all duration-300">
+              <button className="px-8 py-3 bg-blue-600 text-white font-semibold rounded hover:bg-white hover:text-black transition-all duration-300 text-sm">
                 Solicitar Contacto Comercial
               </button>
             </Link>
@@ -139,15 +261,9 @@ export default function Solutions() {
         </div>
       </main>
 
-      {/* ====== JANELA FLUUTUANTE (MODAL) ====== */}
-      {/* O Modal não precisa de AOS pois já tem a sua própria animação de aparecimento (animate-fade-in) */}
       {activeModal !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-all duration-300">
-          
-          {/* Caixa do Modal */}
           <div className="bg-[#111111] border border-blue-500/40 rounded-lg max-w-[650px] w-full p-6 md:p-8 relative shadow-2xl animate-fade-in">
-            
-            {/* Botão de Fechar */}
             <button 
               onClick={() => setActiveModal(null)}
               className="absolute top-4 right-4 text-gray-400 hover:text-white bg-white/5 hover:bg-red-500/20 p-2 rounded-full transition-all duration-200"
@@ -156,7 +272,6 @@ export default function Solutions() {
               <FaTimes size={18} />
             </button>
 
-            {/* Cabeçalho do Modal */}
             <div className="flex items-center gap-4 mb-6 border-b border-white/10 pb-4">
               {solutionsList[activeModal].icon}
               <h3 className="text-2xl font-bold text-white tracking-wide">
@@ -164,31 +279,25 @@ export default function Solutions() {
               </h3>
             </div>
 
-            {/* Descrição Curta */}
-            <p className="text-gray-300 text-base leading-relaxed mb-6 bg-black/40 p-3 rounded border border-white/5">
+            <p className="text-gray-300 text-sm leading-relaxed mb-6 bg-black/40 p-3 rounded border border-white/5">
               {solutionsList[activeModal].description}
             </p>
 
-            {/* Lista de Pormenores Técnicos */}
             <h4 className="text-xs font-bold text-blue-500 uppercase tracking-widest mb-3">
               Recursos e Capacidades do Sistema:
             </h4>
             
             <ul className="flex flex-col gap-3 mb-8">
               {solutionsList[activeModal].details.map((detail, idx) => (
-                <li key={idx} className="flex items-start gap-3 text-sm md:text-base text-gray-300">
+                <li key={idx} className="flex items-start gap-3 text-sm text-gray-300">
                   <span className="text-blue-500 shrink-0 mt-1">&#10003;</span>
                   <span>{detail}</span>
                 </li>
               ))}
             </ul>
 
-            {/* Botão de Ação Direta dentro do Modal */}
             <div className="flex justify-end gap-4 border-t border-white/10 pt-4">
-              <button 
-                onClick={() => setActiveModal(null)}
-                className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors"
-              >
+              <button onClick={() => setActiveModal(null)} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">
                 Fechar
               </button>
               <Link href="/contact">
@@ -197,12 +306,10 @@ export default function Solutions() {
                 </button>
               </Link>
             </div>
-
           </div>
         </div>
       )}
 
-      {/* Rodapé Global */}
       <Footer />
     </div>
   );
