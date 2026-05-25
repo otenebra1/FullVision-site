@@ -57,7 +57,8 @@ export default function Solutions() {
   ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#000000] text-white select-none relative">
+    // Adicionado overflow-hidden para evitar barras de scroll horizontais durante a animação
+    <div className="flex flex-col min-h-screen bg-[#000000] text-white select-none relative overflow-hidden">
       <Head>
         <title>Soluções | FullVision Tracking</title>
       </Head>
@@ -68,10 +69,10 @@ export default function Solutions() {
           
           {/* Cabeçalho da Página */}
           <div className="text-center max-w-[800px] mx-auto mb-16">
-            <h1 className="text-4xl md:text-5xl font-bold tracking-wider mb-4 border-b-2 border-blue-500 pb-4 inline-block">
+            <h1 data-aos="fade-down" className="text-4xl md:text-5xl font-bold tracking-wider mb-4 border-b-2 border-blue-500 pb-4 inline-block">
               NOSSAS SOLUÇÕES
             </h1>
-            <p className="text-gray-300 text-lg md:text-xl leading-relaxed mt-4">
+            <p data-aos="fade-up" data-aos-delay="150" className="text-gray-300 text-lg md:text-xl leading-relaxed mt-4">
               Tecnologia de ponta em gestão de operação logística e segurança da frota para elevar o patamar do seu negócio.
             </p>
           </div>
@@ -81,6 +82,8 @@ export default function Solutions() {
             {solutionsList.map((item, index) => (
               <div 
                 key={index} 
+                data-aos="fade-up"
+                data-aos-delay={index * 150} // 0ms, 150ms, 300ms, 450ms (Efeito Cascata)
                 onClick={() => setActiveModal(index)}
                 className="bg-white/5 border border-white/10 rounded-lg p-8 hover:border-blue-500 transition-all duration-300 hover:bg-white/10 cursor-pointer flex flex-col justify-between group"
               >
@@ -104,7 +107,7 @@ export default function Solutions() {
           </div>
 
           {/* Chamada para Ação */}
-          <div className="bg-gradient-to-r from-blue-600/20 to-blue-900/20 border border-white/10 rounded-lg p-8 text-center max-w-[900px] mx-auto">
+          <div data-aos="zoom-in" data-aos-delay="200" className="bg-gradient-to-r from-blue-600/20 to-blue-900/20 border border-white/10 rounded-lg p-8 text-center max-w-[900px] mx-auto">
             <h2 className="text-2xl md:text-3xl font-bold mb-4 text-white">Pronto para transformar a sua operação?</h2>
             <p className="text-gray-300 mb-6 max-w-[600px] mx-auto">
               Entre em contacto com a nossa equipa comercial e descubra como implementar o FullVision Tracker à medida da sua empresa.
@@ -120,6 +123,7 @@ export default function Solutions() {
       </main>
 
       {/* ====== JANELA FLUUTUANTE (MODAL) ====== */}
+      {/* O Modal não precisa de AOS pois já tem a sua própria animação de aparecimento (animate-fade-in) */}
       {activeModal !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-all duration-300">
           
