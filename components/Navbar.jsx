@@ -4,18 +4,16 @@ import { AiOutlineMenu, AiOutlineClose } from 'react-icons/ai'
 
 const Navbar = () => {
     const [nav, setNav] = useState(false)
-    
-    const [color, setColor] = useState('#000000')
+    const [color, setColor] = useState('transparent')
     const [textColor, setTextColor] = useState('white')
 
     useEffect(() => {
         const changeColor = () => {
             if (window.scrollY >= 90) {
-                setColor('#ffffff');
+                setColor('#ffffff')
                 setTextColor('#000000')
             } else {
-              
-                setColor('#000000');
+                setColor('transparent')
                 setTextColor('#ffffff')
             }
         }
@@ -23,58 +21,47 @@ const Navbar = () => {
     }, [])
 
     return (
-        
-        <div style={{ backgroundColor: `${color}` }} className='fixed left-0 top-0 w-full z-30 transition-colors duration-300'>
+        // Adicionamos 'backdrop-blur-md' para o efeito de vidro
+        <div style={{ backgroundColor: color }} className='fixed left-0 top-0 w-full z-30 transition-all duration-300 ease-in backdrop-blur-sm'>
             <div className='max-w-[1240px] m-auto flex justify-between items-center p-4 text-white'>
-                <Link href='/'>
-    <img 
-    src="/images/logofv.png" 
-    className="h-14 w-32 object-contain hover:opacity-80 transition-opacity duration-300 cursor-pointer" 
-    alt="Logo FullVision" 
-/>
-</Link>
                 
-                {/** Desktop Menu */}
-                <ul style={{ color: `${textColor}` }} className='hidden sm:flex align-middle'>
-                    <li className='p-4 mt-1'>
+                {/* Logo envolvendo com Link para home */}
+                <Link href='/'>
+                    <img 
+                        src="/images/logofv.png" 
+                        className='h-14 w-32 object-contain cursor-pointer hover:opacity-80 transition-opacity' 
+                        alt="Logo FullVision" 
+                    />
+                </Link>
+
+                {/* Menu Desktop */}
+                <ul style={{ color: textColor }} className='hidden sm:flex gap-8 font-medium'>
+                    <li className='hover:text-blue-500 transition-colors'>
                         <Link href='/'>Início</Link>
                     </li>
-                    <li className='p-4 mt-1'>
+                    <li className='hover:text-blue-500 transition-colors'>
                         <Link href='/about'>Sobre nós</Link>
                     </li>
-                    <li className='p-4 mt-1'>
+                    <li className='hover:text-blue-500 transition-colors'>
                         <Link href='/solutions'>Soluções</Link>
                     </li>
-                    <li className='p-4 mt-1'>
+                    <li className='hover:text-blue-500 transition-colors'>
                         <Link href='/contact'>Contato</Link>
                     </li>
                 </ul>
 
-                {/** Mobile Button */}
+                {/* Mobile Button */}
                 <div onClick={() => setNav(!nav)} className='block sm:hidden z-10 cursor-pointer'>
-                    {nav
-                        ? <AiOutlineClose size={20} style={{ color: `${textColor}` }} />
-                        : <AiOutlineMenu size={20} style={{ color: `${textColor}` }} />}
+                    {nav ? <AiOutlineClose size={20} style={{ color: textColor }} /> : <AiOutlineMenu size={20} style={{ color: textColor }} />}
                 </div>
 
-                {/** Mobile Menu */}
-                <div className={nav
-                    ? 'sm:hidden absolute top-0 left-0 right-0 bottom-0 flex justify-center items-center w-full h-screen bg-black text-center ease-in duration-300'
-                    : 'sm:hidden absolute top-0 left-[-100%] right-0 bottom-0 flex justify-center items-center w-full h-screen bg-black text-center ease-in duration-300'
-                }>
-                    <ul>
-                        <li className='p-4 text-4xl hover:text-gray-500'>
-                            <Link href='/' onClick={() => setNav(!nav)}>Início</Link>
-                        </li>
-                        <li className='p-4 text-4xl hover:text-gray-500'>
-                            <Link href='/about' onClick={() => setNav(!nav)}>Sobre nós</Link>
-                        </li>
-                        <li className='p-4 text-4xl hover:text-gray-500'>
-                            <Link href='/solutions' onClick={() => setNav(!nav)}>Soluções</Link>
-                        </li>
-                        <li className='p-4 text-4xl hover:text-gray-500'>
-                            <Link href='/contact' onClick={() => setNav(!nav)}>Contato</Link>
-                        </li>
+                {/* Mobile Menu */}
+                <div className={nav ? 'sm:hidden absolute top-0 left-0 right-0 bottom-0 flex justify-center items-center w-full h-screen bg-black text-center ease-in duration-300' : 'sm:hidden absolute top-0 left-[-100%] right-0 bottom-0 flex justify-center items-center w-full h-screen bg-black text-center ease-in duration-300'}>
+                    <ul className='flex flex-col gap-8 text-2xl'>
+                        <li onClick={() => setNav(false)}><Link href='/'>Início</Link></li>
+                        <li onClick={() => setNav(false)}><Link href='/about'>Sobre nós</Link></li>
+                        <li onClick={() => setNav(false)}><Link href='/solutions'>Soluções</Link></li>
+                        <li onClick={() => setNav(false)}><Link href='/contact'>Contato</Link></li>
                     </ul>
                 </div>
             </div>
