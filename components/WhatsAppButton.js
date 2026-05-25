@@ -2,7 +2,7 @@ import React from 'react';
 import { FaWhatsapp } from 'react-icons/fa';
 
 const WhatsAppButton = () => {
-  const phoneNumber = "5511900000000"; 
+  const phoneNumber = "5511940670589"; 
   const message = "Olá! Estava no site da FullVision e gostaria de saber mais sobre as soluções de rastreamento.";
   const whatsappUrl = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`;
 
