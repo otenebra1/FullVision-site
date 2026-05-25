@@ -1,9 +1,19 @@
 import React from 'react';
+import Head from 'next/head';
 import { FaShieldAlt, FaEye, FaRocket, FaGlobe } from 'react-icons/fa';
 
 export default function About() {
   return (
     <div className="bg-[#0a0a0a] text-white min-h-screen font-sans">
+      <Head>
+        <title>Sobre Nós | FullVision Tracking</title>
+        <meta name="description" content="Conheça a FullVision: nascemos com o propósito de transformar dados complexos em segurança palpável e eficiência milimétrica para a sua frota." />
+        <meta property="og:title" content="Sobre Nós | FullVision Tracking" />
+        <meta property="og:description" content="Conheça a FullVision: gestão de operação logística e segurança da frota com tecnologia de ponta." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://fullvision.one/about" />
+        <meta name="twitter:card" content="summary_large_image" />
+      </Head>
       
       {/* 1. SEÇÃO HERO */}
       <section className="relative pt-24 pb-16 md:pt-32 md:pb-24 bg-gradient-to-b from-blue-950/20 to-transparent px-4 overflow-hidden">
@@ -107,7 +117,7 @@ export default function About() {
             <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Monitoramento Ativo</p>
           </div>
           <div data-aos="zoom-in" data-aos-delay="200" className="space-y-1">
-            <span className="text-3xl md:text-5xl font-extrabold text-blue-500 tracking-tight">Oms</span>
+            <span className="text-3xl md:text-5xl font-extrabold text-blue-500 tracking-tight">0ms</span>
             <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Latência de Telemetria</p>
           </div>
           <div data-aos="zoom-in" data-aos-delay="300" className="space-y-1">

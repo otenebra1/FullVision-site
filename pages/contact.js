@@ -15,31 +15,30 @@ export default function Contact() {
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
   
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
     
-    const googleScriptUrl = "https://script.google.com/macros/s/AKfycbw_OZoTX9c1jhTDIdlaakXjOiIz6s5NQQ5gjX8gj1ITaXuHOS5ifj4FIOnD9yoKPvSdPA/exec";
+    const googleScriptUrl = process.env.NEXT_PUBLIC_GOOGLE_SCRIPT_URL;
 
     try {
-      // Envia para os dois ao mesmo tempo
       await Promise.all([
-        // Google Apps Script
         fetch(googleScriptUrl, {
           method: 'POST',
           mode: 'no-cors',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify(formData),
         }),
-        // EmailJS
         emailjs.send(
-          'service_i9sgmo6',
-          'template_uc14m3r',
+          process.env.NEXT_PUBLIC_EMAILJS_SERVICE,
+          process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE,
           formData,
-          'NIEzrhfqfvFiUd6wI'
+          process.env.NEXT_PUBLIC_EMAILJS_KEY
         )
       ]);
 
@@ -50,6 +49,8 @@ export default function Contact() {
     } catch (error) {
       console.error("Erro no envio:", error);
       alert("Erro ao enviar. Tente novamente.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -58,6 +59,12 @@ export default function Contact() {
     <div className="flex flex-col min-h-screen bg-[#000000] text-white select-none overflow-hidden">
       <Head>
         <title>Contato | FullVision Tracking</title>
+        <meta name="description" content="Fale com a FullVision. Dúvidas, suporte ou propostas comerciais sobre rastreamento e gestão de frota." />
+        <meta property="og:title" content="Contato | FullVision Tracking" />
+        <meta property="og:description" content="Entre em contato com nossa equipe para soluções customizadas de rastreamento e segurança de frota." />
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content="https://fullvision.one/contact" />
+        <meta name="twitter:card" content="summary_large_image" />
       </Head>
 
       <main className="flex-grow w-full pt-[120px] pb-16 px-4">
@@ -188,9 +195,10 @@ export default function Contact() {
 
                 <button
                   type="submit"
-                  className="w-full py-3 mt-2 bg-blue-600 hover:bg-white text-black hover:text-black font-semibold rounded transition-all duration-300 tracking-wide"
+                  disabled={loading}
+                  className="w-full py-3 mt-2 bg-blue-600 hover:bg-white text-white hover:text-black font-semibold rounded transition-all duration-300 tracking-wide disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Enviar Mensagem
+                  {loading ? 'Enviando...' : 'Enviar Mensagem'}
                 </button>
               </form>
             </div>
