@@ -29,7 +29,7 @@ const Navbar = () => {
                 <Link href='/'>
     <img 
         src="/images/logofv.png" 
-        
+        className='h-14 w-32 object-contain transition-transform duration-1000 ease-in-out hover:rotate-[360deg] cursor-pointer' 
         alt="Logo FullVision" 
     />
 </Link>
