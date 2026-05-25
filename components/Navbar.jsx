@@ -4,7 +4,7 @@ import { AiOutlineMenu, AiOutlineClose } from 'react-icons/ai'
 
 const Navbar = () => {
     const [nav, setNav] = useState(false)
-    // 1. Alterado de 'transparent' para '#000000' para criar a barra sólida separada
+    
     const [color, setColor] = useState('#000000')
     const [textColor, setTextColor] = useState('white')
 
@@ -14,7 +14,7 @@ const Navbar = () => {
                 setColor('#ffffff');
                 setTextColor('#000000')
             } else {
-                // 2. Ao voltar ao topo, mantém o fundo preto sólido
+              
                 setColor('#000000');
                 setTextColor('#ffffff')
             }
@@ -23,13 +23,13 @@ const Navbar = () => {
     }, [])
 
     return (
-        // Aumentamos o z-index para z-30 para garantir que fique sempre acima do banner
+        
         <div style={{ backgroundColor: `${color}` }} className='fixed left-0 top-0 w-full z-30 transition-colors duration-300'>
             <div className='max-w-[1240px] m-auto flex justify-between items-center p-4 text-white'>
                 <Link href='/'>
     <img 
         src="/images/logofv.png" 
-        className='h-14 w-32 object-contain transition-transform duration-1000 ease-in-out hover:rotate-[360deg] cursor-pointer' 
+        
         alt="Logo FullVision" 
     />
 </Link>
