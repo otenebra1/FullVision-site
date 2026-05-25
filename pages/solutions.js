@@ -8,13 +8,9 @@ import {
 } from 'react-icons/fa';
 
 export default function Solutions() {
-  // Estado para controlar a aba ativa: 'services' | 'panel' | 'catalog'
   const [activeTab, setActiveTab] = useState('services');
-  
-  // Estado para controlar qual o modal aberto
   const [activeModal, setActiveModal] = useState(null);
 
-  // 1. Lista de Soluções Gerais
   const solutionsList = [
     {
       icon: <FaMapMarkedAlt className="text-blue-500 text-4xl mb-4" />,
@@ -62,7 +58,6 @@ export default function Solutions() {
     }
   ];
 
-  // 2. Lista de Recursos do Painel (Dashboard)
   const panelFeatures = [
     {
       icon: <FaDesktop className="text-blue-500 text-2xl" />,
@@ -81,7 +76,6 @@ export default function Solutions() {
     }
   ];
 
-  // 3. Catálogo de Tecnologias (Hardware e Redes)
   const technologyCatalog = [
     {
       icon: <FaSatellite className="text-blue-500 text-3xl" />,
@@ -91,7 +85,7 @@ export default function Solutions() {
     {
       icon: <FaSignal className="text-blue-500 text-3xl" />,
       title: "Conectividade Híbrida (GSM/GPRS + Satélite)",
-      tech: "O melhor dos dois mundos. Transmite dados via rede celular celular de baixo custo nas capitais e chaveia automaticamente para o satélite nas estradas de interior."
+      tech: "O melhor dos dois mundos. Transmite dados via rede celular de baixo custo nas capitais e chaveia automaticamente para o satélite nas estradas de interior."
     },
     {
       icon: <FaMicrochip className="text-blue-500 text-3xl" />,
@@ -109,7 +103,6 @@ export default function Solutions() {
       <main className="flex-grow w-full pt-[120px] pb-16 px-4">
         <div className="max-w-[1240px] mx-auto">
           
-          {/* Cabeçalho da Página */}
           <div className="text-center max-w-[800px] mx-auto mb-12">
             <h1 data-aos="fade-down" className="text-4xl md:text-5xl font-bold tracking-wider mb-4 border-b-2 border-blue-500 pb-4 inline-block">
               TECNOLOGIA & OPERAÇÃO
@@ -119,7 +112,6 @@ export default function Solutions() {
             </p>
           </div>
 
-          {/* ====== SELETOR DE ABAS (TABS) ====== */}
           <div data-aos="fade-up" className="flex flex-wrap justify-center items-center gap-2 md:gap-4 mb-16 border-b border-white/10 pb-4">
             <button
               onClick={() => setActiveTab('services')}
@@ -147,10 +139,8 @@ export default function Solutions() {
             </button>
           </div>
 
-          {/* ====== CONTEÚDO DINÂMICO DA ABA SELECIONADA ====== */}
           <div className="transition-all duration-500">
             
-            {/* ABA 1: SERVIÇOS E SOLUÇÕES */}
             {activeTab === 'services' && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16 animate-fade-in">
                 {solutionsList.map((item, index) => (
@@ -177,7 +167,6 @@ export default function Solutions() {
               </div>
             )}
 
-            {/* ABA 2: NOSSO PAINEL */}
             {activeTab === 'panel' && (
               <div className="space-y-12 max-w-[900px] mx-auto mb-16 animate-fade-in">
                 <div className="bg-gradient-to-r from-blue-950/30 to-white/5 p-6 rounded-xl border border-white/10 flex flex-col md:flex-row items-center gap-6">
@@ -191,7 +180,7 @@ export default function Solutions() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {panelFeatures.slice(1).map((feat, idx) => (
+                  {panelFeatures.map((feat, idx) => (
                     <div key={idx} className="bg-white/5 border border-white/5 rounded-lg p-6 hover:border-blue-500/40 transition-colors">
                       <div className="mb-4">{feat.icon}</div>
                       <h4 className="text-lg font-bold mb-2 text-gray-200">{feat.title}</h4>
@@ -202,7 +191,6 @@ export default function Solutions() {
               </div>
             )}
 
-            {/* ABA 3: CATÁLOGO DE TECNOLOGIAS */}
             {activeTab === 'catalog' && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 animate-fade-in">
                 {technologyCatalog.map((tech, idx) => (
@@ -224,7 +212,6 @@ export default function Solutions() {
 
           </div>
 
-          {/* Chamada para Ação (CTA) */}
           <div data-aos="zoom-in" data-aos-delay="200" className="bg-gradient-to-r from-blue-600/20 to-blue-900/20 border border-white/10 rounded-lg p-8 text-center max-w-[900px] mx-auto">
             <h2 className="text-2xl md:text-3xl font-bold mb-4 text-white">Pronto para transformar a sua operação?</h2>
             <p className="text-gray-300 mb-6 max-w-[600px] mx-auto text-sm">
@@ -240,7 +227,6 @@ export default function Solutions() {
         </div>
       </main>
 
-      {/* ====== JANELA FLUTUANTE (MODAL) ====== */}
       {activeModal !== null && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-all duration-300">
           <div className="bg-[#111111] border border-blue-500/40 rounded-lg max-w-[650px] w-full p-6 md:p-8 relative shadow-2xl animate-fade-in">
@@ -255,4 +241,42 @@ export default function Solutions() {
             <div className="flex items-center gap-4 mb-6 border-b border-white/10 pb-4">
               {solutionsList[activeModal].icon}
               <h3 className="text-2xl font-bold text-white tracking-wide">
-                {solutionsList
+                {solutionsList[activeModal].title}
+              </h3>
+            </div>
+
+            <p className="text-gray-300 text-sm leading-relaxed mb-6 bg-black/40 p-3 rounded border border-white/5">
+              {solutionsList[activeModal].description}
+            </p>
+
+            <h4 className="text-xs font-bold text-blue-500 uppercase tracking-widest mb-3">
+              Recursos e Capacidades do Sistema:
+            </h4>
+            
+            <ul className="flex flex-col gap-3 mb-8">
+              {solutionsList[activeModal].details.map((detail, idx) => (
+                <li key={idx} className="flex items-start gap-3 text-sm text-gray-300">
+                  <span className="text-blue-500 shrink-0 mt-1">&#10003;</span>
+                  <span>{detail}</span>
+                </li>
+              ))}
+            </ul>
+
+            <div className="flex justify-end gap-4 border-t border-white/10 pt-4">
+              <button onClick={() => setActiveModal(null)} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">
+                Fechar
+              </button>
+              <Link href="/contact">
+                <button className="px-5 py-2 text-sm bg-blue-600 hover:bg-white text-white hover:text-black font-semibold rounded transition-all duration-300">
+                  Tenho Interesse
+                </button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Footer />
+    </div>
+  );
+}
