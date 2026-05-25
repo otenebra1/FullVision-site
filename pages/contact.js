@@ -15,47 +15,47 @@ export default function Contact() {
   });
 
   const [submitted, setSubmitted] = useState(false);
-const handleChange = (e) => {
-  setFormData({ ...formData, [e.target.name]: e.target.value });
-};
- 
-
-const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
   
-  const googleScriptUrl = "https://script.google.com/macros/s/AKfycbw_OZoTX9c1jhTDIdlaakXjOiIz6s5NQQ5gjX8gj1ITaXuHOS5ifj4FIOnD9yoKPvSdPA/exec";
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    const googleScriptUrl = "https://script.google.com/macros/s/AKfycbw_OZoTX9c1jhTDIdlaakXjOiIz6s5NQQ5gjX8gj1ITaXuHOS5ifj4FIOnD9yoKPvSdPA/exec";
 
-  try {
-    // Envia para os dois ao mesmo tempo
-    await Promise.all([
-      // Google Apps Script
-      fetch(googleScriptUrl, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(formData),
-      }),
-      // EmailJS
-      emailjs.send(
-  'service_i9sgmo6',
-  'template_uc14m3r',
-  formData,
-  'NIEzrhfqfvFiUd6wI'
-)
-    ]);
+    try {
+      // Envia para os dois ao mesmo tempo
+      await Promise.all([
+        // Google Apps Script
+        fetch(googleScriptUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(formData),
+        }),
+        // EmailJS
+        emailjs.send(
+          'service_i9sgmo6',
+          'template_uc14m3r',
+          formData,
+          'NIEzrhfqfvFiUd6wI'
+        )
+      ]);
 
-    setSubmitted(true);
-    setFormData({ name: '', email: '', phone: '', company: '', vehicles: '', message: '' });
-    setTimeout(() => setSubmitted(false), 5000);
+      setSubmitted(true);
+      setFormData({ name: '', email: '', phone: '', company: '', vehicles: '', message: '' });
+      setTimeout(() => setSubmitted(false), 5000);
 
-  } catch (error) {
-    console.error("Erro no envio:", error);
-    alert("Erro ao enviar. Tente novamente.");
-  }
-};
+    } catch (error) {
+      console.error("Erro no envio:", error);
+      alert("Erro ao enviar. Tente novamente.");
+    }
+  };
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#000000] text-white select-none">
+    // Adicionado overflow-hidden para proteger a animação
+    <div className="flex flex-col min-h-screen bg-[#000000] text-white select-none overflow-hidden">
       <Head>
         <title>Contato | FullVision Tracking</title>
       </Head>
@@ -65,11 +65,10 @@ const handleSubmit = async (e) => {
           
           {/* Cabeçalho */}
           <div className="text-center max-w-[800px] mx-auto mb-16">
-            {/* COR ALTERADA: border-orange-500 para border-blue-500 */}
-            <h1 className="text-4xl md:text-5xl font-bold tracking-wider mb-4 border-b-2 border-blue-500 pb-4 inline-block">
+            <h1 data-aos="fade-down" className="text-4xl md:text-5xl font-bold tracking-wider mb-4 border-b-2 border-blue-500 pb-4 inline-block">
               FALE CONOSCO
             </h1>
-            <p className="text-gray-300 text-lg md:text-xl mt-4">
+            <p data-aos="fade-up" data-aos-delay="150" className="text-gray-300 text-lg md:text-xl mt-4">
               Dúvidas, suporte ou propostas comerciais? Preencha o formulário ou utilize nossos canais diretos.
             </p>
           </div>
@@ -77,9 +76,8 @@ const handleSubmit = async (e) => {
           {/* Grid de 2 colunas */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
             
-            {/* ====== ESQUERDA: Formulário de Contato ====== */}
-            <div className="bg-white/5 border border-white/10 rounded-lg p-6 md:p-8 shadow-xl relative">
-              {/* COR ALTERADA: text-orange-500 para text-blue-500 */}
+            {/* ====== ESQUERDA: Formulário de Contato (Vem da Esquerda) ====== */}
+            <div data-aos="fade-right" className="bg-white/5 border border-white/10 rounded-lg p-6 md:p-8 shadow-xl relative">
               <h2 className="text-2xl font-semibold mb-6 text-blue-500 tracking-wide border-b border-white/10 pb-3">
                 Envie uma Mensagem
               </h2>
@@ -96,7 +94,6 @@ const handleSubmit = async (e) => {
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Nome Completo
                   </label>
-                  {/* COR ALTERADA: focus:border-orange-500 para focus:border-blue-500 */}
                   <input
                     type="text"
                     name="name"
@@ -113,7 +110,6 @@ const handleSubmit = async (e) => {
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     E-mail
                   </label>
-                  {/* COR ALTERADA: focus:border-orange-500 para focus:border-blue-500 */}
                   <input
                     type="email"
                     name="email"
@@ -130,7 +126,6 @@ const handleSubmit = async (e) => {
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     WhatsApp / Telefone
                   </label>
-                  {/* COR ALTERADA: focus:border-orange-500 para focus:border-blue-500 */}
                   <input
                     type="text"
                     name="phone"
@@ -147,7 +142,6 @@ const handleSubmit = async (e) => {
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Nome da Empresa
                   </label>
-                  {/* COR ALTERADA: focus:border-orange-500 para focus:border-blue-500 */}
                   <input
                     type="text"
                     name="company"
@@ -164,7 +158,6 @@ const handleSubmit = async (e) => {
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Quantidade de Veículos
                   </label>
-                  {/* COR ALTERADA: focus:border-orange-500 para focus:border-blue-500 */}
                   <input
                     type="number"
                     name="vehicles"
@@ -182,7 +175,6 @@ const handleSubmit = async (e) => {
                   <label className="block text-sm font-medium text-gray-300 mb-2">
                     Sua Mensagem
                   </label>
-                  {/* COR ALTERADA: focus:border-orange-500 para focus:border-blue-500 */}
                   <textarea
                     name="message"
                     rows="4"
@@ -194,7 +186,6 @@ const handleSubmit = async (e) => {
                   ></textarea>
                 </div>
 
-                {/* COR ALTERADA: bg-orange-500 para bg-blue-600 */}
                 <button
                   type="submit"
                   className="w-full py-3 mt-2 bg-blue-600 hover:bg-white text-black hover:text-black font-semibold rounded transition-all duration-300 tracking-wide"
@@ -204,11 +195,10 @@ const handleSubmit = async (e) => {
               </form>
             </div>
 
-            {/* ====== DIREITA: Dados Oficiais ====== */}
+            {/* ====== DIREITA: Dados Oficiais (Vem da Direita) ====== */}
             <div className="flex flex-col gap-8">
               
-              {/* COR ALTERADA: border-l-4 border-orange-500 para border-l-4 border-blue-500 */}
-              <div className="bg-white/5 border-l-4 border-blue-500 border-y border-r border-white/10 rounded-r-lg p-6 md:p-8 shadow-xl">
+              <div data-aos="fade-left" className="bg-white/5 border-l-4 border-blue-500 border-y border-r border-white/10 rounded-r-lg p-6 md:p-8 shadow-xl">
                 <h2 className="text-2xl font-semibold mb-8 text-white tracking-wide border-b border-white/10 pb-3">
                   Nossos Dados
                 </h2>
@@ -217,7 +207,6 @@ const handleSubmit = async (e) => {
                   
                   {/* E-mail */}
                   <div className="flex items-center gap-5 group">
-                    {/* COR ALTERADA: bg-orange-500/10... text-orange-500... group-hover:bg-orange-500 para bg-blue-500/10... text-blue-500... group-hover:bg-blue-600 */}
                     <div className="w-12 h-12 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-500 group-hover:bg-blue-600 group-hover:text-black transition-all duration-300 shrink-0">
                       <FaEnvelope size={20} />
                     </div>
@@ -225,7 +214,6 @@ const handleSubmit = async (e) => {
                       <span className="block text-xs text-gray-400 font-medium tracking-wider uppercase mb-1">
                         E-mail
                       </span>
-                      {/* COR ALTERADA: hover:text-orange-500 para hover:text-blue-500 */}
                       <a 
                         href="mailto:contato@fullvision.one" 
                         className="text-base md:text-lg text-gray-200 hover:text-blue-500 transition-colors font-semibold"
@@ -237,7 +225,6 @@ const handleSubmit = async (e) => {
 
                   {/* WhatsApp */}
                   <div className="flex items-center gap-5 group">
-                    {/* COR ALTERADA: bg-orange-500/10... text-orange-500... group-hover:bg-orange-500 para bg-blue-500/10... text-blue-500... group-hover:bg-blue-600 */}
                     <div className="w-12 h-12 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-500 group-hover:bg-blue-600 group-hover:text-black transition-all duration-300 shrink-0">
                       <FaWhatsapp size={24} />
                     </div>
@@ -245,7 +232,6 @@ const handleSubmit = async (e) => {
                       <span className="block text-xs text-gray-400 font-medium tracking-wider uppercase mb-1">
                         WhatsApp
                       </span>
-                      {/* COR ALTERADA: hover:text-orange-500 para hover:text-blue-500 */}
                       <a 
                         href="https://wa.me/5511940670589" 
                         target="_blank" 
@@ -259,7 +245,6 @@ const handleSubmit = async (e) => {
 
                   {/* Localização */}
                   <div className="flex items-center gap-5 group">
-                    {/* COR ALTERADA: bg-orange-500/10... text-orange-500... group-hover:bg-orange-500 para bg-blue-500/10... text-blue-500... group-hover:bg-blue-600 */}
                     <div className="w-12 h-12 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-500 group-hover:bg-blue-600 group-hover:text-black transition-all duration-300 shrink-0">
                       <FaMapMarkerAlt size={22} />
                     </div>
@@ -275,7 +260,6 @@ const handleSubmit = async (e) => {
 
                   {/* Horário de Atendimento */}
                   <div className="flex items-center gap-5 group">
-                    {/* COR ALTERADA: bg-orange-500/10... text-orange-500... group-hover:bg-orange-500 para bg-blue-500/10... text-blue-500... group-hover:bg-blue-600 */}
                     <div className="w-12 h-12 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-500 group-hover:bg-blue-600 group-hover:text-black transition-all duration-300 shrink-0">
                       <FaClock size={22} />
                     </div>
@@ -292,9 +276,8 @@ const handleSubmit = async (e) => {
                 </div>
               </div>
 
-              {/* Mensagem de valor agregado */}
-              {/* COR ALTERADA: from-orange-600/10 para from-blue-600/10 */}
-              <div className="bg-gradient-to-r from-blue-600/10 to-transparent border border-white/5 rounded-lg p-6 text-gray-400 text-sm leading-relaxed">
+              {/* Mensagem de valor agregado (Sobe de baixo) */}
+              <div data-aos="fade-up" data-aos-delay="200" className="bg-gradient-to-r from-blue-600/10 to-transparent border border-white/5 rounded-lg p-6 text-gray-400 text-sm leading-relaxed">
                 <p>
                   <strong className="text-gray-200 font-semibold">Atendimento Ágil:</strong> Nossa equipe está pronta para desenhar projetos customizados de rastreamento, telemetria e segurança corporativa sob medida para a sua frota.
                 </p>
