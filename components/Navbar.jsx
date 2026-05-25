@@ -28,10 +28,10 @@ const Navbar = () => {
             <div className='max-w-[1240px] m-auto flex justify-between items-center p-4 text-white'>
                 <Link href='/'>
     <img 
-        src="/images/logofv.png" 
-        className='h-14 w-32 object-contain transition-transform duration-1000 ease-in-out hover:rotate-[360deg] cursor-pointer' 
-        alt="Logo FullVision" 
-    />
+    src="/images/logofv.png" 
+    className="h-14 w-32 object-contain hover:opacity-80 transition-opacity duration-300 cursor-pointer" 
+    alt="Logo FullVision" 
+/>
 </Link>
                 
                 {/** Desktop Menu */}
