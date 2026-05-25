@@ -16,6 +16,7 @@
     "@fortawesome/react-fontawesome": "^0.2.0",
     "@mui/icons-material": "^5.14.16",
     "@mui/material": "^5.14.16",
+    "@vercel/analytics": "^2.0.1",
     "aos": "^2.3.4",
     "autoprefixer": "10.4.14",
     "next": "^13.4.13",
