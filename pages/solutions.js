@@ -10,6 +10,42 @@ import {
 export default function Solutions() {
   const [activeTab, setActiveTab] = useState('services');
   const [activeModal, setActiveModal] = useState(null);
+  const [activeImageModal, setActiveImageModal] = useState(null);
+
+  const panelImages = [
+    {
+      src: "/images/rastreamento.jpeg",
+      alt: "Painel de Rastreamento FullVision",
+      icon: <FaDesktop className="text-blue-500 text-sm" />,
+      label: "Módulo de Rastreamento",
+      title: "Rastreamento em Tempo Real",
+      description: "Visualize toda a sua frota em um único mapa dinâmico com atualização contínua de posições. O módulo de rastreamento exibe dados de telemetria ao vivo — velocidade, status do motor, nível de bateria e muito mais — diretamente sobre cada veículo.",
+      features: [
+        "Mapa interativo com suporte a visão de arruamento e satélite.",
+        "Painel inferior com lista detalhada de todos os veículos da frota.",
+        "Indicadores de status: ignição, movimento, parado, sleep mode.",
+        "Dados de RPM, temperatura do motor, odômetro e bateria em tempo real.",
+        "Filtros por grupo de veículos, status e tipo de evento.",
+        "Histórico de posições e eventos por período para auditoria."
+      ]
+    },
+    {
+      src: "/images/roteirizador.jpeg",
+      alt: "Painel de Roteirizador FullVision",
+      icon: <FaSlidersH className="text-blue-500 text-sm" />,
+      label: "Gestão de Entregas",
+      title: "Roteirizador Inteligente",
+      description: "Gerencie todas as rotas e entregas da operação em uma única interface. O módulo de roteirização permite acompanhar o progresso de cada motorista em tempo real, com indicadores visuais de status e alertas de atraso automáticos.",
+      features: [
+        "Visão consolidada de todas as entregas do dia por motorista.",
+        "Indicadores coloridos de status: concluído, em andamento, parado e pendente.",
+        "Contadores globais: total de entregas, pendentes, em andamento e concluídas.",
+        "Barra de progresso por rota com percentual de conclusão.",
+        "Filtros avançados por motorista, período, cliente e status.",
+        "Exportação de relatórios e embarque em lote de novas rotas."
+      ]
+    }
+  ];
 
   const solutionsList = [
     {
@@ -210,58 +246,37 @@ export default function Solutions() {
 
                 {/* --- SEÇÃO DE IMAGENS DO PAINEL ESTILIZADAS --- */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-                  
-                  {/* Imagem 1 - Rastreamento */}
-                  <div className="group relative rounded-xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-2xl hover:shadow-blue-500/20 hover:border-blue-500/50 transition-all duration-500 hover:-translate-y-2">
-                    {/* Cabeçalho estilo Navegador/Janela */}
-                    <div className="bg-[#111111] px-4 py-3 flex items-center justify-between border-b border-white/5">
-                      <div className="flex space-x-2">
-                        <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
-                        <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
-                        <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
+                  {panelImages.map((img, idx) => (
+                    <div
+                      key={idx}
+                      onClick={() => setActiveImageModal(idx)}
+                      className="group relative rounded-xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-2xl hover:shadow-blue-500/20 hover:border-blue-500/50 transition-all duration-500 hover:-translate-y-2 cursor-pointer"
+                    >
+                      {/* Cabeçalho estilo Janela */}
+                      <div className="bg-[#111111] px-4 py-3 flex items-center justify-between border-b border-white/5">
+                        <div className="flex items-center gap-2">
+                          {img.icon}
+                          <span className="text-xs text-gray-400 font-medium tracking-wide">{img.label}</span>
+                        </div>
+                        <span className="text-[10px] text-blue-500/70 font-medium">Clique para expandir</span>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <FaDesktop className="text-blue-500 text-sm" />
-                        <span className="text-xs text-gray-400 font-medium tracking-wide">Módulo de Rastreamento</span>
-                      </div>
-                    </div>
-                    
-                    {/* Container da Imagem com Efeito de Zoom */}
-                    <div className="relative overflow-hidden bg-black/50">
-                      <img
-                        src="/images/rastreamento.jpeg"
-                        alt="Painel de Rastreamento FullVision"
-                        className="w-full h-[250px] object-cover object-top transform group-hover:scale-105 transition-transform duration-700 ease-in-out opacity-90 group-hover:opacity-100"
-                      />
-                      {/* Overlay que aparece no Hover */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6">
-                        <p className="text-white text-sm font-medium translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                          Visão geral da frota em tempo real com telemetria ativa.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Imagem 2 - Roteirizador */}
-                  <div className="group relative rounded-xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-2xl hover:shadow-blue-500/20 hover:border-blue-500/50 transition-all duration-500 hover:-translate-y-2">
-                    {/* Cabeçalho estilo Navegador/Janela */}
-                    <div className="bg-[#111111] px-4 py-3 flex items-center justify-between border-b border-white/5">
-                      <div className="flex space-x-2">
-                        <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
-                        <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
-                        <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <FaSlidersH className="text-blue-500 text-sm" />
-                        <span className="text-xs text-gray-400 font-medium tracking-wide">Gestão de Entregas</span>
+                      {/* Container da Imagem com Efeito de Zoom */}
+                      <div className="relative overflow-hidden bg-black/50">
+                        <img
+                          src={img.src}
+                          alt={img.alt}
+                          className="w-full h-[250px] object-cover object-top transform group-hover:scale-105 transition-transform duration-700 ease-in-out opacity-90 group-hover:opacity-100"
+                        />
+                        {/* Overlay no Hover */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6">
+                          <p className="text-white text-sm font-medium translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                            {img.description.split('.')[0]}.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                    
-                    {/* Container da Imagem com Efeito de Zoom */}
-                    <div className="relative overflow-hidden bg-black/50">
-                      <img
-                        src="/images/roteirizador.jpeg"
-                        alt="Painel de Roteirizador FullVision"
+                  ))}
+                </div>
                         className="w-full h-[250px] object-cover object-top transform group-hover:scale-105 transition-transform duration-700 ease-in-out opacity-90 group-hover:opacity-100"
                       />
                       {/* Overlay que aparece no Hover */}
@@ -384,6 +399,55 @@ export default function Solutions() {
                   Tenho Interesse
                 </button>
               </Link>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Imagem do Painel */}
+      {activeImageModal !== null && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
+          onClick={() => setActiveImageModal(null)}
+        >
+          <div
+            className="bg-[#111111] border border-blue-500/40 rounded-xl w-full max-w-[900px] shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header do modal */}
+            <div className="bg-[#0a0a0a] px-5 py-3 flex items-center justify-between border-b border-white/10">
+              <div className="flex items-center gap-2">
+                {panelImages[activeImageModal].icon}
+                <span className="text-sm text-gray-300 font-medium">{panelImages[activeImageModal].label}</span>
+              </div>
+              <button
+                onClick={() => setActiveImageModal(null)}
+                className="text-gray-400 hover:text-white bg-white/5 hover:bg-red-500/20 p-2 rounded-full transition-all duration-200"
+              >
+                <FaTimes size={16} />
+              </button>
+            </div>
+
+            {/* Imagem expandida */}
+            <img
+              src={panelImages[activeImageModal].src}
+              alt={panelImages[activeImageModal].alt}
+              className="w-full object-cover"
+            />
+
+            {/* Descrição */}
+            <div className="p-6 border-t border-white/10">
+              <h3 className="text-lg font-bold text-white mb-2">{panelImages[activeImageModal].title}</h3>
+              <p className="text-gray-400 text-sm leading-relaxed mb-4">{panelImages[activeImageModal].description}</p>
+              <h4 className="text-xs font-bold text-blue-500 uppercase tracking-widest mb-3">Funcionalidades do Módulo:</h4>
+              <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                {panelImages[activeImageModal].features.map((feat, idx) => (
+                  <li key={idx} className="flex items-start gap-2 text-xs text-gray-300">
+                    <span className="text-blue-500 font-bold shrink-0 mt-0.5">✓</span>
+                    <span>{feat}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           </div>
         </div>
