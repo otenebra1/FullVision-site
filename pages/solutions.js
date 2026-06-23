@@ -79,35 +79,46 @@ export default function Solutions() {
   const technologyCatalog = [
     {
       icon: <FaSignal className="text-blue-500 text-3xl" />,
-      title: "FV-Smart 4G (Rastreador Veicular)",
-      tech: "Nosso rastreador padrão ouro para frotas urbanas e rodoviárias. Utiliza conectividade celular Multi-operadora (4G/2G) com chaveamento automático de sinal.",
+      title: "Full Tracker (FT)",
+      tech: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Descrição do produto FT a ser preenchida.",
       specs: [
-        "Módulo de Telemetria integrado (leitura de velocidade e RPM).",
-        "Bloqueio de ignição remoto e seguro via satélite/GSM.",
-        "Bateria interna de backup com duração de até 48 horas offline.",
-        "Entradas para sensores de porta, painel e botão de pânico."
+        "Especificação técnica 1 — a preencher.",
+        "Especificação técnica 2 — a preencher.",
+        "Especificação técnica 3 — a preencher.",
+        "Especificação técnica 4 — a preencher."
       ]
     },
     {
       icon: <FaSatellite className="text-blue-500 text-3xl" />,
-      title: "FV-Sat Autônomo (Satelital Híbrido)",
-      tech: "Equipamento blindado de alta tecnologia voltado para transporte de cargas críticas e rotas de longa distância com áreas de sombra de celular.",
+      title: "Full Tracker Plus (FT-P)",
+      tech: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Descrição do produto FT-P a ser preenchida.",
       specs: [
-        "Comunicação bidirecional via constelação de Satélites Iridium.",
-        "Antena GPS de alta sensibilidade com precisão militar.",
-        "Resistente à água e poeira (Certificação IP67).",
-        "Inteligência embarcada contra bloqueadores de sinal (Anti-Jammer)."
+        "Especificação técnica 1 — a preencher.",
+        "Especificação técnica 2 — a preencher.",
+        "Especificação técnica 3 — a preencher.",
+        "Especificação técnica 4 — a preencher."
       ]
     },
     {
       icon: <FaMicrochip className="text-blue-500 text-3xl" />,
-      title: "FV-Cargo Micro (Isca de Carga)",
-      tech: "Dispositivo miniaturizado de monitoramento velado para caixas, paletes e encomendas de alto valor. Ideal para auditoria de transportadoras.",
+      title: "Full Tracker Smart (FT-S)",
+      tech: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Descrição do produto FT-S a ser preenchida.",
       specs: [
-        "Localização híbrida por triangulação de antenas celular (LBS) + GPS.",
-        "Modo ultra-econômico: ativação apenas quando há movimento.",
-        "Autonomia estendida: bateria interna inteligente de até 60 dias.",
-        "Carcaça magnética para fixação rápida e discreta no baú."
+        "Especificação técnica 1 — a preencher.",
+        "Especificação técnica 2 — a preencher.",
+        "Especificação técnica 3 — a preencher.",
+        "Especificação técnica 4 — a preencher."
+      ]
+    },
+    {
+      icon: <FaShieldAlt className="text-blue-500 text-3xl" />,
+      title: "Smart Full Tracker Plus (FT-SP)",
+      tech: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Descrição do produto FT-SP a ser preenchida.",
+      specs: [
+        "Especificação técnica 1 — a preencher.",
+        "Especificação técnica 2 — a preencher.",
+        "Especificação técnica 3 — a preencher.",
+        "Especificação técnica 4 — a preencher."
       ]
     }
   ];
@@ -210,7 +221,7 @@ export default function Solutions() {
             )}
 
             {activeTab === 'catalog' && (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16 animate-fade-in">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-16 animate-fade-in">
                 {technologyCatalog.map((tech, idx) => (
                   <div key={idx} className="bg-[#0f0f0f] border border-white/10 rounded-xl p-6 flex flex-col justify-between hover:border-blue-500/40 hover:scale-[1.02] transition-all duration-300">
                     <div>
