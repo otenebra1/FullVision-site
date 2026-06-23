@@ -208,31 +208,73 @@ export default function Solutions() {
                   </div>
                 </div>
 
-                {/* Imagem 1 - Rastreamento */}
-                <div className="rounded-xl overflow-hidden border border-white/10 shadow-2xl">
-                  <div className="bg-white/5 px-4 py-2 border-b border-white/10 flex items-center gap-2">
-                    <FaDesktop className="text-blue-500 text-sm" />
-                    <span className="text-xs text-gray-400 font-medium">Módulo de Rastreamento — Visão Geral da Frota</span>
+                {/* --- SEÇÃO DE IMAGENS DO PAINEL ESTILIZADAS --- */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                  
+                  {/* Imagem 1 - Rastreamento */}
+                  <div className="group relative rounded-xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-2xl hover:shadow-blue-500/20 hover:border-blue-500/50 transition-all duration-500 hover:-translate-y-2">
+                    {/* Cabeçalho estilo Navegador/Janela */}
+                    <div className="bg-[#111111] px-4 py-3 flex items-center justify-between border-b border-white/5">
+                      <div className="flex space-x-2">
+                        <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+                        <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                        <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <FaDesktop className="text-blue-500 text-sm" />
+                        <span className="text-xs text-gray-400 font-medium tracking-wide">Módulo de Rastreamento</span>
+                      </div>
+                    </div>
+                    
+                    {/* Container da Imagem com Efeito de Zoom */}
+                    <div className="relative overflow-hidden bg-black/50">
+                      <img
+                        src="/images/rastreamento.jpeg"
+                        alt="Painel de Rastreamento FullVision"
+                        className="w-full h-[250px] object-cover object-top transform group-hover:scale-105 transition-transform duration-700 ease-in-out opacity-90 group-hover:opacity-100"
+                      />
+                      {/* Overlay que aparece no Hover */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6">
+                        <p className="text-white text-sm font-medium translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                          Visão geral da frota em tempo real com telemetria ativa.
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <img
-                    src="/images/rastreamento.jpeg"
-                    alt="Painel de Rastreamento FullVision"
-                    className="w-full object-cover"
-                  />
-                </div>
 
-                {/* Imagem 2 - Roteirizador */}
-                <div className="rounded-xl overflow-hidden border border-white/10 shadow-2xl">
-                  <div className="bg-white/5 px-4 py-2 border-b border-white/10 flex items-center gap-2">
-                    <FaSlidersH className="text-blue-500 text-sm" />
-                    <span className="text-xs text-gray-400 font-medium">Módulo de Roteirizador — Gestão de Entregas</span>
+                  {/* Imagem 2 - Roteirizador */}
+                  <div className="group relative rounded-xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-2xl hover:shadow-blue-500/20 hover:border-blue-500/50 transition-all duration-500 hover:-translate-y-2">
+                    {/* Cabeçalho estilo Navegador/Janela */}
+                    <div className="bg-[#111111] px-4 py-3 flex items-center justify-between border-b border-white/5">
+                      <div className="flex space-x-2">
+                        <div className="w-3 h-3 rounded-full bg-red-500/80"></div>
+                        <div className="w-3 h-3 rounded-full bg-yellow-500/80"></div>
+                        <div className="w-3 h-3 rounded-full bg-green-500/80"></div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <FaSlidersH className="text-blue-500 text-sm" />
+                        <span className="text-xs text-gray-400 font-medium tracking-wide">Gestão de Entregas</span>
+                      </div>
+                    </div>
+                    
+                    {/* Container da Imagem com Efeito de Zoom */}
+                    <div className="relative overflow-hidden bg-black/50">
+                      <img
+                        src="/images/roteirizador.jpeg"
+                        alt="Painel de Roteirizador FullVision"
+                        className="w-full h-[250px] object-cover object-top transform group-hover:scale-105 transition-transform duration-700 ease-in-out opacity-90 group-hover:opacity-100"
+                      />
+                      {/* Overlay que aparece no Hover */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6">
+                        <p className="text-white text-sm font-medium translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
+                          Planejamento inteligente e roteirização com filtros dinâmicos.
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <img
-                    src="/images/roteirizador.jpeg"
-                    alt="Painel de Roteirizador FullVision"
-                    className="w-full object-cover"
-                  />
+
                 </div>
+                {/* --- FIM DA SEÇÃO DE IMAGENS --- */}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {panelFeatures.map((feat, idx) => (
