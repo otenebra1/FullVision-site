@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import Image from 'next/image';
 import Footer from '@/components/Footer';
 import { 
   FaMapMarkedAlt, FaShieldAlt, FaChartLine, FaServer, FaTimes, 
@@ -215,14 +214,11 @@ export default function Solutions() {
                     <FaDesktop className="text-blue-500 text-sm" />
                     <span className="text-xs text-gray-400 font-medium">Módulo de Rastreamento — Visão Geral da Frota</span>
                   </div>
-                  <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
-                    <Image
-                      src="/images/rastreamento.jpeg"
-                      alt="Painel de Rastreamento FullVision"
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
+                  <img
+                    src="/images/rastreamento.jpeg"
+                    alt="Painel de Rastreamento FullVision"
+                    className="w-full object-cover"
+                  />
                 </div>
 
                 {/* Imagem 2 - Roteirizador */}
@@ -231,14 +227,11 @@ export default function Solutions() {
                     <FaSlidersH className="text-blue-500 text-sm" />
                     <span className="text-xs text-gray-400 font-medium">Módulo de Roteirizador — Gestão de Entregas</span>
                   </div>
-                  <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
-                    <Image
-                      src="/images/roteirizador.jpeg"
-                      alt="Painel de Roteirizador FullVision"
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
+                  <img
+                    src="/images/roteirizador.jpeg"
+                    alt="Painel de Roteirizador FullVision"
+                    className="w-full object-cover"
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
