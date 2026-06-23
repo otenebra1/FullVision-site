@@ -23,6 +23,6 @@
   "description": "This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).",
   "license": "ISC",
   "engines": {
-  "node": "18.x"
+  "node": "24.x"
  }
 }
