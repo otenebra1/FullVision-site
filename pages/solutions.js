@@ -80,45 +80,45 @@ export default function Solutions() {
     {
       icon: <FaSignal className="text-blue-500 text-3xl" />,
       title: "Full Tracker (FT)",
-      tech: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Descrição do produto FT a ser preenchida.",
+      tech: "Monitoramento e eventos em tempo real.",
       specs: [
-        "Especificação técnica 1 — a preencher.",
-        "Especificação técnica 2 — a preencher.",
-        "Especificação técnica 3 — a preencher.",
-        "Especificação técnica 4 — a preencher."
+        "Localizaçãp em tempo real.",
+        "Precisão de GPS em até 10m.",
+        "Amarzena até 2000 posições em área de sombra.",
+        "Compatível com bloqueio."
       ]
     },
     {
       icon: <FaSatellite className="text-blue-500 text-3xl" />,
       title: "Full Tracker Plus (FT-P)",
-      tech: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Descrição do produto FT-P a ser preenchida.",
+      tech: "Cercas e rotas embarcadas, eficiência logística.",
       specs: [
-        "Especificação técnica 1 — a preencher.",
-        "Especificação técnica 2 — a preencher.",
-        "Especificação técnica 3 — a preencher.",
-        "Especificação técnica 4 — a preencher."
+        "Controle de jornada.",
+        "Identificação do Motorista.",
+        "Detecção de Jammer de GPS E Celular.",
+        "Baixo custo em sleep mode."
       ]
     },
     {
       icon: <FaMicrochip className="text-blue-500 text-3xl" />,
       title: "Full Tracker Smart (FT-S)",
-      tech: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Descrição do produto FT-S a ser preenchida.",
+      tech: "Gestão de frota inteligente com funcionalidades avançadas de telemetria.",
       specs: [
-        "Especificação técnica 1 — a preencher.",
-        "Especificação técnica 2 — a preencher.",
-        "Especificação técnica 3 — a preencher.",
-        "Especificação técnica 4 — a preencher."
+        "Bloqueio Seguro.",
+        "Gestão de Combustível.",
+        "Controle RPM.",
+        "Aceleração e freada brusca."
       ]
     },
     {
       icon: <FaShieldAlt className="text-blue-500 text-3xl" />,
       title: "Smart Full Tracker Plus (FT-SP)",
-      tech: "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Descrição do produto FT-SP a ser preenchida.",
+      tech: "Gestão de frota com tecnologia Bluetooth.",
       specs: [
-        "Especificação técnica 1 — a preencher.",
-        "Especificação técnica 2 — a preencher.",
-        "Especificação técnica 3 — a preencher.",
-        "Especificação técnica 4 — a preencher."
+        "Sensores Bluetooth.",
+        "Saída Bluettoth.",
+        "Porta RS 232.",
+        "Compatível com veículos elétricos."
       ]
     }
   ];
