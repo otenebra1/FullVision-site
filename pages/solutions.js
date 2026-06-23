@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import Image from 'next/image';
 import Footer from '@/components/Footer';
 import { 
   FaMapMarkedAlt, FaShieldAlt, FaChartLine, FaServer, FaTimes, 
@@ -197,7 +198,7 @@ export default function Solutions() {
             )}
 
             {activeTab === 'panel' && (
-              <div className="space-y-12 max-w-[900px] mx-auto mb-16 animate-fade-in">
+              <div className="space-y-12 max-w-[1100px] mx-auto mb-16 animate-fade-in">
                 <div className="bg-gradient-to-r from-blue-950/30 to-white/5 p-6 rounded-xl border border-white/10 flex flex-col md:flex-row items-center gap-6">
                   <div className="text-5xl text-blue-500"><FaDesktop /></div>
                   <div>
@@ -205,6 +206,38 @@ export default function Solutions() {
                     <p className="text-gray-400 text-sm leading-relaxed">
                       Nossa plataforma foi desenhada sob rígidos conceitos corporativos. Ela compila telemetria, mapas dinâmicos e disparo automático de comandos de segurança em milissegundos.
                     </p>
+                  </div>
+                </div>
+
+                {/* Imagem 1 - Rastreamento */}
+                <div className="rounded-xl overflow-hidden border border-white/10 shadow-2xl">
+                  <div className="bg-white/5 px-4 py-2 border-b border-white/10 flex items-center gap-2">
+                    <FaDesktop className="text-blue-500 text-sm" />
+                    <span className="text-xs text-gray-400 font-medium">Módulo de Rastreamento — Visão Geral da Frota</span>
+                  </div>
+                  <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
+                    <Image
+                      src="/images/rastreamento.jpeg"
+                      alt="Painel de Rastreamento FullVision"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                </div>
+
+                {/* Imagem 2 - Roteirizador */}
+                <div className="rounded-xl overflow-hidden border border-white/10 shadow-2xl">
+                  <div className="bg-white/5 px-4 py-2 border-b border-white/10 flex items-center gap-2">
+                    <FaSlidersH className="text-blue-500 text-sm" />
+                    <span className="text-xs text-gray-400 font-medium">Módulo de Roteirizador — Gestão de Entregas</span>
+                  </div>
+                  <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
+                    <Image
+                      src="/images/roteirizador.jpeg"
+                      alt="Painel de Roteirizador FullVision"
+                      fill
+                      className="object-cover"
+                    />
                   </div>
                 </div>
 
