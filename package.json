@@ -13,7 +13,7 @@
     "@vercel/analytics": "^2.0.1",
     "aos": "^2.3.4",
     "autoprefixer": "10.4.14",
-    "next": "^13.4.13",
+    "next": "^14.2.0",
     "postcss": "8.4.27",
     "react": "18.2.0",
     "react-dom": "18.2.0",
@@ -21,8 +21,5 @@
     "tailwindcss": "3.3.3"
   },
   "description": "This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).",
-  "license": "ISC",
-  "engines": {
-  "node": "24.x"
- }
+  "license": "ISC"
 }
