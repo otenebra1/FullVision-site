@@ -277,18 +277,6 @@ export default function Solutions() {
                     </div>
                   ))}
                 </div>
-                        className="w-full h-[250px] object-cover object-top transform group-hover:scale-105 transition-transform duration-700 ease-in-out opacity-90 group-hover:opacity-100"
-                      />
-                      {/* Overlay que aparece no Hover */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6">
-                        <p className="text-white text-sm font-medium translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                          Planejamento inteligente e roteirização com filtros dinâmicos.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-
-                </div>
                 {/* --- FIM DA SEÇÃO DE IMAGENS --- */}
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
