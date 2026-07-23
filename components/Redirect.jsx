@@ -20,7 +20,7 @@ const Redirect = () => {
 
           <div>
             <h3 className="text-2xl md:text-3xl font-bold text-white mb-2">
-              Aceder à plataforma de rastreamento
+              Acesse à plataforma de rastreamento
             </h3>
             <p className="text-gray-400 max-w-xl text-base leading-relaxed">
               Acompanhe a sua frota em tempo real, aceda a relatórios de gestão e controle a telemetria num único painel.
