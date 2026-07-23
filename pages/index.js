@@ -5,7 +5,7 @@ import HomeImage from "@/components/Hero";
 import { SliderData } from "@/components/SliderData";
 import Footer from '@/components/Footer';
 
-// Ícones que instalamos
+// Ícones da biblioteca react-icons
 import { FiActivity, FiMap, FiMonitor } from 'react-icons/fi';
 
 export default function Home() {
@@ -18,30 +18,12 @@ export default function Home() {
 
       <main className="flex-grow">
         
-        {/* 1. SLIDER NO TOPO (Agora será a única coisa no início) */}
+        {/* 1. SLIDER NO TOPO */}
         <div data-aos="fade-down" data-aos-duration="1000">
           <Slider slides={SliderData} />
         </div>
 
-        {/* 2. BARRA DE ESTATÍSTICAS (Logo abaixo do slider) */}
-        <div data-aos="fade-up" data-aos-delay="150" className="w-full bg-[#111111] py-12 border-b border-gray-800">
-          <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div>
-              <h3 className="text-4xl font-bold text-blue-500 mb-2">+300</h3>
-              <p className="text-gray-400">Veículos Monitorados</p>
-            </div>
-            <div>
-              <h3 className="text-4xl font-bold text-blue-500 mb-2">24h</h3>
-              <p className="text-gray-400">Suporte e Pronta Resposta</p>
-            </div>
-            <div>
-              <h3 className="text-4xl font-bold text-blue-500 mb-2">99,9%</h3>
-              <p className="text-gray-400">Disponibilidade do Sistema</p>
-            </div>
-          </div>
-        </div>
-
-        {/* 3. CARDS DE SERVIÇOS */}
+        {/* 2. CARDS DE SERVIÇO ("Inteligência e Tecnologia para sua Frota") */}
         <div className="max-w-7xl mx-auto px-4 py-20">
           <div className="text-center mb-16" data-aos="fade-up">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">Inteligência e Tecnologia para sua Frota</h2>
@@ -71,7 +53,25 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 4. IMAGEM FIXA REPOSICIONADA (Agora serve como um banner de impacto no meio da página) */}
+        {/* 3. BARRA DE ESTATÍSTICAS (Agora reposicionada para ficar abaixo) */}
+        <div data-aos="fade-up" data-aos-delay="150" className="w-full bg-[#111111] py-12 border-y border-gray-800 my-8">
+          <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+            <div>
+              <h3 className="text-4xl font-bold text-blue-500 mb-2">+300</h3>
+              <p className="text-gray-400">Veículos Monitorados</p>
+            </div>
+            <div>
+              <h3 className="text-4xl font-bold text-blue-500 mb-2">24h</h3>
+              <p className="text-gray-400">Suporte e Pronta Resposta</p>
+            </div>
+            <div>
+              <h3 className="text-4xl font-bold text-blue-500 mb-2">99,9%</h3>
+              <p className="text-gray-400">Disponibilidade do Sistema</p>
+            </div>
+          </div>
+        </div>
+
+        {/* 4. BANNER FIXO REPOSICIONADO */}
         <div data-aos="fade-up">
           <HomeImage 
             heading='Controle absoluto em qualquer lugar' 
