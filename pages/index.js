@@ -139,7 +139,7 @@ export default function Home() {
               <span className="w-3 h-3 rounded-full bg-yellow-500/80 inline-block"></span>
               <span className="w-3 h-3 rounded-full bg-green-500/80 inline-block"></span>
             </div>
-            <span className="text-xs text-gray-500 font-mono">fullvision.one/dashboard</span>
+            <span className="text-xs text-gray-500 font-mono">tracker.fullvision.one</span>
           </div>
           
           <div className="space-y-4">
