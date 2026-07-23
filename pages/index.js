@@ -1,11 +1,11 @@
 import Head from 'next/head';
-import Redirect from "@/components/Redirect";
 import Slider from "@/components/Slider";
 import { SliderData } from "@/components/SliderData";
 import Footer from '@/components/Footer';
 
 // Ícones da biblioteca react-icons
 import { FiActivity, FiMap, FiMonitor } from 'react-icons/fi';
+import { BsBoxArrowUpRight } from 'react-icons/bs';
 
 export default function Home() {
   return (
@@ -35,19 +35,19 @@ export default function Home() {
             <div data-aos="fade-up" data-aos-delay="100" className="group bg-[#111111] p-8 rounded-lg border border-gray-800 hover:border-blue-500 transition-colors cursor-default">
               <FiActivity className="text-blue-500 text-5xl mb-6 transform group-hover:scale-110 transition-transform duration-300" />
               <h3 className="text-xl font-bold mb-3">Telemetria Avançada</h3>
-              <p className="text-gray-400">Acompanhe RPM e hodômetro real e muito mais funções com precisãpo e confiabilidade, garantindo a eficiência da sua frota.</p>
+              <p className="text-gray-400">Acompanhe RPM, hodômetro, frenagens bruscas e consumo de combustível em tempo real.</p>
             </div>
             
             <div data-aos="fade-up" data-aos-delay="200" className="group bg-[#111111] p-8 rounded-lg border border-gray-800 hover:border-blue-500 transition-colors cursor-default">
               <FiMap className="text-blue-500 text-5xl mb-6 transform group-hover:scale-110 transition-transform duration-300" />
               <h3 className="text-xl font-bold mb-3">Roteirização Inteligente</h3>
-              <p className="text-gray-400">Otimize as rotas da sua operação, reduzindo custos com pedágio e tempo de deslocamento.</p>
+              <p className="text-gray-400">Otimize as rotas da sua equipe, reduzindo custos com pedágio e tempo de deslocamento.</p>
             </div>
 
             <div data-aos="fade-up" data-aos-delay="300" className="group bg-[#111111] p-8 rounded-lg border border-gray-800 hover:border-blue-500 transition-colors cursor-default">
               <FiMonitor className="text-blue-500 text-5xl mb-6 transform group-hover:scale-110 transition-transform duration-300" />
-              <h3 className="text-xl font-bold mb-3">Painel Web personalizado</h3>
-              <p className="text-gray-400">Acompanhe e gerencie relatórios ao seu estilo, sendo possível customizar o painel de acordo com a sua operação logística.</p>
+              <h3 className="text-xl font-bold mb-3">Painel Web Exclusivo</h3>
+              <p className="text-gray-400">Gestão completa na palma da mão. Emita relatórios gerenciais com poucos cliques.</p>
             </div>
           </div>
         </div>
@@ -56,8 +56,8 @@ export default function Home() {
         <div data-aos="fade-up" data-aos-delay="150" className="w-full bg-[#111111] py-12 border-y border-gray-800 my-8">
           <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
             <div>
-              <h3 className="text-4xl font-bold text-blue-500 mb-2">+10</h3>
-              <p className="text-gray-400">Estados no Brasil</p>
+              <h3 className="text-4xl font-bold text-blue-500 mb-2">+500</h3>
+              <p className="text-gray-400">Veículos Monitorados</p>
             </div>
             <div>
               <h3 className="text-4xl font-bold text-blue-500 mb-2">24h</h3>
@@ -86,11 +86,11 @@ export default function Home() {
                 </span>
 
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight mb-6">
-                  Controle da sua frota <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">em qualquer lugar</span>
+                  Controle absoluto da sua frota <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">em qualquer lugar</span>
                 </h2>
 
                 <p className="text-gray-400 text-lg leading-relaxed mb-8 max-w-2xl">
-                  Uma plataforma robusta e intuitiva projetada para operações de todos os tamanhos. Monitoramento de rotas, telemetria e segurança em tempo real com alta disponibilidade.
+                  Uma plataforma robusta e intuitiva projetada para operações de todos os tamanhos. Acompanhe rotas, telemetria e segurança em tempo real com alta disponibilidade.
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10 w-full">
@@ -113,10 +113,13 @@ export default function Home() {
                 </div>
 
                 <a
-                  href="#trackapp"
+                  href="https://tracker.fullvision.one/v1/home"
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="inline-flex items-center justify-center gap-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 shadow-lg shadow-blue-600/25 hover:shadow-blue-500/40 hover:-translate-y-0.5"
                 >
-                  Conhecer Plataforma
+                  <span>Acessar Plataforma</span>
+                  <BsBoxArrowUpRight className="text-sm" />
                 </a>
               </div>
 
@@ -128,7 +131,7 @@ export default function Home() {
                       <span className="w-3 h-3 rounded-full bg-yellow-500/80 inline-block"></span>
                       <span className="w-3 h-3 rounded-full bg-green-500/80 inline-block"></span>
                     </div>
-                    <span className="text-xs text-gray-500 font-mono">Full Vision</span>
+                    <span className="text-xs text-gray-500 font-mono">tracker.fullvision.one</span>
                   </div>
                   
                   <div className="space-y-4">
@@ -158,11 +161,6 @@ export default function Home() {
 
             </div>
           </div>
-        </div>
-
-        {/* 5. BOX DE ACESSO À PLATAFORMA (tracker.fullvision.one) */}
-        <div data-aos="zoom-in" className="w-full flex justify-center items-center my-16 px-4">
-          <Redirect />
         </div>
 
       </main>
