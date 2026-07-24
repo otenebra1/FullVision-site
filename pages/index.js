@@ -35,19 +35,19 @@ export default function Home() {
             <div data-aos="fade-up" data-aos-delay="100" className="group bg-[#111111] p-8 rounded-lg border border-gray-800 hover:border-blue-500 transition-colors cursor-default">
               <FiActivity className="text-blue-500 text-5xl mb-6 transform group-hover:scale-110 transition-transform duration-300" />
               <h3 className="text-xl font-bold mb-3">Telemetria Avançada</h3>
-              <p className="text-gray-400">Acompanhe RPM, hodômetro, frenagens bruscas e consumo de combustível em tempo real.</p>
+              <p className="text-gray-400">Acompanhe RPM, hodômetro, consumo de combustível, velocidade real e muito mais funções.</p>
             </div>
             
             <div data-aos="fade-up" data-aos-delay="200" className="group bg-[#111111] p-8 rounded-lg border border-gray-800 hover:border-blue-500 transition-colors cursor-default">
               <FiMap className="text-blue-500 text-5xl mb-6 transform group-hover:scale-110 transition-transform duration-300" />
               <h3 className="text-xl font-bold mb-3">Roteirização Inteligente</h3>
-              <p className="text-gray-400">Otimize as rotas da sua equipe, reduzindo custos com pedágio e tempo de deslocamento.</p>
+              <p className="text-gray-400">Otimize as rotas da sua operação, reduzindo custos com pedágio e tempo de deslocamento.</p>
             </div>
 
             <div data-aos="fade-up" data-aos-delay="300" className="group bg-[#111111] p-8 rounded-lg border border-gray-800 hover:border-blue-500 transition-colors cursor-default">
               <FiMonitor className="text-blue-500 text-5xl mb-6 transform group-hover:scale-110 transition-transform duration-300" />
-              <h3 className="text-xl font-bold mb-3">Painel Web Exclusivo</h3>
-              <p className="text-gray-400">Gestão completa na palma da mão. Emita relatórios gerenciais com poucos cliques.</p>
+              <h3 className="text-xl font-bold mb-3">Painel Web Personalizado</h3>
+              <p className="text-gray-400">Acompanhe suas operações de forma intuitiva e personalizada, com relatórios gerenciais sob demanda.</p>
             </div>
           </div>
         </div>
