@@ -14,7 +14,7 @@ const cardData = [
     id: 1,
     title: 'Painel Web',
     icon: <FiMonitor size={18} />,
-    description: 'Interface moderna e intuitive em formato grid. Visualização gerencial unificada para análise ágil de indicadores e tomada de decisões.'
+    description: 'Interface moderna e intuitiva em formato grid. Visualização gerencial unificada para análise ágil de indicadores e tomada de decisões.'
   },
   {
     id: 2,
@@ -28,7 +28,7 @@ const Slider = ({ slides }) => {
   const [current, setCurrent] = useState(0);
   const length = slides ? slides.length : cardData.length;
 
-  // Tempo aumentado para 8 segundos (8000ms) para permitir leitura
+  // Tempo de alternância automática mantido em 8 segundos (8000ms)
   useEffect(() => {
     const slideInterval = setInterval(() => {
       setCurrent((prev) => (prev === length - 1 ? 0 : prev + 1));
@@ -73,7 +73,7 @@ const Slider = ({ slides }) => {
         <FaChevronRight size={20} />
       </button>
 
-      {/* Imagens de Fundo do Slider */}
+      {/* Imagens de Fundo do Slider (com Fade Suave + Zoom Lento Ken Burns) */}
       {slides.map((slide, index) => (
         <div
           key={index}
@@ -81,18 +81,19 @@ const Slider = ({ slides }) => {
             index === current ? 'opacity-100 z-10' : 'opacity-0 z-0'
           }`}
         >
-          {index === current && (
-            <div className="relative w-full h-full">
-              <Image
-                src={slide.image}
-                alt={`Full Vision Slide ${index + 1}`}
-                fill
-                priority={index === 0}
-                className="object-cover brightness-50"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/40" />
-            </div>
-          )}
+          <div className="relative w-full h-full overflow-hidden">
+            <Image
+              src={slide.image}
+              alt={`Full Vision Slide ${index + 1}`}
+              fill
+              priority={index === 0}
+              className={`object-cover brightness-50 transition-transform duration-[10000ms] ease-out ${
+                index === current ? 'scale-110' : 'scale-100'
+              }`}
+            />
+            {/* Gradiente escuro em sobreposição */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/40" />
+          </div>
         </div>
       ))}
 
