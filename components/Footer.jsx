@@ -36,13 +36,13 @@ const Footer = () => {
         {/* Coluna da Esquerda: Informações */}
         <div>
           <h3 className='text-2xl font-bold tracking-wider mb-3 border-l-4 border-blue-500 pl-3 uppercase'>
-            FullVision
+            Full Vision
           </h3>
           <p className='text-gray-400 max-w-[420px] text-sm leading-relaxed'>
             Horizonte é o limite da sua visão? Não mais. Veja sua operação aonde quer que ela esteja com a máxima segurança e tecnologia de ponta.
           </p>
           <p className='text-xs text-gray-600 mt-6'>
-            © {new Date().getFullYear()} FullVision. Todos os direitos reservados.
+            © {new Date().getFullYear()} Full Vision. Todos os direitos reservados.
           </p>
         </div>
 
