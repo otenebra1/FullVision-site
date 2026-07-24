@@ -5,7 +5,7 @@ import { BsBoxArrowUpRight } from 'react-icons/bs';
 import { FaBars, FaTimes } from 'react-icons/fa';
 
 // Importação estática direta da imagem (Infalível no Next.js)
-import logoImg from '../public/images/png.png';
+import logoImg from '../public/images/logofv.png';
 
 const Navbar = () => {
   const [nav, setNav] = useState(false);
