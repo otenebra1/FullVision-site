@@ -33,10 +33,10 @@ const Navbar = () => {
     >
       <div className="max-w-7xl mx-auto flex justify-between items-center p-4 text-white">
         
-        {/* LOGO (Tag img nativa mais estável) */}
+        {/* LOGO (Atualizado com png.png) */}
         <Link href="/" className="flex items-center">
           <img
-            src="/images/logo.png" 
+            src="/images/png.png" 
             alt="Full Vision Logo"
             className="h-9 md:h-10 w-auto object-contain"
           />
