@@ -51,7 +51,7 @@ export default function Solutions() {
     {
       icon: <FaMapMarkedAlt className="text-blue-500 text-4xl mb-4" />,
       title: "Rastreamento em Tempo Real",
-      description: "Acompanhe a localização exata da sua frota com atualização contínua e precisão de ponta para garantir o controlo total da operação logística de onde estiver.",
+      description: "Acompanhe a localização exata da sua frota com a integraação do google maps e todas as suas funções de vizualização disponíveis",
       details: [
         "Atualização contínua de posições com latência ultrabaixa via satélite e GSM.",
         "Histórico completo de rotas percorridas guardado em nuvem para auditorias.",
@@ -62,34 +62,34 @@ export default function Solutions() {
     {
       icon: <FaShieldAlt className="text-blue-500 text-4xl mb-4" />,
       title: "Segurança da Frota e Carga",
-      description: "Sistemas avançados de telemetria e alertas automáticos para prevenir acidentes, desvios de rota e garantir a máxima integridade dos seus veículos e condutores.",
+      description: "Solucões avançadas de segurança, com o objetivo de maximizar a integridade de seus condutores e veículos",
       details: [
-        "Notificações instantâneas em caso de ignição não autorizada ou movimento indevido.",
-        "Criação de cercas eletrónicas (geofencing) com alerta imediato de entrada ou saída.",
-        "Comando de bloqueio remoto do veículo ativado de forma segura pela plataforma.",
-        "Sensores opcionais para monitorização de abertura de portas de baú e controlo de temperatura."
+        "Liberdade de criar regras personalizadas de acordo com a sua logística e operação.",
+        "Notificação em tempo real sobre quaklquer regra personalizada violada.",
+        "Regras embarcadas permitindo tratattivas automáticas e offline em caso de violação de regras.",
+        "Bloqueio automático por violação de regras ou por comando remoto via painel web.",
       ]
     },
     {
       icon: <FaChartLine className="text-blue-500 text-4xl mb-4" />,
-      title: "Gestão e Roteirização",
-      description: "Otimize trajetos, reduza custos operacionais com combustível e aumente a eficiência das entregas através de relatórios gerenciais completos e intuitivos.",
+      title: "Roteirização e Gestão de rotas",
+      description: "Otimize trajetos, reduza custos operacionais com combustível e aumente a eficiência das entregas através do nosso painel personalizavel",
       details: [
-        "Telemetria avançada: identificação de excesso de velocidade, travagens ou acelerações bruscas.",
-        "Métricas e relatórios de consumo estimado de combustível e tempos de paragem com motor ligado.",
+        "Análise de condução, controle de velocidade, desvio de rotas, paradas indevidas, etc. com alertas em tempo real.",
+        "Métricas e de rotas criadas: KM total, tempo de viagem, custos de pedágios e frete com regra de negocio personalizável.",
         "Planeamento inteligente de rotas para entregas múltiplas, minimizando distâncias e tempo.",
-        "Agendamento de lembretes automáticos para manutenção preventiva (revisões, óleo, pneus)."
+        "Distribuição de pedidos entre frotas disponíveis de maneira inteligente e automatizada.",
       ]
     },
     {
       icon: <FaServer className="text-blue-500 text-4xl mb-4" />,
       title: "Plataforma Customizada",
-      description: "Integração facilitada com os sistemas da sua empresa, oferecendo painéis sob medida e suporte técnico especializado para as necessidades do seu negócio.",
+      description: "Integração facilitada via API, painéis sob medida e suporte técnico especializado para as necessidades do seu negócio.",
       details: [
         "Acesso multiplataforma totalmente responsivo (Web, e aplicações nativas iOS e Android).",
         "Gestão de acessos avançada com criação de perfis e diferentes níveis de permissão por utilizador.",
         "Integração direta e transparente via API REST com o sistema ERP ou software logístico da sua empresa.",
-        "Suporte técnico dedicado e exportação simplificada de relatórios gerenciais nos formatos Excel e PDF."
+        "Exportação simplificada de relatórios gerenciais nos formatos Excel e PDF."
       ]
     }
   ];
@@ -118,43 +118,43 @@ export default function Solutions() {
       title: "Full Tracker (FT)",
       tech: "Monitoramento e eventos em tempo real.",
       specs: [
-        "Localizaçãp em tempo real.",
-        "Precisão de GPS em até 10m.",
-        "Amarzena até 2000 posições em área de sombra.",
+        "Localização em tempo real.",
+        "Leitura de velocidade via GPS.",
+        "Armazena até 2000 posições em área de sombra.",
         "Compatível com bloqueio."
       ]
     },
     {
       icon: <FaSatellite className="text-blue-500 text-3xl" />,
-      title: "Full Tracker Plus (FT-P)",
+      title: "Full Tracker One (FT¹)",
       tech: "Cercas e rotas embarcadas, eficiência logística.",
       specs: [
         "Controle de jornada.",
         "Identificação do Motorista.",
-        "Detecção de Jammer de GPS E Celular.",
-        "Baixo custo em sleep mode."
+        "Detecção de Jammer de GPS E GSM.",
+        "Baixo custo em sleep mode.",
       ]
     },
     {
       icon: <FaMicrochip className="text-blue-500 text-3xl" />,
-      title: "Full Tracker Smart (FT-S)",
+      title: "Smart Full Tracker(S-FT)",
       tech: "Gestão de frota inteligente com funcionalidades avançadas de telemetria.",
       specs: [
         "Bloqueio Seguro.",
         "Gestão de Combustível.",
         "Controle RPM.",
-        "Aceleração e freada brusca."
+        "Acele ração e frenagem brusca.",
       ]
     },
     {
       icon: <FaShieldAlt className="text-blue-500 text-3xl" />,
-      title: "Smart Full Tracker Plus (FT-SP)",
+      title: "Smart Full Tracker One (S-FT¹)",
       tech: "Gestão de frota com tecnologia Bluetooth.",
       specs: [
         "Sensores Bluetooth.",
         "Saída Bluettoth.",
         "Porta RS 232.",
-        "Compatível com veículos elétricos."
+        "Compatível com veículos elétricos.",
       ]
     }
   ];
@@ -162,7 +162,7 @@ export default function Solutions() {
   return (
     <div className="flex flex-col min-h-screen bg-[#000000] text-white select-none relative overflow-hidden">
       <Head>
-        <title>Soluções e Tecnologias | FullVision Tracking</title>
+        <title>Soluções e Tecnologias | Full Vision</title>
       </Head>
 
       <main className="flex-grow w-full pt-[120px] pb-16 px-4">
@@ -192,7 +192,7 @@ export default function Solutions() {
                 activeTab === 'panel' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
               }`}
             >
-              💻 Nosso Painel Web
+            /Nosso Painel Web
             </button>
             <button
               onClick={() => setActiveTab('catalog')}
@@ -200,7 +200,7 @@ export default function Solutions() {
                 activeTab === 'catalog' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
               }`}
             >
-              🛰️ Catálogo de Hardware
+               Catálogo de Hardware
             </button>
           </div>
 
@@ -331,7 +331,7 @@ export default function Solutions() {
           <div data-aos="zoom-in" data-aos-delay="200" className="bg-gradient-to-r from-blue-600/20 to-blue-900/20 border border-white/10 rounded-lg p-8 text-center max-w-[900px] mx-auto">
             <h2 className="text-2xl md:text-3xl font-bold mb-4 text-white">Pronto para transformar a sua operação?</h2>
             <p className="text-gray-300 mb-6 max-w-[600px] mx-auto text-sm">
-              Entre em contacto com a nossa equipa comercial e descubra como implementar o FullVision Tracker à medida da sua empresa.
+              Entre em contacto com a nossa equipa comercial e descubra como implementar o Full Vision à medida da sua empresa.
             </p>
             <Link href="/contact">
               <button className="px-8 py-3 bg-blue-600 text-white font-semibold rounded hover:bg-white hover:text-black transition-all duration-300 text-sm">
