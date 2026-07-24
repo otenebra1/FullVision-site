@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { BsBoxArrowUpRight } from 'react-icons/bs';
 import { FaBars, FaTimes } from 'react-icons/fa';
+
+// Importação estática direta da imagem (Infalível no Next.js)
+import logoImg from '../public/images/png.png';
 
 const Navbar = () => {
   const [nav, setNav] = useState(false);
@@ -33,12 +37,13 @@ const Navbar = () => {
     >
       <div className="max-w-7xl mx-auto flex justify-between items-center p-4 text-white">
         
-        {/* LOGO (Atualizado com png.png) */}
+        {/* LOGO UTILIZANDO IMPORTAÇÃO ESTÁTICA */}
         <Link href="/" className="flex items-center">
-          <img
-            src="/images/png.png" 
+          <Image
+            src={logoImg} 
             alt="Full Vision Logo"
             className="h-9 md:h-10 w-auto object-contain"
+            priority
           />
         </Link>
 
