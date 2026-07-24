@@ -14,7 +14,6 @@ const Footer = () => {
     { name: 'Parceiro 9', image: '/images/emp9.jpeg' },
   ];
 
-  // Lógica Automática: Cria as páginas fatiando a lista de 2 em 2
   const duplas = [];
   for (let i = 0; i < partners.length; i += 2) {
     duplas.push(partners.slice(i, i + 2));
@@ -34,15 +33,14 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           
-          {/* Coluna 1: Sobre a Empresa */}
           <div>
-            <h3 className="text-xl font-bold text-blue-500 mb-4">FULL VISION</h3>
+            {/* Grafia Corrigida */}
+            <h3 className="text-xl font-bold text-blue-500 mb-4">Full Vision</h3>
             <p className="text-gray-400 text-sm leading-relaxed mb-4">
               Tecnologia avançada em rastreamento, telemetria e gestão inteligente de frotas para otimizar sua operação.
             </p>
           </div>
 
-          {/* Coluna 2: Links Rápidos */}
           <div>
             <h4 className="text-lg font-semibold mb-4 text-white">Links Rápidos</h4>
             <ul className="space-y-2 text-sm text-gray-400">
@@ -53,14 +51,12 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Coluna 3: Contato */}
           <div>
             <h4 className="text-lg font-semibold mb-4 text-white">Contato</h4>
-            <p className="text-gray-400 text-sm mb-2">Email: central@fullvision.one</p>
+            <p className="text-gray-400 text-sm mb-2">Email: contato@fullvision.one</p>
             <p className="text-gray-400 text-sm mb-2">Atendimento comercial e suporte técnico.</p>
           </div>
 
-          {/* Coluna 4: Parceiros Carousel */}
           <div>
             <h4 className="text-lg font-semibold mb-4 text-white">Nossos Parceiros</h4>
             <div className="relative h-20 w-full bg-gray-900/50 rounded-lg p-2 overflow-hidden flex items-center justify-center">
@@ -85,7 +81,6 @@ const Footer = () => {
               ))}
             </div>
 
-            {/* Indicadores do Slider */}
             <div className='flex gap-2 mt-4 self-center md:self-start z-10 justify-center md:justify-start'>
               {duplas.map((_, idx) => (
                 <span
@@ -98,12 +93,11 @@ const Footer = () => {
               ))}
             </div>
           </div>
-
         </div>
 
-        {/* Linha de Copyright */}
         <div className="border-t border-gray-800 pt-8 text-center text-xs text-gray-500">
-          <p>© {new Date().getFullYear()} FULL VISION. Todos os direitos reservados.</p>
+          {/* Grafia Corrigida */}
+          <p>© {new Date().getFullYear()} Full Vision. Todos os direitos reservados.</p>
         </div>
       </div>
     </footer>

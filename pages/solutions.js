@@ -4,7 +4,7 @@ import Link from 'next/link';
 import Footer from '@/components/Footer';
 import { 
   FaMapMarkedAlt, FaShieldAlt, FaChartLine, FaServer, FaTimes, 
-  FaDesktop, FaMicrochip, FaSatellite, FaSignal, FaThermometerHalf, FaSlidersH 
+  FaDesktop, FaMicrochip, FaSatellite, FaSignal, FaThermometerHalf 
 } from 'react-icons/fa';
 
 export default function Solutions() {
@@ -15,7 +15,7 @@ export default function Solutions() {
   const panelImages = [
     {
       src: "/images/rastreamento.jpeg",
-      alt: "Painel de Rastreamento FullVision",
+      alt: "Painel de Rastreamento Full Vision",
       icon: <FaDesktop className="text-blue-500 text-sm" />,
       label: "Módulo de Rastreamento",
       title: "Rastreamento em Tempo Real",
@@ -30,7 +30,7 @@ export default function Solutions() {
     },
     {
       src: "/images/roteirizacao.png",
-      alt: "Painel de Roteirização FullVision",
+      alt: "Painel de Roteirização Full Vision",
       icon: <FaMapMarkedAlt className="text-blue-500 text-sm" />,
       label: "Módulo de Roteirização",
       title: "Planejamento e Otimização de Rotas",
@@ -84,19 +84,19 @@ export default function Solutions() {
       icon: <FaMicrochip className="text-3xl text-blue-500" />
     },
     {
-      title: "Full Tracker Plus (FT-P)",
+      title: "Full Tracker One (FT¹)",
       desc: "Solução completa para telemetria avançada e integração com múltiplos sensores.",
       features: ["Entradas digitais e analógicas", "Leitura de CAN bus / OBD2", "Bloqueio progressivo de segurança"],
       icon: <FaSatellite className="text-3xl text-blue-500" />
     },
     {
-      title: "Full Tracker Smart (FT-S)",
+      title: "Smart Full Tracker(S-FT)",
       desc: "Equipamento robusto com suporte a conectividade híbrida e sensores inteligentes.",
       features: ["Conectividade 4G / IoT", "Sensor de aceleração 3D (G-Sensor)", "Alertas de impacto e tombamento"],
       icon: <FaSignal className="text-3xl text-blue-500" />
     },
     {
-      title: "Smart Full Tracker Plus (FT-SP)",
+      title: "Smart Full Tracker One (S-FT¹)",
       desc: "A tecnologia mais avançada para operações complexas, transporte de carga e cadeia de frio.",
       features: ["Suporte a sensores de temperatura e umidade", "Identificação de motorista via iButton / RFID", "Múltiplas saídas para atuadores"],
       icon: <FaThermometerHalf className="text-3xl text-blue-500" />
@@ -106,15 +106,14 @@ export default function Solutions() {
   return (
     <>
       <Head>
-        <title>Soluções | FULL VISION</title>
-        <meta name="description" content="Conheça as soluções em rastreamento, telemetria e gestão de frotas da FULL VISION." />
+        <title>Soluções | Full Vision</title>
+        <meta name="description" content="Conheça as soluções em rastreamento, telemetria e gestão de frotas da Full Vision." />
       </Head>
 
-      <div className="min-h-screen bg-gray-950 text-white flex flex-col justify-between">
+      <div className="min-h-screen bg-gray-950 text-white flex flex-col justify-between overflow-hidden">
         <main className="flex-grow container mx-auto px-4 py-12">
           
-          {/* Cabeçalho da Página */}
-          <div className="text-center max-w-3xl mx-auto mb-12">
+          <div data-aos="fade-down" className="text-center max-w-3xl mx-auto mb-12">
             <h1 className="text-3xl md:text-5xl font-extrabold mb-4 text-white">
               Nossas <span className="text-blue-500">Soluções</span>
             </h1>
@@ -123,8 +122,7 @@ export default function Solutions() {
             </p>
           </div>
 
-          {/* Navegação por Abas */}
-          <div className="flex flex-wrap justify-center gap-4 mb-12">
+          <div data-aos="fade-up" data-aos-delay="100" className="flex flex-wrap justify-center gap-4 mb-12">
             <button
               onClick={() => setActiveTab('services')}
               className={`px-6 py-3 rounded-lg text-sm font-semibold transition-all ${
@@ -136,7 +134,6 @@ export default function Solutions() {
               Nossos Serviços
             </button>
 
-            {/* Ocultado temporariamente conforme solicitado */}
             {/* <button
               onClick={() => setActiveTab('panel')}
               className={`px-6 py-3 rounded-lg text-sm font-semibold transition-all ${
@@ -161,12 +158,13 @@ export default function Solutions() {
             </button>
           </div>
 
-          {/* Conteúdo Aba 1: Nossos Serviços */}
           {activeTab === 'services' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {services.map((item) => (
+              {services.map((item, idx) => (
                 <div 
                   key={item.id}
+                  data-aos="fade-up" 
+                  data-aos-delay={idx * 100}
                   className="bg-gray-900/60 border border-gray-800 rounded-xl p-6 hover:border-blue-500/50 transition-all flex flex-col justify-between"
                 >
                   <div>
@@ -185,12 +183,13 @@ export default function Solutions() {
             </div>
           )}
 
-          {/* Conteúdo Aba 2: Nosso Painel Web */}
           {activeTab === 'panel' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {panelImages.map((img, idx) => (
                 <div
                   key={idx}
+                  data-aos="zoom-in" 
+                  data-aos-delay={idx * 100}
                   onClick={() => setActiveImageModal(idx)}
                   className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all duration-300 hover:-translate-y-1 cursor-pointer group shadow-xl"
                 >
@@ -217,11 +216,15 @@ export default function Solutions() {
             </div>
           )}
 
-          {/* Conteúdo Aba 3: Catálogo de Hardware */}
           {activeTab === 'hardware' && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {hardwares.map((hw, idx) => (
-                <div key={idx} className="bg-gray-900/60 border border-gray-800 rounded-xl p-6 hover:border-blue-500/50 transition-all flex flex-col justify-between">
+                <div 
+                  key={idx} 
+                  data-aos="fade-up" 
+                  data-aos-delay={idx * 100}
+                  className="bg-gray-900/60 border border-gray-800 rounded-xl p-6 hover:border-blue-500/50 transition-all flex flex-col justify-between"
+                >
                   <div>
                     <div className="mb-4">{hw.icon}</div>
                     <h3 className="text-lg font-bold text-white mb-2">{hw.title}</h3>
@@ -239,13 +242,12 @@ export default function Solutions() {
             </div>
           )}
 
-          {/* Banner CTA Final */}
-          <div className="mt-20 bg-gradient-to-r from-blue-900/40 via-blue-800/20 to-gray-900 border border-blue-500/30 rounded-2xl p-8 md:p-12 text-center relative overflow-hidden">
+          <div data-aos="zoom-in" className="mt-20 bg-gradient-to-r from-blue-900/40 via-blue-800/20 to-gray-900 border border-blue-500/30 rounded-2xl p-8 md:p-12 text-center relative overflow-hidden">
             <h2 className="text-2xl md:text-3xl font-bold mb-4 text-white">
               Pronto para transformar a sua operação?
             </h2>
             <p className="text-gray-300 max-w-2xl mx-auto mb-8 text-sm md:text-base leading-relaxed">
-              Entre em contato com nossos especialistas e descubra como a FULL VISION pode elevar o nível da sua frota com tecnologia de ponta.
+              Entre em contato com nossos especialistas e descubra como a Full Vision pode elevar o nível da sua frota com tecnologia de ponta.
             </p>
             <Link
               href="/contact"
@@ -257,7 +259,6 @@ export default function Solutions() {
 
         </main>
 
-        {/* Modal de Serviço */}
         {activeModal && (
           <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full p-6 relative">
@@ -280,7 +281,6 @@ export default function Solutions() {
           </div>
         )}
 
-        {/* Modal de Imagem Expandida */}
         {activeImageModal !== null && (
           <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
             <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-4xl w-full overflow-hidden relative">
