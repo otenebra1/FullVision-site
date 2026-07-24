@@ -1,132 +1,101 @@
 import React from 'react';
 import Head from 'next/head';
-import { FaShieldAlt, FaEye, FaRocket, FaGlobe } from 'react-icons/fa';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
+import { FaShieldAlt, FaEye, FaRocket } from 'react-icons/fa';
 
 export default function About() {
   return (
-    <div className="bg-[#0a0a0a] text-white min-h-screen font-sans">
+    <div className="bg-[#0a0a0a] text-white min-h-screen font-sans flex flex-col justify-between">
       <Head>
-        <title>Sobre Nós | FullVision Tracking</title>
-        <meta name="description" content="Conheça a FullVision: nascemos com o propósito de transformar dados complexos em segurança palpável e eficiência milimétrica para a sua frota." />
-        <meta property="og:title" content="Sobre Nós | FullVision Tracking" />
-        <meta property="og:description" content="Conheça a FullVision: gestão de operação logística e segurança da frota com tecnologia de ponta." />
+        <title>Sobre Nós | FULL VISION</title>
+        <meta name="description" content="Conheça a FULL VISION: nascemos com o propósito de transformar dados complexos em segurança palpável e eficiência milimétrica para a sua frota." />
+        <meta property="og:title" content="Sobre Nós | FULL VISION" />
+        <meta property="og:description" content="Conheça a FULL VISION: gestão de operação logística e segurança da frota com tecnologia de ponta." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://fullvision.one/about" />
         <meta name="twitter:card" content="summary_large_image" />
       </Head>
       
-      {/* 1. SEÇÃO HERO */}
-      <section className="relative pt-24 pb-16 md:pt-32 md:pb-24 bg-gradient-to-b from-blue-950/20 to-transparent px-4 overflow-hidden">
-        <div className="max-w-[1140px] mx-auto text-center">
-          <span data-aos="fade-down" className="text-blue-500 font-bold text-xs uppercase tracking-widest bg-blue-500/10 px-3 py-1 rounded-full inline-block">
-            Conheça a FullVision
-          </span>
-          <h1 data-aos="zoom-in" data-aos-delay="150" className="text-4xl md:text-6xl font-extrabold mt-6 tracking-tight leading-tight max-w-[800px] mx-auto">
-            Redefinindo os limites da <span className="text-blue-500">Visão Logística</span>
-          </h1>
-          <p data-aos="fade-up" data-aos-delay="300" className="text-gray-400 text-base md:text-lg mt-6 max-w-[600px] mx-auto leading-relaxed">
-            Nascemos com o propósito de transformar dados complexos em segurança palpável e eficiência milimétrica para a sua frota.
-          </p>
-        </div>
-      </section>
+      {/* Barra de Navegação */}
+      <Navbar />
 
-      {/* 2. HISTÓRIA E CONCEITO */}
-      <section className="py-16 px-4 max-w-[1140px] mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 items-center overflow-hidden">
-        {/* Texto vem da Esquerda */}
-        <div data-aos="fade-right" className="space-y-6">
-          <div className="border-l-4 border-blue-500 pl-4">
-            <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-wide">Quem Somos</h2>
-          </div>
-          <p className="text-gray-300 text-sm md:text-base leading-relaxed">
-            A <strong>FullVision</strong> foi criada para responder a um desafio crítico do mercado atual: a necessidade de controle total e preditivo sobre operações logísticas. Não somos apenas uma plataforma de rastreamento; somos a inteligência que protege o seu patrimônio.
-          </p>
-          <p className="text-gray-400 text-sm leading-relaxed">
-            Combinamos engenharia de software avançada com telemetria de ponta para garantir que, independentemente do tamanho da sua frota ou da distância da rota, você tenha uma visão completa, centralizada e em tempo real de cada quilômetro rodado.
-          </p>
-        </div>
-        
-        {/* Bloco Azul vem da Direita */}
-        <div data-aos="fade-left" className="bg-gradient-to-br from-blue-600/10 to-blue-900/20 border border-blue-500/20 rounded-2xl p-8 flex flex-col justify-between h-[300px] shadow-lg shadow-blue-500/5 relative overflow-hidden">
-          <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-blue-500/10 rounded-full blur-3xl"></div>
-          <div className="text-blue-500 text-4xl"><FaGlobe /></div>
-          <div>
-            <h3 className="text-xl font-bold mb-2">Presença e Monitoramento</h3>
-            <p className="text-gray-400 text-xs leading-relaxed">
-              Infraestrutura em nuvem de alta disponibilidade, garantindo estabilidade operacional para o gerenciamento de riscos a qualquer hora do dia.
+      <main className="flex-grow">
+        {/* 1. SEÇÃO HERO */}
+        <section className="relative pt-24 pb-16 md:pt-32 md:pb-24 bg-gradient-to-b from-blue-950/20 to-transparent px-4 overflow-hidden">
+          <div className="max-w-[1140px] mx-auto text-center">
+            <span className="text-blue-500 font-bold text-xs uppercase tracking-widest bg-blue-500/10 px-4 py-2 rounded-full border border-blue-500/20">
+              Sobre Nós
+            </span>
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-extrabold mt-6 mb-6 tracking-tight text-white">
+              Transformamos dados em <span className="text-blue-500">segurança</span> e <span className="text-blue-500">eficiência</span>
+            </h1>
+            <p className="text-gray-400 text-sm md:text-lg max-w-3xl mx-auto leading-relaxed">
+              A FULL VISION nasceu com o propósito de oferecer gestão inteligente de frotas, rastreamento avançado e telemetria de alta precisão para otimizar operações logísticas de qualquer porte.
             </p>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* 3. NOSSOS PILARES */}
-      <section className="py-16 bg-white/5 border-y border-white/5 px-4 overflow-hidden">
-        <div className="max-w-[1140px] mx-auto">
-          <div data-aos="fade-down" className="text-center mb-12">
-            <h2 className="text-2xl md:text-3xl font-bold uppercase tracking-wider">Nossos Valores Fundamentais</h2>
-            <p className="text-gray-400 text-xs mt-2">Os princípios que guiam cada linha de código e decisão da nossa equipe.</p>
-          </div>
-
+        {/* 2. PILARES / MISSÃO, VISÃO E VALORES */}
+        <section className="py-16 px-4 max-w-[1140px] mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
-            {/* Card 1 - Sem atraso */}
-            <div data-aos="fade-up" className="bg-[#121212] p-6 rounded-xl border border-white/5 hover:border-blue-500/30 transition-all duration-300 group">
-              <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center text-blue-500 text-xl group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
-                <FaEye />
-              </div>
-              <h3 className="text-lg font-bold mt-4 mb-2">Visão Total</h3>
-              <p className="text-gray-400 text-xs leading-relaxed">
-                Transparência absoluta. Permitir que gestores acompanhem e entendam cada evento da rota sem delays ou ruídos de informação.
-              </p>
-            </div>
-
-            {/* Card 2 - Atraso de 150ms */}
-            <div data-aos="fade-up" data-aos-delay="150" className="bg-[#121212] p-6 rounded-xl border border-white/5 hover:border-blue-500/30 transition-all duration-300 group">
-              <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center text-blue-500 text-xl group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
-                <FaShieldAlt />
-              </div>
-              <h3 className="text-lg font-bold mt-4 mb-2">Segurança Preditiva</h3>
-              <p className="text-gray-400 text-xs leading-relaxed">
-                Mitigação de riscos ativa. Proteger motoristas, cargas e veículos através de alertas instantâneos e telemetria inteligente.
-              </p>
-            </div>
-
-            {/* Card 3 - Atraso de 300ms */}
-            <div data-aos="fade-up" data-aos-delay="300" className="bg-[#121212] p-6 rounded-xl border border-white/5 hover:border-blue-500/30 transition-all duration-300 group">
-              <div className="w-12 h-12 bg-blue-500/10 rounded-lg flex items-center justify-center text-blue-500 text-xl group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
+            <div className="bg-gray-900/60 border border-gray-800 p-8 rounded-2xl hover:border-blue-500/50 transition-all">
+              <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 text-2xl mb-6">
                 <FaRocket />
               </div>
-              <h3 className="text-lg font-bold mt-4 mb-2">Evolução Tecnológica</h3>
-              <p className="text-gray-400 text-xs leading-relaxed">
-                Inovação constante. Atualizar nossas ferramentas continuamente para que sua empresa use sempre o estado da arte em logística.
+              <h3 className="text-xl font-bold text-white mb-3">Nossa Missão</h3>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                Entregar tecnologia de ponta para gestão e rastreamento de frotas, garantindo segurança, redução de custos operacionais e controle total em tempo real.
               </p>
             </div>
 
-          </div>
-        </div>
-      </section>
+            <div className="bg-gray-900/60 border border-gray-800 p-8 rounded-2xl hover:border-blue-500/50 transition-all">
+              <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 text-2xl mb-6">
+                <FaEye />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">Nossa Visão</h3>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                Ser referência nacional em soluções inteligentes de telemetria e rastreamento, reconhecida pela inovação constante e excelência no suporte ao cliente.
+              </p>
+            </div>
 
-      {/* 4. SEÇÃO DE NÚMEROS (STATS) */}
-      <section className="py-20 px-4 max-w-[1140px] mx-auto text-center overflow-hidden">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4">
-          <div data-aos="zoom-in" data-aos-delay="0" className="space-y-1">
-            <span className="text-3xl md:text-5xl font-extrabold text-blue-500 tracking-tight">99.9%</span>
-            <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Uptime do Servidor</p>
+            <div className="bg-gray-900/60 border border-gray-800 p-8 rounded-2xl hover:border-blue-500/50 transition-all">
+              <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 text-2xl mb-6">
+                <FaShieldAlt />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-3">Nossos Valores</h3>
+              <p className="text-gray-400 text-sm leading-relaxed">
+                Transparência, inovação contínua, foco no cliente, precisão nos dados e compromisso inegociável com a segurança da sua operação.
+              </p>
+            </div>
           </div>
-          <div data-aos="zoom-in" data-aos-delay="100" className="space-y-1">
-            <span className="text-3xl md:text-5xl font-extrabold text-blue-500 tracking-tight">24/7</span>
-            <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Monitoramento Ativo</p>
-          </div>
-          <div data-aos="zoom-in" data-aos-delay="200" className="space-y-1">
-            <span className="text-3xl md:text-5xl font-extrabold text-blue-500 tracking-tight">0ms</span>
-            <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Latência de Telemetria</p>
-          </div>
-          <div data-aos="zoom-in" data-aos-delay="300" className="space-y-1">
-            <span className="text-3xl md:text-5xl font-extrabold text-blue-500 tracking-tight">+Precisão</span>
-            <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Na Tomada de Decisão</p>
-          </div>
-        </div>
-      </section>
+        </section>
 
+        {/* 3. BLOCO DE NÚMEROS (STATS) */}
+        <section className="py-20 px-4 max-w-[1140px] mx-auto text-center overflow-hidden">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4">
+            <div className="space-y-1">
+              <span className="text-3xl md:text-5xl font-extrabold text-blue-500 tracking-tight">99.9%</span>
+              <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Uptime do Servidor</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-3xl md:text-5xl font-extrabold text-blue-500 tracking-tight">24/7</span>
+              <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Monitoramento Ativo</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-3xl md:text-5xl font-extrabold text-blue-500 tracking-tight">0ms</span>
+              <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Latência de Telemetria</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-3xl md:text-5xl font-extrabold text-blue-500 tracking-tight">100%</span>
+              <p className="text-gray-400 text-xs uppercase tracking-wider font-semibold">Suporte Dedicado</p>
+            </div>
+          </div>
+        </section>
+      </main>
+
+      {/* Rodapé da Página */}
+      <Footer />
     </div>
   );
 }

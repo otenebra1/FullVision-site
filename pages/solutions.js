@@ -25,423 +25,302 @@ export default function Solutions() {
         "Painel inferior com lista detalhada de todos os veículos da frota.",
         "Indicadores de status: ignição, movimento, parado, sleep mode.",
         "Dados de RPM, temperatura do motor, odômetro e bateria em tempo real.",
-        "Filtros por grupo de veículos, status e tipo de evento.",
-        "Histórico de posições e eventos por período para auditoria."
+        "Filtros por grupo de veículos, motorista ou status operacional."
       ]
     },
     {
-      src: "/images/roteirizador.jpeg",
-      alt: "Painel de Roteirizador FullVision",
-      icon: <FaSlidersH className="text-blue-500 text-sm" />,
-      label: "Gestão de Entregas",
-      title: "Roteirizador Inteligente",
-      description: "Gerencie todas as rotas e entregas da operação em uma única interface. O módulo de roteirização permite acompanhar o progresso de cada motorista em tempo real, com indicadores visuais de status e alertas de atraso automáticos.",
+      src: "/images/roteirizacao.png",
+      alt: "Painel de Roteirização FullVision",
+      icon: <FaMapMarkedAlt className="text-blue-500 text-sm" />,
+      label: "Módulo de Roteirização",
+      title: "Planejamento e Otimização de Rotas",
+      description: "Planeje, otimize e acompanhe rotas de entrega e logística em tempo real. O módulo calcula trajetos eficientes, estima horários de chegada e monitora desvios, garantindo redução de custos operacionais e cumprimento de prazos.",
       features: [
-        "Visão consolidada de todas as entregas do dia por motorista.",
-        "Indicadores coloridos de status: concluído, em andamento, parado e pendente.",
-        "Contadores globais: total de entregas, pendentes, em andamento e concluídas.",
-        "Barra de progresso por rota com percentual de conclusão.",
-        "Filtros avançados por motorista, período, cliente e status.",
-        "Exportação de relatórios e embarque em lote de novas rotas."
+        "Criação automática de sequências de paradas otimizadas.",
+        "Acompanhamento em tempo real do progresso de cada rota.",
+        "Alertas de atraso, desvio de rota e paradas não programadas.",
+        "Histórico completo de viagens para auditoria e relatórios de desempenho.",
+        "Integração com o módulo de rastreamento para validação de entregas."
       ]
     }
   ];
 
-  const solutionsList = [
+  const services = [
     {
-      icon: <FaMapMarkedAlt className="text-blue-500 text-4xl mb-4" />,
-      title: "Rastreamento em Tempo Real",
-      description: "Acompanhe a localização exata da sua frota com a integraação do google maps e todas as suas funções de vizualização disponíveis",
-      details: [
-        "Atualização contínua de posições com latência ultrabaixa via satélite e GSM.",
-        "Histórico completo de rotas percorridas guardado em nuvem para auditorias.",
-        "Visualização das condições de trânsito em direto para desvios estratégicos.",
-        "Suporte para visualização em múltiplos formatos de mapa (arruamento, satélite e relevo)."
-      ]
+      id: 'telemetria',
+      title: 'Telemetria Avançada',
+      icon: <FaChartLine className="text-3xl text-blue-500" />,
+      shortDesc: 'Monitoramento detalhado do comportamento do veículo e motorista.',
+      fullDesc: 'Nossa solução de Telemetria Avançada coleta dados em tempo real sobre consumo de combustível, frenagens brutas, acelerações e tempo de ociosidade. Com isso, sua empresa reduz custos de manutenção e melhora a segurança na rodovia.'
     },
     {
-      icon: <FaShieldAlt className="text-blue-500 text-4xl mb-4" />,
-      title: "Segurança da Frota e Carga",
-      description: "Solucões avançadas de segurança, com o objetivo de maximizar a integridade de seus condutores e veículos",
-      details: [
-        "Liberdade de criar regras personalizadas de acordo com a sua logística e operação.",
-        "Notificação em tempo real sobre quaklquer regra personalizada violada.",
-        "Regras embarcadas permitindo tratattivas automáticas e offline em caso de violação de regras.",
-        "Bloqueio automático por violação de regras ou por comando remoto via painel web.",
-      ]
+      id: 'roteirizacao',
+      title: 'Roteirização Inteligente',
+      icon: <FaMapMarkedAlt className="text-3xl text-blue-500" />,
+      shortDesc: 'Otimização de rotas para redução de custos e tempo de viagem.',
+      fullDesc: 'O módulo de Roteirização Inteligente utiliza algoritmos avançados para calcular as rotas mais eficientes, levando em consideração trânsito, capacidade de carga e janelas de entrega. Economize combustível e cumpra seus prazos com precisão.'
     },
     {
-      icon: <FaChartLine className="text-blue-500 text-4xl mb-4" />,
-      title: "Roteirização e Gestão de rotas",
-      description: "Otimize trajetos, reduza custos operacionais com combustível e aumente a eficiência das entregas através do nosso painel personalizavel",
-      details: [
-        "Análise de condução, controle de velocidade, desvio de rotas, paradas indevidas, etc. com alertas em tempo real.",
-        "Métricas e de rotas criadas: KM total, tempo de viagem, custos de pedágios e frete com regra de negocio personalizável.",
-        "Planeamento inteligente de rotas para entregas múltiplas, minimizando distâncias e tempo.",
-        "Distribuição de pedidos entre frotas disponíveis de maneira inteligente e automatizada.",
-      ]
+      id: 'seguranca',
+      title: 'Gestão de Risco e Segurança',
+      icon: <FaShieldAlt className="text-3xl text-blue-500" />,
+      shortDesc: 'Proteção total para sua carga e veículo com alertas em tempo real.',
+      fullDesc: 'Oferecemos recursos como bloqueio remoto, sensores de abertura de porta, botão de pânico e alertas de violação de perímetro (cerca virtual). Garantia de proteção máxima para operações de alto valor.'
     },
     {
-      icon: <FaServer className="text-blue-500 text-4xl mb-4" />,
-      title: "Plataforma Customizada",
-      description: "Integração facilitada via API, painéis sob medida e suporte técnico especializado para as necessidades do seu negócio.",
-      details: [
-        "Acesso multiplataforma totalmente responsivo (Web, e aplicações nativas iOS e Android).",
-        "Gestão de acessos avançada com criação de perfis e diferentes níveis de permissão por utilizador.",
-        "Integração direta e transparente via API REST com o sistema ERP ou software logístico da sua empresa.",
-        "Exportação simplificada de relatórios gerenciais nos formatos Excel e PDF."
-      ]
+      id: 'infraestrutura',
+      title: 'Infraestrutura dedicada',
+      icon: <FaServer className="text-3xl text-blue-500" />,
+      shortDesc: 'Servidores de alta performance com disponibilidade de 99.9%.',
+      fullDesc: 'Garantimos estabilidade total para a sua operação. Nossos servidores funcionam em nuvem redundante com alta velocidade de processamento, assegurando que seus dados de frota estejam sempre acessíveis.'
     }
   ];
 
-  const panelFeatures = [
+  const hardwares = [
     {
-      icon: <FaDesktop className="text-blue-500 text-2xl" />,
-      title: "Interface Analytics de Alta Performance",
-      desc: "Painel de controle centralizado baseado em nuvem de alta disponibilidade, focado na experiência do usuário para tomadas de decisão rápidas."
+      title: "Full tracker (FT)",
+      desc: "Rastreador compacto de alta precisão ideal para frotas leves e veículos comerciais.",
+      features: ["Sinal GPS/GPRS de alta sensibilidade", "Bateria interna de backup", "Instalação rápida e discreta"],
+      icon: <FaMicrochip className="text-3xl text-blue-500" />
     },
     {
-      icon: <FaThermometerHalf className="text-blue-500 text-2xl" />,
-      title: "Gráfico de Eventos de Temperatura",
-      desc: "Módulo avançado para cargas refrigeradas. Gráficos de linha contínuos em tempo real interligando sensores para auditoria térmica rigorosa de cada placa."
+      title: "Full Tracker Plus (FT-P)",
+      desc: "Solução completa para telemetria avançada e integração com múltiplos sensores.",
+      features: ["Entradas digitais e analógicas", "Leitura de CAN bus / OBD2", "Bloqueio progressivo de segurança"],
+      icon: <FaSatellite className="text-3xl text-blue-500" />
     },
     {
-      icon: <FaSlidersH className="text-blue-500 text-2xl" />,
-      title: "Roteirizador inteligente com Filtros",
-      desc: "Ferramenta nativa que permite filtrar clientes específicos por área e criar janelas dinâmicas de carregamento e cubagem de baú."
-    }
-  ];
-
-  const technologyCatalog = [
-    {
-      icon: <FaSignal className="text-blue-500 text-3xl" />,
-      title: "Full Tracker (FT)",
-      tech: "Monitoramento e eventos em tempo real.",
-      specs: [
-        "Localização em tempo real.",
-        "Leitura de velocidade via GPS.",
-        "Armazena até 2000 posições em área de sombra.",
-        "Compatível com bloqueio."
-      ]
+      title: "Full Tracker Smart (FT-S)",
+      desc: "Equipamento robusto com suporte a conectividade híbrida e sensores inteligentes.",
+      features: ["Conectividade 4G / IoT", "Sensor de aceleração 3D (G-Sensor)", "Alertas de impacto e tombamento"],
+      icon: <FaSignal className="text-3xl text-blue-500" />
     },
     {
-      icon: <FaSatellite className="text-blue-500 text-3xl" />,
-      title: "Full Tracker One (FT¹)",
-      tech: "Cercas e rotas embarcadas, eficiência logística.",
-      specs: [
-        "Controle de jornada.",
-        "Identificação do Motorista.",
-        "Detecção de Jammer de GPS E GSM.",
-        "Baixo custo em sleep mode.",
-      ]
-    },
-    {
-      icon: <FaMicrochip className="text-blue-500 text-3xl" />,
-      title: "Smart Full Tracker(S-FT)",
-      tech: "Gestão de frota inteligente com funcionalidades avançadas de telemetria.",
-      specs: [
-        "Bloqueio Seguro.",
-        "Gestão de Combustível.",
-        "Controle RPM.",
-        "Acele ração e frenagem brusca.",
-      ]
-    },
-    {
-      icon: <FaShieldAlt className="text-blue-500 text-3xl" />,
-      title: "Smart Full Tracker One (S-FT¹)",
-      tech: "Gestão de frota com tecnologia Bluetooth.",
-      specs: [
-        "Sensores Bluetooth.",
-        "Saída Bluettoth.",
-        "Porta RS 232.",
-        "Compatível com veículos elétricos.",
-      ]
+      title: "Smart Full Tracker Plus (FT-SP)",
+      desc: "A tecnologia mais avançada para operações complexas, transporte de carga e cadeia de frio.",
+      features: ["Suporte a sensores de temperatura e umidade", "Identificação de motorista via iButton / RFID", "Múltiplas saídas para atuadores"],
+      icon: <FaThermometerHalf className="text-3xl text-blue-500" />
     }
   ];
 
   return (
-    <div className="flex flex-col min-h-screen bg-[#000000] text-white select-none relative overflow-hidden">
+    <>
       <Head>
-        <title>Soluções e Tecnologias | Full Vision</title>
+        <title>Soluções | FULL VISION</title>
+        <meta name="description" content="Conheça as soluções em rastreamento, telemetria e gestão de frotas da FULL VISION." />
       </Head>
 
-      <main className="flex-grow w-full pt-[120px] pb-16 px-4">
-        <div className="max-w-[1240px] mx-auto">
+      <div className="min-h-screen bg-gray-950 text-white flex flex-col justify-between">
+        <main className="flex-grow container mx-auto px-4 py-12">
           
-          <div className="text-center max-w-[800px] mx-auto mb-12">
-            <h1 data-aos="fade-down" className="text-4xl md:text-5xl font-bold tracking-wider mb-4 border-b-2 border-blue-500 pb-4 inline-block">
-              TECNOLOGIA & OPERAÇÃO
+          {/* Cabeçalho da Página */}
+          <div className="text-center max-w-3xl mx-auto mb-12">
+            <h1 className="text-3xl md:text-5xl font-extrabold mb-4 text-white">
+              Nossas <span className="text-blue-500">Soluções</span>
             </h1>
-            <p data-aos="fade-up" data-aos-delay="150" className="text-gray-300 text-base md:text-lg leading-relaxed mt-2">
-              Explore nossa infraestrutura de software, hardware e inteligência integrada para proteção de frotas.
+            <p className="text-gray-400 text-sm md:text-base leading-relaxed">
+              Tecnologia de ponta em rastreamento e gestão logística para transformar a eficiência da sua frota.
             </p>
           </div>
 
-          <div data-aos="fade-up" className="flex flex-wrap justify-center items-center gap-2 md:gap-4 mb-16 border-b border-white/10 pb-4">
+          {/* Navegação por Abas */}
+          <div className="flex flex-wrap justify-center gap-4 mb-12">
             <button
               onClick={() => setActiveTab('services')}
-              className={`px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 ${
-                activeTab === 'services' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+              className={`px-6 py-3 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === 'services'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                  : 'bg-gray-800 text-gray-400 hover:text-white'
               }`}
             >
-              Soluções e Serviços
+              Nossos Serviços
             </button>
-            <button
+
+            {/* Ocultado temporariamente conforme solicitado */}
+            {/* <button
               onClick={() => setActiveTab('panel')}
-              className={`px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 ${
-                activeTab === 'panel' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+              className={`px-6 py-3 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === 'panel'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                  : 'bg-gray-800 text-gray-400 hover:text-white'
               }`}
             >
-            /Nosso Painel Web
+              Nosso Painel Web
             </button>
+            */}
+
             <button
-              onClick={() => setActiveTab('catalog')}
-              className={`px-6 py-2.5 rounded-full font-semibold text-sm transition-all duration-300 ${
-                activeTab === 'catalog' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white'
+              onClick={() => setActiveTab('hardware')}
+              className={`px-6 py-3 rounded-lg text-sm font-semibold transition-all ${
+                activeTab === 'hardware'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                  : 'bg-gray-800 text-gray-400 hover:text-white'
               }`}
             >
-               Catálogo de Hardware
+              Catálogo de Hardware
             </button>
           </div>
 
-          <div className="transition-all duration-500">
-            
-            {activeTab === 'services' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-16 animate-fade-in">
-                {solutionsList.map((item, index) => (
-                  <div 
-                    key={index} 
-                    onClick={() => setActiveModal(index)}
-                    className="bg-white/5 border border-white/10 rounded-lg p-8 hover:border-blue-500 transition-all duration-300 hover:bg-white/10 cursor-pointer flex flex-col justify-between group"
-                  >
-                    <div>
-                      {item.icon}
-                      <h3 className="text-2xl font-semibold mb-3 tracking-wide text-gray-100 group-hover:text-blue-400 transition-colors">
-                        {item.title}
-                      </h3>
-                      <p className="text-gray-400 leading-relaxed mb-6 text-sm">
-                        {item.description}
-                      </p>
-                    </div>
-                    <div className="border-t border-white/5 pt-4 flex items-center justify-between text-sm text-blue-500 font-medium">
-                      <span>Especificações Técnicas</span>
-                      <span className="group-hover:translate-x-1 transition-transform duration-300">Saiba mais &rarr;</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {activeTab === 'panel' && (
-              <div className="space-y-12 max-w-[1100px] mx-auto mb-16 animate-fade-in">
-                <div className="bg-gradient-to-r from-blue-950/30 to-white/5 p-6 rounded-xl border border-white/10 flex flex-col md:flex-row items-center gap-6">
-                  <div className="text-5xl text-blue-500"><FaDesktop /></div>
+          {/* Conteúdo Aba 1: Nossos Serviços */}
+          {activeTab === 'services' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              {services.map((item) => (
+                <div 
+                  key={item.id}
+                  className="bg-gray-900/60 border border-gray-800 rounded-xl p-6 hover:border-blue-500/50 transition-all flex flex-col justify-between"
+                >
                   <div>
-                    <h3 className="text-xl font-bold mb-2">Central Logística em Tempo Real</h3>
-                    <p className="text-gray-400 text-sm leading-relaxed">
-                      Nossa plataforma foi desenhada sob rígidos conceitos corporativos. Ela compila telemetria, mapas dinâmicos e disparo automático de comandos de segurança em milissegundos.
-                    </p>
+                    <div className="mb-4">{item.icon}</div>
+                    <h3 className="text-lg font-bold text-white mb-2">{item.title}</h3>
+                    <p className="text-gray-400 text-xs leading-relaxed mb-4">{item.shortDesc}</p>
+                  </div>
+                  <button
+                    onClick={() => setActiveModal(item)}
+                    className="text-xs font-semibold text-blue-400 hover:text-blue-300 self-start border-b border-blue-500/30 pb-0.5"
+                  >
+                    Saiba mais →
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Conteúdo Aba 2: Nosso Painel Web */}
+          {activeTab === 'panel' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {panelImages.map((img, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => setActiveImageModal(idx)}
+                  className="bg-gray-900 border border-gray-800 rounded-2xl overflow-hidden hover:border-blue-500/50 transition-all duration-300 hover:-translate-y-1 cursor-pointer group shadow-xl"
+                >
+                  <div className="bg-gray-950 px-4 py-3 border-b border-gray-800 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {img.icon}
+                      <span className="text-xs font-medium text-gray-300">{img.label}</span>
+                    </div>
+                    <span className="text-[10px] text-blue-400 font-semibold group-hover:underline">Clique para expandir 🔍</span>
+                  </div>
+                  <div className="relative overflow-hidden bg-black/40">
+                    <img 
+                      src={img.src} 
+                      alt={img.alt} 
+                      className="w-full h-64 object-cover object-top group-hover:scale-105 transition-transform duration-500" 
+                    />
+                  </div>
+                  <div className="p-5">
+                    <h3 className="text-base font-bold text-white mb-1 group-hover:text-blue-400 transition-colors">{img.title}</h3>
+                    <p className="text-gray-400 text-xs line-clamp-2 leading-relaxed">{img.description}</p>
                   </div>
                 </div>
+              ))}
+            </div>
+          )}
 
-                {/* --- SEÇÃO DE IMAGENS DO PAINEL ESTILIZADAS --- */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
-                  {panelImages.map((img, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() => setActiveImageModal(idx)}
-                      className="group relative rounded-xl overflow-hidden border border-white/10 bg-[#0a0a0a] shadow-2xl hover:shadow-blue-500/20 hover:border-blue-500/50 transition-all duration-500 hover:-translate-y-2 cursor-pointer"
-                    >
-                      {/* Cabeçalho estilo Janela */}
-                      <div className="bg-[#111111] px-4 py-3 flex items-center justify-between border-b border-white/5">
-                        <div className="flex items-center gap-2">
-                          {img.icon}
-                          <span className="text-xs text-gray-400 font-medium tracking-wide">{img.label}</span>
-                        </div>
-                        <span className="text-[10px] text-blue-500/70 font-medium">Clique para expandir</span>
-                      </div>
-                      {/* Container da Imagem com Efeito de Zoom */}
-                      <div className="relative overflow-hidden bg-black/50">
-                        <img
-                          src={img.src}
-                          alt={img.alt}
-                          className="w-full h-[250px] object-cover object-top transform group-hover:scale-105 transition-transform duration-700 ease-in-out opacity-90 group-hover:opacity-100"
-                        />
-                        {/* Overlay no Hover */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-6">
-                          <p className="text-white text-sm font-medium translate-y-4 group-hover:translate-y-0 transition-transform duration-500">
-                            {img.description.split('.')[0]}.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {/* --- FIM DA SEÇÃO DE IMAGENS --- */}
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {panelFeatures.map((feat, idx) => (
-                    <div key={idx} className="bg-white/5 border border-white/5 rounded-lg p-6 hover:border-blue-500/40 transition-colors">
-                      <div className="mb-4">{feat.icon}</div>
-                      <h4 className="text-lg font-bold mb-2 text-gray-200">{feat.title}</h4>
-                      <p className="text-gray-400 text-xs leading-relaxed">{feat.desc}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'catalog' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-16 animate-fade-in">
-                {technologyCatalog.map((tech, idx) => (
-                  <div key={idx} className="bg-[#0f0f0f] border border-white/10 rounded-xl p-6 flex flex-col justify-between hover:border-blue-500/40 hover:scale-[1.02] transition-all duration-300">
-                    <div>
-                      <div className="mb-4 bg-blue-500/10 w-14 h-14 rounded-lg flex items-center justify-center">
-                        {tech.icon}
-                      </div>
-                      
-                      <h3 className="text-xl font-bold mb-2 text-white">{tech.title}</h3>
-                      <p className="text-gray-400 text-xs leading-relaxed mb-4">{tech.tech}</p>
-                      
-                      <div className="border-t border-white/5 pt-4 mt-2">
-                        <h4 className="text-[11px] font-bold text-blue-500 uppercase tracking-widest mb-2">
-                          Especificações Técnicas:
-                        </h4>
-                        <ul className="space-y-1.5">
-                          {tech.specs.map((spec, sIdx) => (
-                            <li key={sIdx} className="text-gray-300 text-[11px] md:text-xs flex items-start gap-2">
-                              <span className="text-blue-500 font-bold shrink-0">✓</span>
-                              <span>{spec}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-
-                    <div className="mt-6 text-xs text-blue-500 font-semibold uppercase tracking-wider border-t border-white/5 pt-3">
-                      🟢 Equipamento Homologado ANATEL
-                    </div>
+          {/* Conteúdo Aba 3: Catálogo de Hardware */}
+          {activeTab === 'hardware' && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {hardwares.map((hw, idx) => (
+                <div key={idx} className="bg-gray-900/60 border border-gray-800 rounded-xl p-6 hover:border-blue-500/50 transition-all flex flex-col justify-between">
+                  <div>
+                    <div className="mb-4">{hw.icon}</div>
+                    <h3 className="text-lg font-bold text-white mb-2">{hw.title}</h3>
+                    <p className="text-gray-400 text-xs leading-relaxed mb-4">{hw.desc}</p>
+                    <ul className="space-y-2 mb-4">
+                      {hw.features.map((feat, fIdx) => (
+                        <li key={fIdx} className="text-xs text-gray-300 flex items-start gap-2">
+                          <span className="text-blue-500">✓</span> {feat}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
+          )}
 
-          </div>
-
-          <div data-aos="zoom-in" data-aos-delay="200" className="bg-gradient-to-r from-blue-600/20 to-blue-900/20 border border-white/10 rounded-lg p-8 text-center max-w-[900px] mx-auto">
-            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-white">Pronto para transformar a sua operação?</h2>
-            <p className="text-gray-300 mb-6 max-w-[600px] mx-auto text-sm">
-              Entre em contacto com a nossa equipa comercial e descubra como implementar o Full Vision à medida da sua empresa.
+          {/* Banner CTA Final */}
+          <div className="mt-20 bg-gradient-to-r from-blue-900/40 via-blue-800/20 to-gray-900 border border-blue-500/30 rounded-2xl p-8 md:p-12 text-center relative overflow-hidden">
+            <h2 className="text-2xl md:text-3xl font-bold mb-4 text-white">
+              Pronto para transformar a sua operação?
+            </h2>
+            <p className="text-gray-300 max-w-2xl mx-auto mb-8 text-sm md:text-base leading-relaxed">
+              Entre em contato com nossos especialistas e descubra como a FULL VISION pode elevar o nível da sua frota com tecnologia de ponta.
             </p>
-            <Link href="/contact">
-              <button className="px-8 py-3 bg-blue-600 text-white font-semibold rounded hover:bg-white hover:text-black transition-all duration-300 text-sm">
-                Solicitar Contacto Comercial
-              </button>
+            <Link
+              href="/contact"
+              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-8 py-3 rounded-lg font-semibold transition-all shadow-lg shadow-blue-500/30"
+            >
+              Falar com um Especialista
             </Link>
           </div>
 
-        </div>
-      </main>
+        </main>
 
-      {activeModal !== null && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm transition-all duration-300">
-          <div className="bg-[#111111] border border-blue-500/40 rounded-lg max-w-[650px] w-full p-6 md:p-8 relative shadow-2xl animate-fade-in">
-            <button 
-              onClick={() => setActiveModal(null)}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white bg-white/5 hover:bg-red-500/20 p-2 rounded-full transition-all duration-200"
-              title="Fechar"
-            >
-              <FaTimes size={18} />
-            </button>
-
-            <div className="flex items-center gap-4 mb-6 border-b border-white/10 pb-4">
-              {solutionsList[activeModal].icon}
-              <h3 className="text-2xl font-bold text-white tracking-wide">
-                {solutionsList[activeModal].title}
-              </h3>
-            </div>
-
-            <p className="text-gray-300 text-sm leading-relaxed mb-6 bg-black/40 p-3 rounded border border-white/5">
-              {solutionsList[activeModal].description}
-            </p>
-
-            <h4 className="text-xs font-bold text-blue-500 uppercase tracking-widest mb-3">
-              Recursos e Capacidades do Sistema:
-            </h4>
-            
-            <ul className="flex flex-col gap-3 mb-8">
-              {solutionsList[activeModal].details.map((detail, idx) => (
-                <li key={idx} className="flex items-start gap-3 text-sm text-gray-300">
-                  <span className="text-blue-500 shrink-0 mt-1">&#10003;</span>
-                  <span>{detail}</span>
-                </li>
-              ))}
-            </ul>
-
-            <div className="flex justify-end gap-4 border-t border-white/10 pt-4">
-              <button onClick={() => setActiveModal(null)} className="px-4 py-2 text-sm text-gray-400 hover:text-white transition-colors">
+        {/* Modal de Serviço */}
+        {activeModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full p-6 relative">
+              <button 
+                onClick={() => setActiveModal(null)}
+                className="absolute top-4 right-4 text-gray-400 hover:text-white p-2"
+              >
+                <FaTimes />
+              </button>
+              <div className="mb-4">{activeModal.icon}</div>
+              <h3 className="text-xl font-bold text-white mb-3">{activeModal.title}</h3>
+              <p className="text-gray-300 text-sm leading-relaxed mb-6">{activeModal.fullDesc}</p>
+              <button 
+                onClick={() => setActiveModal(null)}
+                className="w-full bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg text-sm font-semibold transition-all"
+              >
                 Fechar
               </button>
-              <Link href="/contact">
-                <button className="px-5 py-2 text-sm bg-blue-600 hover:bg-white text-white hover:text-black font-semibold rounded transition-all duration-300">
-                  Tenho Interesse
+            </div>
+          </div>
+        )}
+
+        {/* Modal de Imagem Expandida */}
+        {activeImageModal !== null && (
+          <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4">
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-4xl w-full overflow-hidden relative">
+              <div className="p-4 border-b border-gray-800 flex justify-between items-center bg-gray-950">
+                <div className="flex items-center gap-2">
+                  {panelImages[activeImageModal].icon}
+                  <span className="font-semibold text-sm text-white">{panelImages[activeImageModal].title}</span>
+                </div>
+                <button
+                  onClick={() => setActiveImageModal(null)}
+                  className="text-gray-400 hover:text-white bg-white/5 hover:bg-red-500/20 p-2 rounded-full transition-all duration-200"
+                >
+                  <FaTimes size={16} />
                 </button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal de Imagem do Painel */}
-      {activeImageModal !== null && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-sm"
-          onClick={() => setActiveImageModal(null)}
-        >
-          <div
-            className="bg-[#111111] border border-blue-500/40 rounded-xl w-full max-w-[900px] shadow-2xl overflow-hidden"
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header do modal */}
-            <div className="bg-[#0a0a0a] px-5 py-3 flex items-center justify-between border-b border-white/10">
-              <div className="flex items-center gap-2">
-                {panelImages[activeImageModal].icon}
-                <span className="text-sm text-gray-300 font-medium">{panelImages[activeImageModal].label}</span>
               </div>
-              <button
-                onClick={() => setActiveImageModal(null)}
-                className="text-gray-400 hover:text-white bg-white/5 hover:bg-red-500/20 p-2 rounded-full transition-all duration-200"
-              >
-                <FaTimes size={16} />
-              </button>
-            </div>
 
-            {/* Imagem expandida */}
-            <img
-              src={panelImages[activeImageModal].src}
-              alt={panelImages[activeImageModal].alt}
-              className="w-full object-cover"
-            />
+              <img
+                src={panelImages[activeImageModal].src}
+                alt={panelImages[activeImageModal].alt}
+                className="w-full object-cover max-h-[60vh]"
+              />
 
-            {/* Descrição */}
-            <div className="p-6 border-t border-white/10">
-              <h3 className="text-lg font-bold text-white mb-2">{panelImages[activeImageModal].title}</h3>
-              <p className="text-gray-400 text-sm leading-relaxed mb-4">{panelImages[activeImageModal].description}</p>
-              <h4 className="text-xs font-bold text-blue-500 uppercase tracking-widest mb-3">Funcionalidades do Módulo:</h4>
-              <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {panelImages[activeImageModal].features.map((feat, idx) => (
-                  <li key={idx} className="flex items-start gap-2 text-xs text-gray-300">
-                    <span className="text-blue-500 font-bold shrink-0 mt-0.5">✓</span>
-                    <span>{feat}</span>
-                  </li>
-                ))}
-              </ul>
+              <div className="p-6 border-t border-gray-800">
+                <p className="text-gray-300 text-sm leading-relaxed mb-4">{panelImages[activeImageModal].description}</p>
+                <h4 className="text-xs font-bold text-blue-500 uppercase tracking-widest mb-3">Funcionalidades do Módulo:</h4>
+                <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {panelImages[activeImageModal].features.map((feat, idx) => (
+                    <li key={idx} className="flex items-start gap-2 text-xs text-gray-300">
+                      <span className="text-blue-500 font-bold shrink-0">✓</span>
+                      <span>{feat}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <Footer />
-    </div>
+        <Footer />
+      </div>
+    </>
   );
 }
