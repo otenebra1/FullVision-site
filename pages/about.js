@@ -55,7 +55,7 @@ export default function About() {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">Nossa Visão</h3>
                 <p className="text-gray-300 text-sm leading-relaxed">
-                  Viabilizar o controle e a otimização em tempo real de toda a cadeia logística de transportes — indo muito além de mostrar apenas a localização e a velocidade do veículo.
+                  Viabilizar o controle e a otimização em tempo real de toda a cadeia logística de transportes, indo muito além de mostrar apenas a localização e a velocidade do veículo.
                 </p>
               </div>
             </div>
