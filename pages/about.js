@@ -9,7 +9,7 @@ export default function About() {
     <div className="bg-[#0a0a0a] text-white min-h-screen font-sans flex flex-col justify-between">
       <Head>
         <title>Sobre Nós | Full Vision</title>
-        <meta name="description" content="A Full Vision não é apenas uma empresa de segurança logística. Somos uma empresa de tecnologia em gestão operacional, focada em eficiência, performance e previsibilidade." />
+        <meta name="description" content="A Full Vision é uma empresa de tecnologia em gestão operacional, focada em eficiência, performance e previsibilidade para operações logísticas." />
       </Head>
       
       <Navbar />
@@ -19,10 +19,10 @@ export default function About() {
         <section className="relative pt-24 pb-12 md:pt-32 md:pb-16 bg-gradient-to-b from-blue-950/20 to-transparent px-4 overflow-hidden">
           <div className="max-w-[1140px] mx-auto text-center">
             <span data-aos="fade-down" className="text-blue-500 font-bold text-xs uppercase tracking-widest bg-blue-500/10 px-4 py-2 rounded-full border border-blue-500/20">
-              Bem-vindo à Full Vision
+              Sobre Nós
             </span>
             <h1 data-aos="fade-up" data-aos-delay="100" className="text-3xl md:text-5xl lg:text-6xl font-extrabold mt-6 mb-6 tracking-tight text-white">
-              Visão total e <span className="text-blue-500">eficiência</span> em tempo real
+              Transformamos dados em <span className="text-blue-500">inteligência de gestão</span>
             </h1>
             <p data-aos="fade-up" data-aos-delay="200" className="text-gray-400 text-sm md:text-lg max-w-3xl mx-auto leading-relaxed">
               Ajudamos empresas a ter visão total, controle e eficiência em tempo real de suas operações logísticas.
@@ -30,57 +30,53 @@ export default function About() {
           </div>
         </section>
 
-        {/* 2. QUEM É A FULL VISION (Textos do PDF) */}
-        <section className="py-8 px-4 max-w-[1140px] mx-auto">
-          <div data-aos="fade-up" data-aos-delay="300" className="bg-gray-900/60 border border-gray-800 p-8 md:p-12 rounded-2xl hover:border-blue-500/50 transition-all text-center shadow-xl">
-            <h2 className="text-2xl md:text-4xl font-bold text-white mb-8">Quem é a <span className="text-blue-500">Full Vision</span>?</h2>
-            <div className="space-y-6 text-gray-300 text-sm md:text-base leading-relaxed max-w-4xl mx-auto">
-              <p>
-                Somos uma empresa de gestão e segurança em operações logísticas. A Full Vision <strong className="text-white">não é apenas uma empresa de segurança logística</strong>. Somos uma empresa de tecnologia em gestão operacional, focada em eficiência, performance e previsibilidade.
-              </p>
-              <p>
-                Nosso papel é transformar dados operacionais em inteligência de gestão, viabilizando uma visão total, controle e otimização em tempo real de toda a cadeia logística de transportes e <strong className="text-white">não só a localização e velocidade do caminhão</strong>.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* 3. PILARES / MISSÃO, VISÃO E VALORES */}
-        <section className="py-16 px-4 max-w-[1140px] mx-auto">
+        {/* 2. OS 3 CAMPOS PRINCIPAIS (PREENCHIDOS COM OS TEXTOS DO PDF) */}
+        <section className="py-12 px-4 max-w-[1140px] mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div data-aos="fade-up" data-aos-delay="0" className="bg-gray-900/60 border border-gray-800 p-8 rounded-2xl hover:border-blue-500/50 transition-all">
-              <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 text-2xl mb-6">
-                <FaRocket />
+            
+            {/* Campo 1 */}
+            <div data-aos="fade-up" data-aos-delay="0" className="bg-gray-900/60 border border-gray-800 p-8 rounded-2xl hover:border-blue-500/50 transition-all flex flex-col justify-between shadow-lg">
+              <div>
+                <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 text-2xl mb-6">
+                  <FaRocket />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">Gestão & Inteligência</h3>
+                <p className="text-gray-300 text-sm leading-relaxed">
+                  Somos uma empresa de gestão e segurança em operações logísticas. Nosso papel é transformar dados operacionais em inteligência de gestão.
+                </p>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">Nossa Missão</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Entregar tecnologia de ponta para gestão e rastreamento de frotas, garantindo segurança, redução de custos operacionais e controle total em tempo real.
-              </p>
             </div>
 
-            <div data-aos="fade-up" data-aos-delay="100" className="bg-gray-900/60 border border-gray-800 p-8 rounded-2xl hover:border-blue-500/50 transition-all">
-              <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 text-2xl mb-6">
-                <FaEye />
+            {/* Campo 2 */}
+            <div data-aos="fade-up" data-aos-delay="100" className="bg-gray-900/60 border border-gray-800 p-8 rounded-2xl hover:border-blue-500/50 transition-all flex flex-col justify-between shadow-lg">
+              <div>
+                <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 text-2xl mb-6">
+                  <FaEye />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">Visão Total & Controle</h3>
+                <p className="text-gray-300 text-sm leading-relaxed">
+                  Viabilizamos uma visão total, controle e otimização em tempo real de toda a cadeia logística de transportes — e não só a localização e velocidade do caminhão.
+                </p>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">Nossa Visão</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Ser referência nacional em soluções inteligentes de telemetria e rastreamento, reconhecida pela inovação constante e excelência no suporte ao cliente.
-              </p>
             </div>
 
-            <div data-aos="fade-up" data-aos-delay="200" className="bg-gray-900/60 border border-gray-800 p-8 rounded-2xl hover:border-blue-500/50 transition-all">
-              <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 text-2xl mb-6">
-                <FaShieldAlt />
+            {/* Campo 3 */}
+            <div data-aos="fade-up" data-aos-delay="200" className="bg-gray-900/60 border border-gray-800 p-8 rounded-2xl hover:border-blue-500/50 transition-all flex flex-col justify-between shadow-lg">
+              <div>
+                <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 text-2xl mb-6">
+                  <FaShieldAlt />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-3">Tecnologia Operacional</h3>
+                <p className="text-gray-300 text-sm leading-relaxed">
+                  A Full Vision não é apenas uma empresa de segurança logística. Somos uma empresa de tecnologia em gestão operacional, focada em eficiência, performance e previsibilidade.
+                </p>
               </div>
-              <h3 className="text-xl font-bold text-white mb-3">Nossos Valores</h3>
-              <p className="text-gray-400 text-sm leading-relaxed">
-                Transparência, inovação contínua, foco no cliente, precisão nos dados e compromisso inegociável com a segurança da sua operação.
-              </p>
             </div>
+
           </div>
         </section>
 
-        {/* 4. BLOCO DE NÚMEROS (STATS) */}
+        {/* 3. BLOCO DE NÚMEROS (STATS) */}
         <section className="py-16 px-4 max-w-[1140px] mx-auto text-center overflow-hidden">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4">
             <div data-aos="zoom-in" data-aos-delay="0" className="space-y-1">
