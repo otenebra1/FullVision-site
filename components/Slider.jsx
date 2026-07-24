@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { SliderData } from './SliderData';
-import { FaArrowCircleLeft, FaArrowCircleRight } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FiActivity, FiMonitor, FiMap } from 'react-icons/fi';
 
 const Slider = ({ slides }) => {
   const [current, setCurrent] = useState(0);
-  const length = SliderData.length;
+  const length = slides.length;
 
   const nextSlide = () => {
     setCurrent(current === length - 1 ? 0 : current + 1);
@@ -15,86 +15,107 @@ const Slider = ({ slides }) => {
     setCurrent(current === 0 ? length - 1 : current - 1);
   };
 
-  // Auto-play: Passa as imagens automaticamente a cada 5 segundos
   useEffect(() => {
-    const timer = setInterval(() => {
+    const slideInterval = setInterval(() => {
       nextSlide();
-    }, 5000);
+    }, 6000);
+    return () => clearInterval(slideInterval);
+  }, [current, length]);
 
-    return () => clearInterval(timer);
-  }, [current]);
-
-  if (!Array.isArray(SliderData) || SliderData.length <= 0) {
+  if (!Array.isArray(slides) || slides.length <= 0) {
     return null;
   }
 
   return (
-    <div id='slider-banner' className='relative w-full h-[35vh] sm:h-[45vh] md:h-[55vh] lg:h-[60vh] mb-0 overflow-hidden mt-[90px]'>
+    <div id="gallery" className="relative w-full h-screen overflow-hidden bg-black">
       
-      {/* Loop dos Slides */}
-      {SliderData.map((slide, index) => {
-        return (
-          <div
-            key={index}
-            className={`absolute top-0 left-0 w-full h-full transition-opacity duration-1000 ease-in-out ${
-              index === current ? 'opacity-100 z-10' : 'opacity-0 z-0'
-            }`}
-          >
-            {/* Imagem de base */}
-            <Image
-  src={slide.image}
-  alt={slide.heading || `Slide ${index + 1}`}
-  fill
-  className='select-none object-cover object-center'
-  priority={index === 0}
-/>
-
-            {/* Overlay escuro individual */}
-            <div className='absolute inset-0 bg-black/40 z-[1]' />
-
-            {/* Caixa de texto na camada superior */}
-            {slide.heading && (
-              /* COR ALTERADA: border-orange-500 para border-blue-500 */
-              <div className='absolute bottom-[20%] left-[5%] md:left-[10%] max-w-[600px] text-white z-[2] p-4 md:p-6 bg-black/30 backdrop-blur-sm rounded-lg border-l-4 border-blue-500 select-none'>
-                <h3 className='text-2xl md:text-4xl font-bold mb-2 drop-shadow-md'>
-                  {slide.heading}
-                </h3>
-                <p className='text-sm md:text-lg text-gray-200 drop-shadow'>
-                  {slide.desc}
-                </p>
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      {/* Setas de Controle */}
-      <FaArrowCircleLeft
+      {/* Setas de Navegação do Slider */}
+      <button
         onClick={prevSlide}
-        className='absolute top-[50%] left-[15px] md:left-[40px] translate-y-[-50%] text-white/60 hover:text-white cursor-pointer select-none z-20 transition-all duration-300 drop-shadow-md hover:scale-110'
-        size={40}
-      />
+        className="absolute top-1/2 left-4 md:left-8 -translate-y-1/2 z-30 p-3 rounded-full bg-black/40 text-white/80 hover:text-white hover:bg-black/70 backdrop-blur-md transition-all duration-300 border border-white/10"
+        aria-label="Slide anterior"
+      >
+        <FaChevronLeft size={20} />
+      </button>
 
-      <FaArrowCircleRight
+      <button
         onClick={nextSlide}
-        className='absolute top-[50%] right-[15px] md:right-[40px] translate-y-[-50%] text-white/60 hover:text-white cursor-pointer select-none z-20 transition-all duration-300 drop-shadow-md hover:scale-110'
-        size={40}
-      />
+        className="absolute top-1/2 right-4 md:right-8 -translate-y-1/2 z-30 p-3 rounded-full bg-black/40 text-white/80 hover:text-white hover:bg-black/70 backdrop-blur-md transition-all duration-300 border border-white/10"
+        aria-label="Próximo slide"
+      >
+        <FaChevronRight size={20} />
+      </button>
 
-      {/* Indicadores / Botões Funcionais (Dots) */}
-      <div className='absolute bottom-5 left-1/2 -translate-x-1/2 flex gap-2 z-20'>
-        {SliderData.map((_, idx) => (
-          <span
-            key={idx}
-            onClick={() => setCurrent(idx)}
-            /* COR ALTERADA: bg-orange-500 para bg-blue-500 */
-            className={`h-2 rounded-full cursor-pointer transition-all duration-500 ${
-              idx === current ? 'bg-blue-500 w-8' : 'bg-white/50 hover:bg-white w-2'
-            }`}
-            title={`Ir para o slide ${idx + 1}`}
-          />
-        ))}
+      {/* Imagens do Slider */}
+      {slides.map((slide, index) => (
+        <div
+          key={index}
+          className={`absolute top-0 left-0 w-full h-full transition-opacity duration-1000 ease-in-out ${
+            index === current ? 'opacity-100 z-10' : 'opacity-0 z-0'
+          }`}
+        >
+          {index === current && (
+            <div className="relative w-full h-full">
+              <Image
+                src={slide.image}
+                alt="Full Vision Slide"
+                fill
+                priority={index === 0}
+                className="object-cover brightness-50"
+              />
+              {/* Overlay suave para melhorar o contraste das caixas */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-black/40" />
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* 3 CAIXAS SOBREPOSTAS SOBRE O SLIDER (DESIGN GLASSMORPHISM) */}
+      <div className="absolute bottom-6 md:bottom-12 left-1/2 -translate-x-1/2 w-full max-w-7xl px-4 z-20">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
+          
+          {/* Caixa 1: Tracker */}
+          <div className="bg-gray-950/70 backdrop-blur-md border border-gray-800/80 hover:border-blue-500/50 rounded-xl p-5 shadow-2xl transition-all duration-300 group hover:-translate-y-1">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-105 transition-transform">
+                <FiActivity size={18} />
+              </div>
+              <h3 className="text-base font-bold text-white tracking-wide">Tracker</h3>
+            </div>
+            <p className="text-gray-300 text-xs leading-relaxed font-normal">
+              Sistema de rastreamento de alta precisão com dados de telemetria em tempo real, localização contínua e total estabilidade operacional.
+            </p>
+          </div>
+
+          {/* Caixa 2: Painel Web */}
+          <div className="bg-gray-950/70 backdrop-blur-md border border-gray-800/80 hover:border-blue-500/50 rounded-xl p-5 shadow-2xl transition-all duration-300 group hover:-translate-y-1">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-105 transition-transform">
+                <FiMonitor size={18} />
+              </div>
+              <h3 className="text-base font-bold text-white tracking-wide">Painel Web</h3>
+            </div>
+            <p className="text-gray-300 text-xs leading-relaxed font-normal">
+              Interface moderna e intuitiva em formato grid. Visualização gerencial unificada para análise ágil de indicadores e tomada de decisões.
+            </p>
+          </div>
+
+          {/* Caixa 3: Roteirizador */}
+          <div className="bg-gray-950/70 backdrop-blur-md border border-gray-800/80 hover:border-blue-500/50 rounded-xl p-5 shadow-2xl transition-all duration-300 group hover:-translate-y-1">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-9 h-9 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 group-hover:scale-105 transition-transform">
+                <FiMap size={18} />
+              </div>
+              <h3 className="text-base font-bold text-white tracking-wide">Roteirizador</h3>
+            </div>
+            <p className="text-gray-300 text-xs leading-relaxed font-normal">
+              Otimização de trajetos e planejamento inteligente de rotas para reduzir combustível, otimizar tempo e assegurar cumprimento de prazos.
+            </p>
+          </div>
+
+        </div>
       </div>
+
     </div>
   );
 };
