@@ -53,7 +53,7 @@ const Footer = () => {
 
           <div>
             <h4 className="text-lg font-semibold mb-4 text-white">Contato</h4>
-            <p className="text-gray-400 text-sm mb-2">Email: contato@fullvision.one</p>
+            <p className="text-gray-400 text-sm mb-2">Email: central@fullvision.one</p>
             <p className="text-gray-400 text-sm mb-2">Atendimento comercial e suporte técnico.</p>
           </div>
 
