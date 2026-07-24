@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { BsBoxArrowUpRight } from 'react-icons/bs';
 import { FaBars, FaTimes } from 'react-icons/fa';
 
@@ -28,20 +27,18 @@ const Navbar = () => {
     <div
       className={`fixed left-0 top-0 w-full z-50 transition-all duration-300 backdrop-blur-md border-b ${
         scrolled
-          ? 'bg-black/75 border-gray-800/80 shadow-xl'
-          : 'bg-black/30 border-transparent'
+          ? 'bg-black/80 border-gray-800/80 shadow-xl'
+          : 'bg-black/40 border-transparent'
       }`}
     >
       <div className="max-w-7xl mx-auto flex justify-between items-center p-4 text-white">
-        {/* Logo */}
+        
+        {/* LOGO (Tag img nativa mais estável) */}
         <Link href="/" className="flex items-center">
-          <Image
-            src="/images/logo.png"
+          <img
+            src="/images/logo.png" 
             alt="Full Vision Logo"
-            width={160}
-            height={40}
-            className="object-contain"
-            priority
+            className="h-9 md:h-10 w-auto object-contain"
           />
         </Link>
 
@@ -70,7 +67,7 @@ const Navbar = () => {
             </li>
           </ul>
 
-          {/* Botão de Acesso ao Sistema */}
+          {/* Botão Acessar Sistema */}
           <a
             href="https://tracker.fullvision.one/v1/home"
             target="_blank"
