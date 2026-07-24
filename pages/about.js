@@ -30,45 +30,45 @@ export default function About() {
           </div>
         </section>
 
-        {/* 2. OS 3 CAMPOS PRINCIPAIS (PREENCHIDOS COM OS TEXTOS DO PDF) */}
+        {/* 2. OS 3 CAMPOS PRINCIPAIS: MISSÃO, VISÃO E VALORES (COM OS TEXTOS DO PDF) */}
         <section className="py-12 px-4 max-w-[1140px] mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             
-            {/* Campo 1 */}
+            {/* Campo 1: Nossa Missão */}
             <div data-aos="fade-up" data-aos-delay="0" className="bg-gray-900/60 border border-gray-800 p-8 rounded-2xl hover:border-blue-500/50 transition-all flex flex-col justify-between shadow-lg">
               <div>
                 <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 text-2xl mb-6">
                   <FaRocket />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">Gestão & Inteligência</h3>
+                <h3 className="text-xl font-bold text-white mb-3">Nossa Missão</h3>
                 <p className="text-gray-300 text-sm leading-relaxed">
-                  Somos uma empresa de gestão e segurança em operações logísticas. Nosso papel é transformar dados operacionais em inteligência de gestão.
+                  Transformar dados operacionais em inteligência de gestão, ajudando empresas a ter visão total, controle e eficiência em tempo real de suas operações logísticas.
                 </p>
               </div>
             </div>
 
-            {/* Campo 2 */}
+            {/* Campo 2: Nossa Visão */}
             <div data-aos="fade-up" data-aos-delay="100" className="bg-gray-900/60 border border-gray-800 p-8 rounded-2xl hover:border-blue-500/50 transition-all flex flex-col justify-between shadow-lg">
               <div>
                 <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 text-2xl mb-6">
                   <FaEye />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">Visão Total & Controle</h3>
+                <h3 className="text-xl font-bold text-white mb-3">Nossa Visão</h3>
                 <p className="text-gray-300 text-sm leading-relaxed">
-                  Viabilizamos uma visão total, controle e otimização em tempo real de toda a cadeia logística de transportes — e não só a localização e velocidade do caminhão.
+                  Viabilizar o controle e a otimização em tempo real de toda a cadeia logística de transportes — indo muito além de mostrar apenas a localização e a velocidade do veículo.
                 </p>
               </div>
             </div>
 
-            {/* Campo 3 */}
+            {/* Campo 3: Nossos Valores */}
             <div data-aos="fade-up" data-aos-delay="200" className="bg-gray-900/60 border border-gray-800 p-8 rounded-2xl hover:border-blue-500/50 transition-all flex flex-col justify-between shadow-lg">
               <div>
                 <div className="w-12 h-12 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-500 text-2xl mb-6">
                   <FaShieldAlt />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">Tecnologia Operacional</h3>
+                <h3 className="text-xl font-bold text-white mb-3">Nossos Valores</h3>
                 <p className="text-gray-300 text-sm leading-relaxed">
-                  A Full Vision não é apenas uma empresa de segurança logística. Somos uma empresa de tecnologia em gestão operacional, focada em eficiência, performance e previsibilidade.
+                  Não ser apenas uma empresa de segurança logística, mas sim uma parceira de tecnologia em gestão operacional, focada em eficiência, performance, previsibilidade e transparência.
                 </p>
               </div>
             </div>
