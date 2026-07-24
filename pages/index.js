@@ -56,8 +56,8 @@ export default function Home() {
         <div data-aos="fade-up" data-aos-delay="150" className="w-full bg-[#111111] py-12 border-y border-gray-800 my-8">
           <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
             <div>
-              <h3 className="text-4xl font-bold text-blue-500 mb-2">+500</h3>
-              <p className="text-gray-400">Veículos Monitorados</p>
+              <h3 className="text-4xl font-bold text-blue-500 mb-2">+10</h3>
+              <p className="text-gray-400">Estados do Brasil</p>
             </div>
             <div>
               <h3 className="text-4xl font-bold text-blue-500 mb-2">24h</h3>
@@ -131,7 +131,7 @@ export default function Home() {
                       <span className="w-3 h-3 rounded-full bg-yellow-500/80 inline-block"></span>
                       <span className="w-3 h-3 rounded-full bg-green-500/80 inline-block"></span>
                     </div>
-                    <span className="text-xs text-gray-500 font-mono">tracker.fullvision.one</span>
+                    <span className="text-xs text-gray-500 font-mono">Full Vision</span>
                   </div>
                   
                   <div className="space-y-4">

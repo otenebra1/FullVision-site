@@ -9,26 +9,43 @@ export default function About() {
     <div className="bg-[#0a0a0a] text-white min-h-screen font-sans flex flex-col justify-between">
       <Head>
         <title>Sobre Nós | Full Vision</title>
-        <meta name="description" content="Conheça a Full Vision: nascemos com o propósito de transformar dados complexos em segurança palpável e eficiência milimétrica para a sua frota." />
+        <meta name="description" content="A Full Vision não é apenas uma empresa de segurança logística. Somos uma empresa de tecnologia em gestão operacional, focada em eficiência, performance e previsibilidade." />
       </Head>
       
       <Navbar />
 
       <main className="flex-grow">
-        <section className="relative pt-24 pb-16 md:pt-32 md:pb-24 bg-gradient-to-b from-blue-950/20 to-transparent px-4 overflow-hidden">
+        {/* 1. SEÇÃO HERO */}
+        <section className="relative pt-24 pb-12 md:pt-32 md:pb-16 bg-gradient-to-b from-blue-950/20 to-transparent px-4 overflow-hidden">
           <div className="max-w-[1140px] mx-auto text-center">
             <span data-aos="fade-down" className="text-blue-500 font-bold text-xs uppercase tracking-widest bg-blue-500/10 px-4 py-2 rounded-full border border-blue-500/20">
-              Sobre Nós
+              Bem-vindo à Full Vision
             </span>
             <h1 data-aos="fade-up" data-aos-delay="100" className="text-3xl md:text-5xl lg:text-6xl font-extrabold mt-6 mb-6 tracking-tight text-white">
-              Transformamos dados em <span className="text-blue-500">segurança</span> e <span className="text-blue-500">eficiência</span>
+              Visão total e <span className="text-blue-500">eficiência</span> em tempo real
             </h1>
             <p data-aos="fade-up" data-aos-delay="200" className="text-gray-400 text-sm md:text-lg max-w-3xl mx-auto leading-relaxed">
-              A Full Vision nasceu com o propósito de oferecer gestão inteligente de frotas, rastreamento avançado e telemetria de alta precisão para otimizar operações logísticas de qualquer porte.
+              Ajudamos empresas a ter visão total, controle e eficiência em tempo real de suas operações logísticas.
             </p>
           </div>
         </section>
 
+        {/* 2. QUEM É A FULL VISION (Textos do PDF) */}
+        <section className="py-8 px-4 max-w-[1140px] mx-auto">
+          <div data-aos="fade-up" data-aos-delay="300" className="bg-gray-900/60 border border-gray-800 p-8 md:p-12 rounded-2xl hover:border-blue-500/50 transition-all text-center shadow-xl">
+            <h2 className="text-2xl md:text-4xl font-bold text-white mb-8">Quem é a <span className="text-blue-500">Full Vision</span>?</h2>
+            <div className="space-y-6 text-gray-300 text-sm md:text-base leading-relaxed max-w-4xl mx-auto">
+              <p>
+                Somos uma empresa de gestão e segurança em operações logísticas. A Full Vision <strong className="text-white">não é apenas uma empresa de segurança logística</strong>. Somos uma empresa de tecnologia em gestão operacional, focada em eficiência, performance e previsibilidade.
+              </p>
+              <p>
+                Nosso papel é transformar dados operacionais em inteligência de gestão, viabilizando uma visão total, controle e otimização em tempo real de toda a cadeia logística de transportes e <strong className="text-white">não só a localização e velocidade do caminhão</strong>.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* 3. PILARES / MISSÃO, VISÃO E VALORES */}
         <section className="py-16 px-4 max-w-[1140px] mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div data-aos="fade-up" data-aos-delay="0" className="bg-gray-900/60 border border-gray-800 p-8 rounded-2xl hover:border-blue-500/50 transition-all">
@@ -63,7 +80,8 @@ export default function About() {
           </div>
         </section>
 
-        <section className="py-20 px-4 max-w-[1140px] mx-auto text-center overflow-hidden">
+        {/* 4. BLOCO DE NÚMEROS (STATS) */}
+        <section className="py-16 px-4 max-w-[1140px] mx-auto text-center overflow-hidden">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4">
             <div data-aos="zoom-in" data-aos-delay="0" className="space-y-1">
               <span className="text-3xl md:text-5xl font-extrabold text-blue-500 tracking-tight">99.9%</span>
