@@ -58,9 +58,9 @@ export default function Contact() {
     // Adicionado overflow-hidden para proteger a animação
     <div className="flex flex-col min-h-screen bg-[#000000] text-white select-none overflow-hidden">
       <Head>
-        <title>Contato | FullVision Tracking</title>
-        <meta name="description" content="Fale com a FullVision. Dúvidas, suporte ou propostas comerciais sobre rastreamento e gestão de frota." />
-        <meta property="og:title" content="Contato | FullVision Tracking" />
+        <title>Contato | Full Vision</title>
+        <meta name="description" content="Fale com a Full Vision. Dúvidas, suporte ou propostas comerciais sobre rastreamento e gestão de frota." />
+        <meta property="og:title" content="Contato | Full Vision " />
         <meta property="og:description" content="Entre em contato com nossa equipe para soluções customizadas de rastreamento e segurança de frota." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://fullvision.one/contact" />
@@ -226,7 +226,7 @@ export default function Contact() {
                         href="mailto:contato@fullvision.one" 
                         className="text-base md:text-lg text-gray-200 hover:text-blue-500 transition-colors font-semibold"
                       >
-                        contato@fullvision.one
+                        central@fullvision.one
                       </a>
                     </div>
                   </div>
