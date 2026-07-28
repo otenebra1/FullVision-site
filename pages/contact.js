@@ -226,7 +226,7 @@ export default function Contact() {
                         href="mailto:contato@fullvision.one" 
                         className="text-base md:text-lg text-gray-200 hover:text-blue-500 transition-colors font-semibold"
                       >
-                        central@fullvision.one
+                        contato@fullvision.one
                       </a>
                     </div>
                   </div>

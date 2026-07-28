@@ -20,7 +20,7 @@ const cardData = [
     id: 2,
     title: 'Roteirizador',
     icon: <FiMap size={18} />,
-    description: 'Otimização de trajetos e planejamento inteligente de rotas para reduzir combustível, otimizar tempo e assegurar cumprimento de prazos.'
+    description: 'Otimização de trajetos e planejamento inteligente de rotas para otimizar o consumo de combustível, desgaste do veículo e tempo de rota, melhorando os resultados financeiros e operacionais diretamente, prolongando a vida útil do veículo e dando mais assertividade nos prazos.'
   }
 ];
 

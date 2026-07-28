@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
+import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { 
   FaMapMarkedAlt, FaShieldAlt, FaChartLine, FaServer, FaTimes, 
@@ -72,7 +73,7 @@ export default function Solutions() {
       title: 'Infraestrutura dedicada',
       icon: <FaServer className="text-3xl text-blue-500" />,
       shortDesc: 'Servidores de alta performance com disponibilidade de 99.9%.',
-      fullDesc: 'Garantimos estabilidade total para a sua operação. Nossos servidores funcionam em nuvem redundante com alta velocidade de processamento, assegurando que seus dados de frota estejam sempre acessíveis.'
+      fullDesc: 'Operamos com servidores em nuvem redundantes para entregar boa estabilidade e velocidade de processamento. Essa estrutura minimiza os impactos de eventuais oscilações de conexão, garantindo um acesso mais seguro e consistente aos dados da sua frota.'
     }
   ];
 
@@ -111,7 +112,10 @@ export default function Solutions() {
       </Head>
 
       <div className="min-h-screen bg-gray-950 text-white flex flex-col justify-between overflow-hidden">
-        <main className="flex-grow container mx-auto px-4 py-12">
+        <Navbar />
+
+        {/* Adicionado padding superior maior (pt-28 md:pt-36) para não cortar o título */}
+        <main className="flex-grow container mx-auto px-4 pt-28 md:pt-36 pb-12">
           
           <div data-aos="fade-down" className="text-center max-w-3xl mx-auto mb-12">
             <h1 className="text-3xl md:text-5xl font-extrabold mb-4 text-white">

@@ -86,7 +86,7 @@ export default function Home() {
                 </span>
 
                 <h2 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-white tracking-tight leading-tight mb-6">
-                  Controle absoluto da sua frota <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">em qualquer lugar</span>
+                  Controle total da sua frota <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">em qualquer lugar</span>
                 </h2>
 
                 <p className="text-gray-400 text-lg leading-relaxed mb-8 max-w-2xl">
@@ -112,15 +112,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <a
-                  href="https://tracker.fullvision.one/v1/home"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center justify-center gap-3 bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white font-semibold py-4 px-8 rounded-xl transition-all duration-300 shadow-lg shadow-blue-600/25 hover:shadow-blue-500/40 hover:-translate-y-0.5"
-                >
-                  <span>Acessar Plataforma</span>
-                  <BsBoxArrowUpRight className="text-sm" />
-                </a>
+               
               </div>
 
               <div className="lg:col-span-5 w-full">
@@ -137,25 +129,28 @@ export default function Home() {
                   <div className="space-y-4">
                     <div className="p-4 bg-[#181818] rounded-xl border border-gray-800/60 flex items-center justify-between">
                       <div>
-                        <p className="text-xs text-gray-400">Frota Ativa</p>
-                        <p className="text-xl font-bold text-white">99.9% Conectada</p>
+                        
+                        <p className="text-xl font-bold text-white">Centra de monitoramento 24/7</p>
                       </div>
-                      <span className="px-2.5 py-1 bg-green-500/10 text-green-400 border border-green-500/20 text-xs rounded-full font-semibold">Online</span>
+                      
                     </div>
 
                     <div className="p-4 bg-[#181818] rounded-xl border border-gray-800/60 flex items-center justify-between">
                       <div>
-                        <p className="text-xs text-gray-400">Sua frota</p>
-                        <p className="text-xl font-bold text-blue-400">+35% Otimizada</p>
+                        
+                        <p className="text-xl font-bold text-blue-400">Central de Sinistro 24/7</p>
                       </div>
-                      <span className="text-xs text-gray-400">Telemetria Real</span>
+                     
                     </div>
 
                     <div className="p-4 bg-[#181818] rounded-xl border border-gray-800/60">
-                      <p className="text-xs text-gray-400 mb-1">Status da Central</p>
-                      <p className="text-sm text-gray-300">Pronta resposta ativa e monitoramento contínuo de riscos.</p>
+                      
+                      <p className="text-sm text-gray-300">Equipe de Pronta Resposta</p> 
+                      
                     </div>
+                    
                   </div>
+                   
                 </div>
               </div>
 

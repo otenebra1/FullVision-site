@@ -35,7 +35,7 @@ const Footer = () => {
           
           <div>
             {/* Grafia Corrigida */}
-            <h3 className="text-xl font-bold text-blue-500 mb-4">Full Vision</h3>
+            <h3 className="text-xl font-bold text-blue-500 mb-4">FULL VISION</h3>
             <p className="text-gray-400 text-sm leading-relaxed mb-4">
               Tecnologia avançada em rastreamento, telemetria e gestão inteligente de frotas para otimizar sua operação.
             </p>
@@ -53,7 +53,7 @@ const Footer = () => {
 
           <div>
             <h4 className="text-lg font-semibold mb-4 text-white">Contato</h4>
-            <p className="text-gray-400 text-sm mb-2">Email: central@fullvision.one</p>
+            <p className="text-gray-400 text-sm mb-2">Email: contato@fullvision.one</p>
             <p className="text-gray-400 text-sm mb-2">Atendimento comercial e suporte técnico.</p>
           </div>
 

@@ -42,7 +42,7 @@ export default function About() {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">Nossa Missão</h3>
                 <p className="text-gray-300 text-sm leading-relaxed">
-                  Transformar dados operacionais em inteligência de gestão, ajudando empresas a ter visão total, controle e eficiência em tempo real de suas operações logísticas.
+                  Ser referência em inteligência logística, transformando dados em decisões estratégicas que geram controle, eficiência e crescimento sustentável para empresas.
                 </p>
               </div>
             </div>
@@ -55,7 +55,7 @@ export default function About() {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">Nossa Visão</h3>
                 <p className="text-gray-300 text-sm leading-relaxed">
-                  Viabilizar o controle e a otimização em tempo real de toda a cadeia logística de transportes, indo muito além de mostrar apenas a localização e a velocidade do veículo.
+                  Oferecemos uma visão 360° da operação, permitindo que gestores acompanhem, em tempo real. Tudo centralizado em dashboards inteligentes e relatórios personalizados, facilitando decisões rápidas e estratégicas.
                 </p>
               </div>
             </div>
@@ -68,7 +68,7 @@ export default function About() {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-3">Nossos Valores</h3>
                 <p className="text-gray-300 text-sm leading-relaxed">
-                  Não ser apenas uma empresa de segurança logística, mas sim uma parceira de tecnologia em gestão operacional, focada em eficiência, performance, previsibilidade e transparência.
+                  A Full Vision não é apenas uma empresa de segurança logística. Somos uma empresa de tecnologia em gestão operacional, focada em eficiência, performance e previsibilidade.
                 </p>
               </div>
             </div>
