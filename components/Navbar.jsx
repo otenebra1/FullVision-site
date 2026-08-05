@@ -3,9 +3,6 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { FaBars, FaTimes, FaUserCircle } from 'react-icons/fa';
 
-// Importação estática direta da imagem (Infalível no Next.js)
-import logoImg from '../public/images/logofv.png';
-
 const Navbar = () => {
   const [nav, setNav] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -36,11 +33,13 @@ const Navbar = () => {
     >
       <div className="max-w-7xl mx-auto flex justify-between items-center p-4 text-white">
         
-        {/* LOGO UTILIZANDO IMPORTAÇÃO ESTÁTICA */}
+        {/* LOGO ACESSANDO A PASTA PUBLIC DIRETAMENTE */}
         <Link href="/" className="flex items-center">
           <Image
-            src={logoImg} 
+            src="/images/logofv.png" 
             alt="Full Vision Logo"
+            width={160}
+            height={40}
             className="h-9 md:h-10 w-auto object-contain"
             priority
           />
