@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { BsBoxArrowUpRight } from 'react-icons/bs';
-import { FaBars, FaTimes } from 'react-icons/fa';
+import { FaBars, FaTimes, FaUserCircle } from 'react-icons/fa';
 
 // Importação estática direta da imagem (Infalível no Next.js)
 import logoImg from '../public/images/logofv.png';
@@ -72,15 +71,13 @@ const Navbar = () => {
             </li>
           </ul>
 
-          {/* Botão Acessar Sistema */}
-          <a
-            href="https://tracker.fullvision.one/v1/home"
-            target="_blank"
-            rel="noopener noreferrer"
+          {/* Botão Área do Cliente (Desktop) */}
+          <Link
+            href="/area-cliente"
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2 rounded-lg text-xs font-semibold transition-all shadow-md shadow-blue-500/20"
           >
-            Acessar Sistema <BsBoxArrowUpRight size={13} />
-          </a>
+            Área do Cliente <FaUserCircle size={15} />
+          </Link>
         </div>
 
         {/* Ícone Menu Mobile */}
@@ -119,15 +116,14 @@ const Navbar = () => {
             </li>
           </ul>
 
-          <a
-            href="https://tracker.fullvision.one/v1/home"
-            target="_blank"
-            rel="noopener noreferrer"
+          {/* Botão Área do Cliente (Mobile) */}
+          <Link
+            href="/area-cliente"
             onClick={handleNav}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-6 py-3 rounded-lg text-sm font-semibold transition-all shadow-lg shadow-blue-500/30"
           >
-            Acessar Sistema <BsBoxArrowUpRight size={15} />
-          </a>
+            Área do Cliente <FaUserCircle size={18} />
+          </Link>
         </div>
       </div>
     </div>
