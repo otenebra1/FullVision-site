@@ -145,6 +145,10 @@ export default function AreaDoCliente() {
         .eq('id', editingUser.id)
         .select();
       
+      if (error) {
+        console.error('Erro ao editar usuário:', error);
+        alert('Erro ao editar usuário: ' + error.message);
+      }
       if (!error && data) {
         setUsers(users.map(u => u.id === editingUser.id ? data[0] : u));
       }
@@ -154,6 +158,10 @@ export default function AreaDoCliente() {
         .insert([{ username: userFormName, password: userFormPassword, role: userFormRole }])
         .select();
 
+      if (error) {
+        console.error('Erro ao criar usuário:', error);
+        alert('Erro ao criar usuário: ' + error.message);
+      }
       if (!error && data) {
         setUsers([...users, data[0]]);
       }
