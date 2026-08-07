@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
-import { supabase } from '../lib/supabase'; // Importando a nossa conexão!
+import { supabase } from '../lib/supabase';
 import { 
   FaTruck, FaCodeBranch, FaCheckCircle, FaSpinner, FaClock, 
   FaCommentDots, FaPaperPlane, FaLock, FaExternalLinkAlt,
   FaPlus, FaEdit, FaTrashAlt, FaUserShield, FaChartPie,
   FaGoogleDrive, FaUserTie, FaDatabase, FaSearch,
-  FaUserCog, FaKey, FaUsers, FaUser, FaUserCircle
+  FaKey, FaUsers, FaUser, FaUserCircle, FaFilter
 } from 'react-icons/fa';
 
 export default function AreaDoCliente() {
@@ -26,13 +26,15 @@ export default function AreaDoCliente() {
   // Filtros e Modais (Roadmap)
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [selectedClientView, setSelectedClientView] = useState('all'); // Novo filtro Admin
+  
   const [selectedStep, setSelectedStep] = useState(null);
   const [isStepModalOpen, setIsStepModalOpen] = useState(false);
   const [editingStep, setEditingStep] = useState(null);
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formStatus, setFormStatus] = useState('in_progress');
-  const [formProgress, setFormProgress] = useState(50);
+  const [formClientOwner, setFormClientOwner] = useState(''); // Novo campo para vincular cliente
   const [newComment, setNewComment] = useState('');
 
   // Modais (Usuários e Perfil)
@@ -54,16 +56,13 @@ export default function AreaDoCliente() {
   const fetchInitialData = async () => {
     setIsLoading(true);
     
-    // 1. Busca Usuários
     const { data: usersData, error: usersError } = await supabase.from('users').select('*');
     if (!usersError && usersData) setUsers(usersData);
 
-    // 2. Busca Etapas e seus comentários atrelados
     const { data: stepsData, error: stepsError } = await supabase.from('steps').select('*');
     const { data: commentsData, error: commentsError } = await supabase.from('comments').select('*');
 
     if (!stepsError && !commentsError && stepsData) {
-      // Mesclamos os comentários para dentro de cada etapa correspondente
       const stepsWithComments = stepsData.map(step => ({
         ...step,
         comments: commentsData ? commentsData.filter(c => c.step_id === step.id) : []
@@ -79,7 +78,6 @@ export default function AreaDoCliente() {
   // ==========================================
   const handleLogin = (e) => {
     e.preventDefault();
-    // Verifica contra a lista de usuários puxada do Supabase
     const userFound = users.find(u => u.username === usernameInput && u.password === passwordInput);
     
     if (userFound) {
@@ -88,7 +86,6 @@ export default function AreaDoCliente() {
       setUsernameInput('');
       setPasswordInput('');
     } else {
-      // Dica de fallback para primeiro uso (antes de criar usuários no banco)
       if (usernameInput === 'admin' && passwordInput === '123' && users.length === 0) {
          setCurrentUser({ id: 999, username: 'admin', role: 'admin' });
          setIsLoggedIn(true);
@@ -103,7 +100,6 @@ export default function AreaDoCliente() {
     e.preventDefault();
     if (!ownNewPassword.trim()) return;
 
-    // Atualiza no Supabase
     const { error } = await supabase.from('users').update({ password: ownNewPassword }).eq('id', currentUser.id);
     
     if (error) {
@@ -111,7 +107,6 @@ export default function AreaDoCliente() {
       return;
     }
 
-    // Atualiza na tela
     setUsers(users.map(u => u.id === currentUser.id ? { ...u, password: ownNewPassword } : u));
     setCurrentUser({ ...currentUser, password: ownNewPassword });
     setOwnNewPassword('');
@@ -139,29 +134,19 @@ export default function AreaDoCliente() {
   const handleSaveUser = async (e) => {
     e.preventDefault();
     if (editingUser) {
-      // Editar
       const { data, error } = await supabase.from('users')
         .update({ username: userFormName, password: userFormPassword, role: userFormRole })
         .eq('id', editingUser.id)
         .select();
       
-      if (error) {
-        console.error('Erro ao editar usuário:', error);
-        alert('Erro ao editar usuário: ' + error.message);
-      }
       if (!error && data) {
         setUsers(users.map(u => u.id === editingUser.id ? data[0] : u));
       }
     } else {
-      // Criar Novo
       const { data, error } = await supabase.from('users')
         .insert([{ username: userFormName, password: userFormPassword, role: userFormRole }])
         .select();
 
-      if (error) {
-        console.error('Erro ao criar usuário:', error);
-        alert('Erro ao criar usuário: ' + error.message);
-      }
       if (!error && data) {
         setUsers([...users, data[0]]);
       }
@@ -185,11 +170,22 @@ export default function AreaDoCliente() {
   // LÓGICA DO ROADMAP (Tabela de Etapas)
   // ==========================================
   const openNewStepModal = () => {
-    setEditingStep(null); setFormTitle(''); setFormDescription(''); setFormStatus('in_progress'); setFormProgress(50); setIsStepModalOpen(true);
+    setEditingStep(null); 
+    setFormTitle(''); 
+    setFormDescription(''); 
+    setFormStatus('in_progress'); 
+    setFormClientOwner(selectedClientView !== 'all' ? selectedClientView : (clientUsers[0]?.username || ''));
+    setIsStepModalOpen(true);
   };
 
   const openEditStepModal = (step, e) => {
-    e.stopPropagation(); setEditingStep(step); setFormTitle(step.title); setFormDescription(step.description); setFormStatus(step.status); setFormProgress(step.progress); setIsStepModalOpen(true);
+    e.stopPropagation(); 
+    setEditingStep(step); 
+    setFormTitle(step.title); 
+    setFormDescription(step.description); 
+    setFormStatus(step.status); 
+    setFormClientOwner(step.client_owner || '');
+    setIsStepModalOpen(true);
   };
 
   const handleSaveStep = async (e) => {
@@ -197,9 +193,8 @@ export default function AreaDoCliente() {
     if (!formTitle.trim()) return;
 
     if (editingStep) {
-      // Editar
       const { data, error } = await supabase.from('steps')
-        .update({ title: formTitle, description: formDescription, status: formStatus, progress: Number(formProgress) })
+        .update({ title: formTitle, description: formDescription, status: formStatus, client_owner: formClientOwner })
         .eq('id', editingStep.id)
         .select();
 
@@ -207,9 +202,8 @@ export default function AreaDoCliente() {
         setSteps(steps.map((s) => s.id === editingStep.id ? { ...data[0], comments: s.comments } : s));
       }
     } else {
-      // Criar Nova Etapa
       const { data, error } = await supabase.from('steps')
-        .insert([{ title: formTitle, description: formDescription, status: formStatus, progress: Number(formProgress) }])
+        .insert([{ title: formTitle, description: formDescription, status: formStatus, client_owner: formClientOwner }])
         .select();
 
       if (!error && data) {
@@ -222,7 +216,6 @@ export default function AreaDoCliente() {
   const handleDeleteStep = async (stepId, e) => {
     e.stopPropagation();
     if (confirm('Excluir esta etapa permanentemente? Isso apagará os comentários nela também.')) {
-      // Ao deletar a etapa, os comentários atrelados ficam órfãos. É bom apagá-arlos também.
       await supabase.from('comments').delete().eq('step_id', stepId);
       const { error } = await supabase.from('steps').delete().eq('id', stepId);
       
@@ -233,9 +226,6 @@ export default function AreaDoCliente() {
     }
   };
 
-  // ==========================================
-  // LÓGICA DE COMENTÁRIOS
-  // ==========================================
   const handleAddComment = async (e) => {
     e.preventDefault();
     if (!newComment.trim() || !selectedStep) return;
@@ -266,21 +256,52 @@ export default function AreaDoCliente() {
   };
 
   // ==========================================
-  // CÁLCULOS DO GRÁFICO E RENDERIZAÇÃO
+  // OTIMIZAÇÃO: FILTROS E CÁLCULOS (useMemo)
   // ==========================================
-  const totalSteps = steps.length;
-  const countCompleted = steps.filter((s) => s.status === 'completed').length;
-  const countInProgress = steps.filter((s) => s.status === 'in_progress').length;
-  const countPlanned = steps.filter((s) => s.status === 'planned').length;
-  const pieGradient = { background: `conic-gradient(#10b981 0deg ${(countCompleted / (totalSteps || 1)) * 360}deg, #3b82f6 ${(countCompleted / (totalSteps || 1)) * 360}deg ${((countCompleted + countInProgress) / (totalSteps || 1)) * 360}deg, #374151 ${((countCompleted + countInProgress) / (totalSteps || 1)) * 360}deg 360deg)` };
-
-  const filteredSteps = steps.filter((step) => {
-    const matchSearch = step.title.toLowerCase().includes(searchTerm.toLowerCase()) || step.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchStatus = filterStatus === 'all' ? true : step.status === filterStatus;
-    return matchSearch && matchStatus;
-  });
-
   const isAdmin = currentUser?.role === 'admin';
+  const clientUsers = useMemo(() => users.filter(u => u.role === 'cliente'), [users]);
+
+  // 1. Filtra primeiro as etapas que pertencem ao usuário (ou todas/cliente específico se for Admin)
+  const userSteps = useMemo(() => {
+    if (!currentUser) return [];
+    if (isAdmin) {
+      if (selectedClientView === 'all') return steps;
+      return steps.filter(s => s.client_owner === selectedClientView);
+    }
+    // Se for cliente, vê apenas as suas etapas
+    return steps.filter(s => s.client_owner === currentUser.username);
+  }, [steps, currentUser, isAdmin, selectedClientView]);
+
+  // 2. Calcula os dados do gráfico em pizza baseado apenas nas etapas do cliente exibido
+  const chartData = useMemo(() => {
+    const total = userSteps.length;
+    const completed = userSteps.filter((s) => s.status === 'completed').length;
+    const inProgress = userSteps.filter((s) => s.status === 'in_progress').length;
+    const planned = userSteps.filter((s) => s.status === 'planned').length;
+
+    const pctComp = total ? Math.round((completed / total) * 100) : 0;
+    const pctInProg = total ? Math.round((inProgress / total) * 100) : 0;
+    const pctPlan = total ? Math.round((planned / total) * 100) : 0;
+
+    const degComp = (completed / (total || 1)) * 360;
+    const degInProg = degComp + (inProgress / (total || 1)) * 360;
+
+    const gradient = {
+      background: `conic-gradient(#10b981 0deg ${degComp}deg, #3b82f6 ${degComp}deg ${degInProg}deg, #374151 ${degInProg}deg 360deg)`
+    };
+
+    return { total, completed, inProgress, planned, pctComp, pctInProg, pctPlan, gradient };
+  }, [userSteps]);
+
+  // 3. Aplica os filtros secundários (Busca por texto e Abas de Status)
+  const filteredSteps = useMemo(() => {
+    return userSteps.filter((step) => {
+      const matchSearch = step.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          (step.description && step.description.toLowerCase().includes(searchTerm.toLowerCase()));
+      const matchStatus = filterStatus === 'all' ? true : step.status === filterStatus;
+      return matchSearch && matchStatus;
+    });
+  }, [userSteps, searchTerm, filterStatus]);
 
   if (isLoading) {
     return (
@@ -360,10 +381,30 @@ export default function AreaDoCliente() {
                 </div>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <a href="#" className="bg-gray-950/80 hover:bg-gray-800 border border-gray-800 hover:border-purple-500/50 rounded-xl p-3 flex items-center gap-3 transition-all"><FaGoogleDrive className="text-emerald-400 text-lg" /> <span className="text-sm font-semibold">Drive</span></a>
-                  <a href="https://tracker.fullvision.one/v1/home" target="_blank" className="bg-gray-950/80 hover:bg-gray-800 border border-gray-800 hover:border-purple-500/50 rounded-xl p-3 flex items-center gap-3 transition-all"><FaTruck className="text-blue-400 text-lg" /> <span className="text-sm font-semibold">Tracker</span></a>
+                  <a href="https://tracker.fullvision.one/v1/home" target="_blank" rel="noreferrer" className="bg-gray-950/80 hover:bg-gray-800 border border-gray-800 hover:border-purple-500/50 rounded-xl p-3 flex items-center gap-3 transition-all"><FaTruck className="text-blue-400 text-lg" /> <span className="text-sm font-semibold">Tracker</span></a>
                   <a href="#" className="bg-gray-950/80 hover:bg-gray-800 border border-gray-800 hover:border-purple-500/50 rounded-xl p-3 flex items-center gap-3 transition-all"><FaUserTie className="text-amber-400 text-lg" /> <span className="text-sm font-semibold">Admin</span></a>
                   <a href="#" className="bg-gray-950/80 hover:bg-gray-800 border border-gray-800 hover:border-purple-500/50 rounded-xl p-3 flex items-center gap-3 transition-all"><FaDatabase className="text-indigo-400 text-lg" /> <span className="text-sm font-semibold">ERP</span></a>
                 </div>
+              </div>
+            )}
+
+            {/* CAIXA DE SELEÇÃO DE CLIENTE (VISÍVEL APENAS PARA O ADMIN) */}
+            {isAdmin && (
+              <div className="bg-gray-900/80 border border-gray-800 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-4 shadow-xl">
+                <div className="flex items-center gap-3 text-gray-300">
+                  <FaFilter className="text-blue-500" />
+                  <span className="font-semibold text-sm">Visualizar Roadmap de:</span>
+                </div>
+                <select 
+                  value={selectedClientView} 
+                  onChange={(e) => setSelectedClientView(e.target.value)}
+                  className="bg-gray-950 border border-gray-700 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full md:w-64 p-2.5 outline-none transition-colors"
+                >
+                  <option value="all">Todas as Etapas (Visão Geral)</option>
+                  {clientUsers.map(client => (
+                    <option key={client.id} value={client.username}>Cliente: {client.username}</option>
+                  ))}
+                </select>
               </div>
             )}
 
@@ -379,27 +420,36 @@ export default function AreaDoCliente() {
               </a>
             </div>
 
-            {/* GRÁFICO ROADMAP */}
+            {/* GRÁFICO ROADMAP OTIMIZADO */}
             <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 md:p-8 shadow-xl space-y-6">
               <h2 className="text-xl font-bold flex items-center gap-2 text-white"><FaChartPie className="text-blue-500" /> Resumo do Status do Roadmap</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
                 <div className="flex justify-center items-center">
-                  <div className="relative w-48 h-48 rounded-full p-2 shadow-2xl flex items-center justify-center" style={pieGradient}>
+                  <div className="relative w-48 h-48 rounded-full p-2 shadow-2xl flex items-center justify-center" style={chartData.gradient}>
                     <div className="w-32 h-32 bg-gray-950 rounded-full flex flex-col items-center justify-center border border-gray-800 shadow-inner">
-                      <span className="text-2xl font-extrabold text-white">{totalSteps}</span>
+                      <span className="text-2xl font-extrabold text-white">{chartData.total}</span>
                       <span className="text-[10px] uppercase font-semibold text-gray-400">Etapas Totais</span>
                     </div>
                   </div>
                 </div>
                 <div className="space-y-4">
-                  <div className="flex justify-between bg-gray-950 p-3.5 rounded-xl border border-emerald-500/20"><div className="flex items-center gap-3"><div className="w-3.5 h-3.5 rounded-full bg-emerald-500" /><span className="text-sm font-semibold">Concluídas</span></div><span className="text-sm font-bold text-emerald-400">{countCompleted} <span className="text-xs text-gray-500">({Math.round((countCompleted/totalSteps)*100 || 0)}%)</span></span></div>
-                  <div className="flex justify-between bg-gray-950 p-3.5 rounded-xl border border-blue-500/20"><div className="flex items-center gap-3"><div className="w-3.5 h-3.5 rounded-full bg-blue-500" /><span className="text-sm font-semibold">Em Desenvolvimento</span></div><span className="text-sm font-bold text-blue-400">{countInProgress} <span className="text-xs text-gray-500">({Math.round((countInProgress/totalSteps)*100 || 0)}%)</span></span></div>
-                  <div className="flex justify-between bg-gray-950 p-3.5 rounded-xl border border-gray-700"><div className="flex items-center gap-3"><div className="w-3.5 h-3.5 rounded-full bg-gray-600" /><span className="text-sm font-semibold">Planejadas</span></div><span className="text-sm font-bold text-gray-400">{countPlanned} <span className="text-xs text-gray-500">({Math.round((countPlanned/totalSteps)*100 || 0)}%)</span></span></div>
+                  <div className="flex justify-between bg-gray-950 p-3.5 rounded-xl border border-emerald-500/20">
+                    <div className="flex items-center gap-3"><div className="w-3.5 h-3.5 rounded-full bg-emerald-500" /><span className="text-sm font-semibold">Concluídas</span></div>
+                    <span className="text-sm font-bold text-emerald-400">{chartData.completed} <span className="text-xs text-gray-500">({chartData.pctComp}%)</span></span>
+                  </div>
+                  <div className="flex justify-between bg-gray-950 p-3.5 rounded-xl border border-blue-500/20">
+                    <div className="flex items-center gap-3"><div className="w-3.5 h-3.5 rounded-full bg-blue-500" /><span className="text-sm font-semibold">Em Desenvolvimento</span></div>
+                    <span className="text-sm font-bold text-blue-400">{chartData.inProgress} <span className="text-xs text-gray-500">({chartData.pctInProg}%)</span></span>
+                  </div>
+                  <div className="flex justify-between bg-gray-950 p-3.5 rounded-xl border border-gray-700">
+                    <div className="flex items-center gap-3"><div className="w-3.5 h-3.5 rounded-full bg-gray-600" /><span className="text-sm font-semibold">Planejadas</span></div>
+                    <span className="text-sm font-bold text-gray-400">{chartData.planned} <span className="text-xs text-gray-500">({chartData.pctPlan}%)</span></span>
+                  </div>
                 </div>
               </div>
             </div>
 
-            {/* TABELA DE DESENVOLVIMENTO */}
+            {/* TABELA DE DESENVOLVIMENTO OTIMIZADA */}
             <div className="bg-gray-900/70 border border-gray-800 rounded-2xl shadow-xl overflow-hidden">
               <div className="p-6 border-b border-gray-800 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -432,33 +482,26 @@ export default function AreaDoCliente() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-gray-950/80 border-b border-gray-800 text-xs uppercase tracking-wider text-gray-400">
-                      <th className="p-4 font-semibold">Status</th>
-                      <th className="p-4 font-semibold min-w-[250px]">Título da Etapa</th>
-                      <th className="p-4 font-semibold hidden md:table-cell">Progresso</th>
-                      <th className="p-4 font-semibold text-center">Mensagens</th>
-                      {isAdmin && <th className="p-4 font-semibold text-right">Ações</th>}
+                      <th className="p-4 font-semibold w-40">Status</th>
+                      <th className="p-4 font-semibold">Título da Etapa</th>
+                      <th className="p-4 font-semibold text-center w-32">Mensagens</th>
+                      {isAdmin && <th className="p-4 font-semibold text-right w-24">Ações</th>}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-800/50">
                     {filteredSteps.length === 0 && (
-                      <tr><td colSpan="5" className="p-8 text-center text-gray-500 text-sm">Nenhuma etapa encontrada.</td></tr>
+                      <tr><td colSpan="4" className="p-8 text-center text-gray-500 text-sm">Nenhuma etapa encontrada.</td></tr>
                     )}
                     {filteredSteps.map((step) => (
                       <tr key={step.id} onClick={() => setSelectedStep(step)} className="hover:bg-gray-800/30 transition-colors cursor-pointer group">
                         <td className="p-4 align-middle">
-                          {step.status === 'completed' && <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-md border border-emerald-500/20"><FaCheckCircle /> Feito</span>}
+                          {step.status === 'completed' && <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-md border border-emerald-500/20"><FaCheckCircle /> Concluído</span>}
                           {step.status === 'in_progress' && <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 text-xs font-semibold px-2.5 py-1 rounded-md border border-blue-500/20"><FaSpinner className="animate-spin" /> Em Dev</span>}
-                          {step.status === 'planned' && <span className="inline-flex items-center gap-1.5 bg-gray-800 text-gray-400 text-xs font-semibold px-2.5 py-1 rounded-md border border-gray-700"><FaClock /> Backlog</span>}
+                          {step.status === 'planned' && <span className="inline-flex items-center gap-1.5 bg-gray-800 text-gray-400 text-xs font-semibold px-2.5 py-1 rounded-md border border-gray-700"><FaClock /> Pendente</span>}
                         </td>
                         <td className="p-4 align-middle">
                           <h3 className="text-sm font-semibold text-gray-200 group-hover:text-blue-400">{step.title}</h3>
                           <p className="text-xs text-gray-500 truncate max-w-xs">{step.description}</p>
-                        </td>
-                        <td className="p-4 align-middle hidden md:table-cell w-48">
-                          <div className="flex items-center gap-3">
-                            <div className="w-full bg-gray-800 rounded-full h-1.5 overflow-hidden"><div className={`h-full rounded-full ${step.status === 'completed' ? 'bg-emerald-500' : step.status === 'in_progress' ? 'bg-blue-500' : 'bg-gray-600'}`} style={{ width: `${step.progress}%` }} /></div>
-                            <span className="text-xs font-medium text-gray-400">{step.progress}%</span>
-                          </div>
                         </td>
                         <td className="p-4 align-middle text-center">
                           <span className={`inline-flex items-center gap-1.5 bg-gray-950 px-3 py-1 rounded-lg border border-gray-800 text-xs ${step.comments && step.comments.length > 0 ? "text-blue-400" : "text-gray-600"}`}><FaCommentDots /> {step.comments ? step.comments.length : 0}</span>
@@ -578,11 +621,38 @@ export default function AreaDoCliente() {
                     <button onClick={() => setIsStepModalOpen(false)} className="text-gray-400 hover:text-white">✕</button>
                   </div>
                   <form onSubmit={handleSaveStep} className="space-y-4">
-                    <div><label className="block text-xs font-semibold text-gray-400 mb-1">Título</label><input type="text" required value={formTitle} onChange={(e) => setFormTitle(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500" /></div>
-                    <div><label className="block text-xs font-semibold text-gray-400 mb-1">Descrição</label><textarea rows={3} value={formDescription} onChange={(e) => setFormDescription(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500" /></div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div><label className="block text-xs font-semibold text-gray-400 mb-1">Status</label><select value={formStatus} onChange={(e) => setFormStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500"><option value="planned">Planejado</option><option value="in_progress">Em Dev</option><option value="completed">Concluído</option></select></div>
-                      <div><label className="block text-xs font-semibold text-gray-400 mb-1">Progresso ({formProgress}%)</label><input type="range" min="0" max="100" value={formProgress} onChange={(e) => setFormProgress(e.target.value)} className="w-full mt-3" /></div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 mb-1">Título</label>
+                      <input type="text" required value={formTitle} onChange={(e) => setFormTitle(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500" />
+                    </div>
+                    
+                    {/* Campo de Cliente (Visível ao criar/editar etapa) */}
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 mb-1">Pertence ao Cliente:</label>
+                      <select 
+                        required 
+                        value={formClientOwner} 
+                        onChange={(e) => setFormClientOwner(e.target.value)} 
+                        className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500"
+                      >
+                        <option value="" disabled>Selecione um cliente</option>
+                        {clientUsers.map(client => (
+                          <option key={client.id} value={client.username}>{client.username}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 mb-1">Descrição</label>
+                      <textarea rows={3} value={formDescription} onChange={(e) => setFormDescription(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-400 mb-1">Status</label>
+                      <select value={formStatus} onChange={(e) => setFormStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500">
+                        <option value="planned">Pendente</option>
+                        <option value="in_progress">Em Dev</option>
+                        <option value="completed">Concluído</option>
+                      </select>
                     </div>
                     <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
                       <button type="button" onClick={() => setIsStepModalOpen(false)} className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-400 hover:text-white border border-gray-800">Cancelar</button>
