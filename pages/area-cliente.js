@@ -6,7 +6,7 @@ import {
   FaCommentDots, FaPaperPlane, FaLock, FaExternalLinkAlt,
   FaPlus, FaEdit, FaTrashAlt, FaUserShield, FaChartPie,
   FaGoogleDrive, FaUserTie, FaDatabase, FaSearch,
-  FaKey, FaUsers, FaUser, FaUserCircle, FaFilter
+  FaKey, FaUsers, FaUser, FaUserCircle, FaFilter, FaExclamationCircle
 } from 'react-icons/fa';
 
 export default function AreaDoCliente() {
@@ -33,7 +33,7 @@ export default function AreaDoCliente() {
   const [editingStep, setEditingStep] = useState(null);
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
-  const [formStatus, setFormStatus] = useState('Em desenvolvimento'); // Atualizado para PT
+  const [formStatus, setFormStatus] = useState('Em desenvolvimento');
   const [formClientOwner, setFormClientOwner] = useState('');
   const [newComment, setNewComment] = useState('');
 
@@ -271,26 +271,35 @@ export default function AreaDoCliente() {
     return steps.filter(s => s.client_owner === currentUser.username);
   }, [steps, currentUser, isAdmin, selectedClientView]);
 
-  // 2. Calcula os dados do gráfico em pizza adaptado para os textos em Português
+  // 2. Calcula os dados do gráfico em pizza com a nova categoria "Pendente em atraso"
   const chartData = useMemo(() => {
     const total = userSteps.length;
-    // Opcional: Adicionamos os termos em inglês só por segurança caso ainda exista algum no banco
+    
     const completed = userSteps.filter((s) => s.status === 'Concluído' || s.status === 'completed').length;
     const inProgress = userSteps.filter((s) => s.status === 'Em desenvolvimento' || s.status === 'in_progress').length;
+    const delayed = userSteps.filter((s) => s.status === 'Pendente em atraso').length;
     const planned = userSteps.filter((s) => s.status === 'Pendente' || s.status === 'planned').length;
 
     const pctComp = total ? Math.round((completed / total) * 100) : 0;
     const pctInProg = total ? Math.round((inProgress / total) * 100) : 0;
+    const pctDelayed = total ? Math.round((delayed / total) * 100) : 0;
     const pctPlan = total ? Math.round((planned / total) * 100) : 0;
 
+    // Cálculo dos graus para o gradiente cônico (Verde -> Azul -> Vermelho -> Cinza)
     const degComp = (completed / (total || 1)) * 360;
     const degInProg = degComp + (inProgress / (total || 1)) * 360;
+    const degDelayed = degInProg + (delayed / (total || 1)) * 360;
 
     const gradient = {
-      background: `conic-gradient(#10b981 0deg ${degComp}deg, #3b82f6 ${degComp}deg ${degInProg}deg, #374151 ${degInProg}deg 360deg)`
+      background: `conic-gradient(
+        #10b981 0deg ${degComp}deg, 
+        #3b82f6 ${degComp}deg ${degInProg}deg, 
+        #ef4444 ${degInProg}deg ${degDelayed}deg, 
+        #374151 ${degDelayed}deg 360deg
+      )`
     };
 
-    return { total, completed, inProgress, planned, pctComp, pctInProg, pctPlan, gradient };
+    return { total, completed, inProgress, delayed, planned, pctComp, pctInProg, pctDelayed, pctPlan, gradient };
   }, [userSteps]);
 
   // 3. Aplica os filtros secundários (Busca por texto e Abas de Status)
@@ -298,7 +307,6 @@ export default function AreaDoCliente() {
     return userSteps.filter((step) => {
       const matchSearch = step.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
                           (step.description && step.description.toLowerCase().includes(searchTerm.toLowerCase()));
-      // Ajustado para bater com as abas exatas em PT-BR
       const matchStatus = filterStatus === 'all' ? true : step.status === filterStatus;
       return matchSearch && matchStatus;
     });
@@ -392,7 +400,6 @@ export default function AreaDoCliente() {
             {/* CAIXA DE SELEÇÃO DE CLIENTE (VISÍVEL APENAS PARA O ADMIN) */}
             {isAdmin && (
               <div className="bg-gradient-to-r from-gray-900 to-gray-900/80 border border-gray-800 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-5 shadow-xl relative overflow-hidden">
-                {/* Linha de destaque lateral */}
                 <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
                 
                 <div className="flex items-center gap-3 text-gray-300 min-w-max">
@@ -402,20 +409,20 @@ export default function AreaDoCliente() {
                   <span className="font-bold text-sm tracking-wide text-white uppercase">Visualizar Roadmap de:</span>
                 </div>
                 
-                {/* Container relativo para a nova seta customizada */}
                 <div className="relative w-full md:w-72">
                   <select 
                     value={selectedClientView} 
                     onChange={(e) => setSelectedClientView(e.target.value)}
                     className="w-full appearance-none bg-gray-950 border border-gray-700 text-white text-sm font-medium rounded-xl pl-4 pr-10 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all cursor-pointer hover:border-blue-500/80 shadow-inner"
                   >
-                    <option value="all">Ração</option>
+                   <option value="all">Visão Geral (Todos)</option>
                     {clientUsers.map(client => (
-                      <option key={client.id} value={client.username}>Cliente: {client.username}</option>
+                      <option key={client.id} value={client.username}>
+                        {client.username === 'adoro_frango' ? "Ad'oro Frango" : client.username === 'adoro_racao' ? "Ad'oro Ração" : `Cliente: ${client.username}`}
+                      </option>
                     ))}
                   </select>
                   
-                  {/* Seta Customizada Elegante */}
                   <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-blue-500">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
@@ -425,10 +432,22 @@ export default function AreaDoCliente() {
               </div>
             )}
 
-            {/* GRÁFICO ROADMAP OTIMIZADO */}
+            {/* SEÇÃO RASTREAMENTO */}
+            <div className="bg-gradient-to-r from-blue-900/40 via-gray-900 to-gray-900 border border-blue-500/30 rounded-2xl p-6 md:p-8 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+              <div className="space-y-2 max-w-xl">
+                <span className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 text-xs font-semibold px-3 py-1 rounded-full border border-blue-500/20"><FaTruck /> Plataforma de Rastreamento 24h</span>
+                <h2 className="text-2xl font-bold">Acessar Sistema de Monitoramento</h2>
+                <p className="text-gray-300 text-sm">Visualize sua frota em tempo real e relatórios de telemetria diretamente no portal oficial.</p>
+              </div>
+              <a href="https://tracker.fullvision.one/v1/home" target="_blank" rel="noopener noreferrer" className="w-full md:w-auto inline-flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-3.5 rounded-xl shadow-lg transition-all hover:scale-105">
+                Abrir Plataforma <FaExternalLinkAlt className="text-sm" />
+              </a>
+            </div>
+
+            {/* GRÁFICO ROADMAP OTIMIZADO COM O NOVO STATUS */}
             <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 md:p-8 shadow-xl space-y-6">
               <h2 className="text-xl font-bold flex items-center gap-2 text-white"><FaChartPie className="text-blue-500" /> Resumo do Status do Roadmap</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                 <div className="flex justify-center items-center">
                   <div className="relative w-48 h-48 rounded-full p-2 shadow-2xl flex items-center justify-center" style={chartData.gradient}>
                     <div className="w-32 h-32 bg-gray-950 rounded-full flex flex-col items-center justify-center border border-gray-800 shadow-inner">
@@ -437,18 +456,26 @@ export default function AreaDoCliente() {
                     </div>
                   </div>
                 </div>
-                <div className="space-y-4">
-                  <div className="flex justify-between bg-gray-950 p-3.5 rounded-xl border border-emerald-500/20">
-                    <div className="flex items-center gap-3"><div className="w-3.5 h-3.5 rounded-full bg-emerald-500" /><span className="text-sm font-semibold">Concluídas</span></div>
-                    <span className="text-sm font-bold text-emerald-400">{chartData.completed} <span className="text-xs text-gray-500">({chartData.pctComp}%)</span></span>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col bg-gray-950 p-4 rounded-xl border border-emerald-500/20">
+                    <div className="flex items-center gap-2 mb-2"><div className="w-3 h-3 rounded-full bg-emerald-500" /><span className="text-xs font-semibold text-gray-300">Concluídas</span></div>
+                    <span className="text-xl font-bold text-emerald-400">{chartData.completed} <span className="text-xs text-gray-500 font-medium">({chartData.pctComp}%)</span></span>
                   </div>
-                  <div className="flex justify-between bg-gray-950 p-3.5 rounded-xl border border-blue-500/20">
-                    <div className="flex items-center gap-3"><div className="w-3.5 h-3.5 rounded-full bg-blue-500" /><span className="text-sm font-semibold">Em Desenvolvimento</span></div>
-                    <span className="text-sm font-bold text-blue-400">{chartData.inProgress} <span className="text-xs text-gray-500">({chartData.pctInProg}%)</span></span>
+                  
+                  <div className="flex flex-col bg-gray-950 p-4 rounded-xl border border-blue-500/20">
+                    <div className="flex items-center gap-2 mb-2"><div className="w-3 h-3 rounded-full bg-blue-500" /><span className="text-xs font-semibold text-gray-300">Em Desenvolv.</span></div>
+                    <span className="text-xl font-bold text-blue-400">{chartData.inProgress} <span className="text-xs text-gray-500 font-medium">({chartData.pctInProg}%)</span></span>
                   </div>
-                  <div className="flex justify-between bg-gray-950 p-3.5 rounded-xl border border-gray-700">
-                    <div className="flex items-center gap-3"><div className="w-3.5 h-3.5 rounded-full bg-gray-600" /><span className="text-sm font-semibold">Pendentes</span></div>
-                    <span className="text-sm font-bold text-gray-400">{chartData.planned} <span className="text-xs text-gray-500">({chartData.pctPlan}%)</span></span>
+
+                  <div className="flex flex-col bg-gray-950 p-4 rounded-xl border border-red-500/20">
+                    <div className="flex items-center gap-2 mb-2"><div className="w-3 h-3 rounded-full bg-red-500" /><span className="text-xs font-semibold text-gray-300">Atrasadas</span></div>
+                    <span className="text-xl font-bold text-red-400">{chartData.delayed} <span className="text-xs text-gray-500 font-medium">({chartData.pctDelayed}%)</span></span>
+                  </div>
+                  
+                  <div className="flex flex-col bg-gray-950 p-4 rounded-xl border border-gray-700">
+                    <div className="flex items-center gap-2 mb-2"><div className="w-3 h-3 rounded-full bg-gray-600" /><span className="text-xs font-semibold text-gray-300">Pendentes</span></div>
+                    <span className="text-xl font-bold text-gray-400">{chartData.planned} <span className="text-xs text-gray-500 font-medium">({chartData.pctPlan}%)</span></span>
                   </div>
                 </div>
               </div>
@@ -470,8 +497,8 @@ export default function AreaDoCliente() {
 
                 <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-gray-950/50 p-2 rounded-xl border border-gray-800">
                   <div className="flex gap-1 overflow-x-auto w-full md:w-auto">
-                    {/* Botões ajustados para os novos nomes */}
-                    {['all', 'Em desenvolvimento', 'Pendente', 'Concluído'].map(status => (
+                    {/* Botões ajustados para incluir o atraso */}
+                    {['all', 'Em desenvolvimento', 'Pendente', 'Pendente em atraso', 'Concluído'].map(status => (
                       <button key={status} onClick={() => setFilterStatus(status)} className={`px-4 py-2 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${filterStatus === status ? 'bg-gray-800 text-white border border-gray-700' : 'text-gray-400 hover:text-white'}`}>
                         {status === 'all' ? 'Todas' : status}
                       </button>
@@ -501,9 +528,9 @@ export default function AreaDoCliente() {
                     {filteredSteps.map((step) => (
                       <tr key={step.id} onClick={() => setSelectedStep(step)} className="hover:bg-gray-800/30 transition-colors cursor-pointer group">
                         <td className="p-4 align-middle">
-                          {/* Verificações de exibição alinhadas ao Português (com fallback pro inglês por segurança) */}
                           {(step.status === 'Concluído' || step.status === 'completed') && <span className="inline-flex items-center gap-1.5 bg-emerald-500/10 text-emerald-400 text-xs font-semibold px-2.5 py-1 rounded-md border border-emerald-500/20"><FaCheckCircle /> Concluído</span>}
                           {(step.status === 'Em desenvolvimento' || step.status === 'in_progress') && <span className="inline-flex items-center gap-1.5 bg-blue-500/10 text-blue-400 text-xs font-semibold px-2.5 py-1 rounded-md border border-blue-500/20"><FaSpinner className="animate-spin" /> Em Dev</span>}
+                          {(step.status === 'Pendente em atraso') && <span className="inline-flex items-center gap-1.5 bg-red-500/10 text-red-400 text-xs font-semibold px-2.5 py-1 rounded-md border border-red-500/20"><FaExclamationCircle /> Em Atraso</span>}
                           {(step.status === 'Pendente' || step.status === 'planned') && <span className="inline-flex items-center gap-1.5 bg-gray-800 text-gray-400 text-xs font-semibold px-2.5 py-1 rounded-md border border-gray-700"><FaClock /> Pendente</span>}
                         </td>
                         <td className="p-4 align-middle">
@@ -532,7 +559,7 @@ export default function AreaDoCliente() {
             {/* MODAIS DO SISTEMA                                        */}
             {/* ======================================================== */}
 
-            {/* 1. Modal Trocar Senha (Meu Perfil) */}
+            {/* 1. Modal Trocar Senha */}
             {isProfileModalOpen && (
               <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
                 <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 space-y-6">
@@ -551,7 +578,7 @@ export default function AreaDoCliente() {
               </div>
             )}
 
-            {/* 2. Modal Gerenciar Usuários (Apenas Admin) */}
+            {/* 2. Modal Gerenciar Usuários */}
             {isAdminUsersModalOpen && isAdmin && (
               <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
                 <div className="bg-gray-900 border border-purple-500/30 rounded-2xl max-w-3xl w-full p-6 space-y-6 max-h-[90vh] overflow-y-auto">
@@ -596,8 +623,10 @@ export default function AreaDoCliente() {
                 <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-2xl w-full p-6 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto">
                   <div className="flex justify-between items-start border-b border-gray-800 pb-4">
                     <div>
-                      <span className="text-xs uppercase font-semibold text-blue-400">
-                        {selectedStep.status === 'Concluído' || selectedStep.status === 'completed' ? 'Concluído' : selectedStep.status === 'Em desenvolvimento' || selectedStep.status === 'in_progress' ? 'Em Desenvolvimento' : 'Pendente'}
+                      <span className={`text-xs uppercase font-semibold ${selectedStep.status === 'Pendente em atraso' ? 'text-red-400' : 'text-blue-400'}`}>
+                        {selectedStep.status === 'Concluído' || selectedStep.status === 'completed' ? 'Concluído' : 
+                         selectedStep.status === 'Em desenvolvimento' || selectedStep.status === 'in_progress' ? 'Em Desenvolvimento' : 
+                         selectedStep.status === 'Pendente em atraso' ? 'Pendente em atraso' : 'Pendente'}
                       </span>
                       <h3 className="text-xl font-bold mt-1 text-white">{selectedStep.title}</h3>
                     </div>
@@ -659,11 +688,12 @@ export default function AreaDoCliente() {
                       <textarea rows={3} value={formDescription} onChange={(e) => setFormDescription(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500" />
                     </div>
                     
-                    {/* Alterado para os valores em Português */}
+                    {/* Select de Status atualizado */}
                     <div>
                       <label className="block text-xs font-semibold text-gray-400 mb-1">Status</label>
                       <select value={formStatus} onChange={(e) => setFormStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500">
                         <option value="Pendente">Pendente</option>
+                        <option value="Pendente em atraso">Pendente em atraso</option>
                         <option value="Em desenvolvimento">Em desenvolvimento</option>
                         <option value="Concluído">Concluído</option>
                       </select>
