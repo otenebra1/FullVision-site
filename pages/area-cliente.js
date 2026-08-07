@@ -391,21 +391,37 @@ export default function AreaDoCliente() {
 
             {/* CAIXA DE SELEÇÃO DE CLIENTE (VISÍVEL APENAS PARA O ADMIN) */}
             {isAdmin && (
-              <div className="bg-gray-900/80 border border-gray-800 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-4 shadow-xl">
-                <div className="flex items-center gap-3 text-gray-300">
-                  <FaFilter className="text-blue-500" />
-                  <span className="font-semibold text-sm">Visualizar Roadmap de:</span>
+              <div className="bg-gradient-to-r from-gray-900 to-gray-900/80 border border-gray-800 rounded-2xl p-6 flex flex-col md:flex-row items-center gap-5 shadow-xl relative overflow-hidden">
+                {/* Linha de destaque lateral */}
+                <div className="absolute top-0 left-0 w-1 h-full bg-blue-500"></div>
+                
+                <div className="flex items-center gap-3 text-gray-300 min-w-max">
+                  <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center border border-blue-500/20">
+                    <FaFilter className="text-blue-500" />
+                  </div>
+                  <span className="font-bold text-sm tracking-wide text-white uppercase">Visualizar Roadmap de:</span>
                 </div>
-                <select 
-                  value={selectedClientView} 
-                  onChange={(e) => setSelectedClientView(e.target.value)}
-                  className="bg-gray-950 border border-gray-700 text-white text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full md:w-64 p-2.5 outline-none transition-colors"
-                >
-                  <option value="all">Todas as Etapas (Visão Geral)</option>
-                  {clientUsers.map(client => (
-                    <option key={client.id} value={client.username}>Cliente: {client.username}</option>
-                  ))}
-                </select>
+                
+                {/* Container relativo para a nova seta customizada */}
+                <div className="relative w-full md:w-72">
+                  <select 
+                    value={selectedClientView} 
+                    onChange={(e) => setSelectedClientView(e.target.value)}
+                    className="w-full appearance-none bg-gray-950 border border-gray-700 text-white text-sm font-medium rounded-xl pl-4 pr-10 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all cursor-pointer hover:border-blue-500/80 shadow-inner"
+                  >
+                    <option value="all">Ração</option>
+                    {clientUsers.map(client => (
+                      <option key={client.id} value={client.username}>Cliente: {client.username}</option>
+                    ))}
+                  </select>
+                  
+                  {/* Seta Customizada Elegante */}
+                  <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-blue-500">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </div>
+                </div>
               </div>
             )}
 
