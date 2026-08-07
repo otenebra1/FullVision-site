@@ -20,9 +20,10 @@ export default function AreaDoCliente() {
 
   // Autenticação
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [usernameInput, setUsernameInput] = useState('');
+  const [emailInput, setEmailInput] = useState('');
   const [passwordInput, setPasswordInput] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
 
   // Filtros e Modais (Roadmap)
   const [searchTerm, setSearchTerm] = useState('');
@@ -45,21 +46,42 @@ export default function AreaDoCliente() {
   const [isAdminUsersModalOpen, setIsAdminUsersModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
   const [userFormName, setUserFormName] = useState('');
+  const [userFormEmail, setUserFormEmail] = useState('');
   const [userFormPassword, setUserFormPassword] = useState('');
   const [userFormRole, setUserFormRole] = useState('cliente');
+  const [userFormTrackingUrl, setUserFormTrackingUrl] = useState('');
 
   // ==========================================
-  // BUSCA INICIAL DE DADOS (SUPABASE)
+  // BUSCA INICIAL DE DADOS + SESSÃO (SUPABASE AUTH)
   // ==========================================
   useEffect(() => {
-    fetchInitialData();
+    const init = async () => {
+      await fetchInitialData();
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        await loadCurrentUserProfile(session.user.id);
+      }
+      setAuthChecked(true);
+    };
+    init();
+
+    // Mantém o estado sincronizado caso a sessão expire/seja revogada em outra aba
+    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'SIGNED_OUT') {
+        setCurrentUser(null);
+        setIsLoggedIn(false);
+      }
+    });
+
+    return () => authListener.subscription.unsubscribe();
   }, []);
 
   const fetchInitialData = async () => {
     setIsLoading(true);
-    
-    const { data: usersData, error: usersError } = await supabase.from('users').select('*');
-    if (!usersError && usersData) setUsers(usersData);
+
+    const { data: profilesData, error: profilesError } = await supabase.from('profiles').select('*');
+    if (!profilesError && profilesData) setUsers(profilesData);
 
     const { data: stepsData, error: stepsError } = await supabase.from('steps').select('*');
     const { data: commentsData, error: commentsError } = await supabase.from('comments').select('*');
@@ -80,42 +102,53 @@ export default function AreaDoCliente() {
     setIsLoading(false);
   };
 
-  // ==========================================
-  // LÓGICA DE LOGIN E PERFIL
-  // ==========================================
-  const handleLogin = (e) => {
-    e.preventDefault();
-    const userFound = users.find(u => u.username === usernameInput && u.password === passwordInput);
-    
-    if (userFound) {
-      setCurrentUser(userFound);
+  // Busca o perfil (username, role, tracking_url) do usuário autenticado
+  const loadCurrentUserProfile = async (userId) => {
+    const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    if (!error && profile) {
+      setCurrentUser(profile);
       setIsLoggedIn(true);
-      setUsernameInput('');
-      setPasswordInput('');
-    } else {
-      if (usernameInput === 'admin' && passwordInput === '123' && users.length === 0) {
-         setCurrentUser({ id: 999, username: 'admin', role: 'admin' });
-         setIsLoggedIn(true);
-         alert("Modo de Emergência Admin Ativado. Crie seu primeiro usuário no banco!");
-      } else {
-         alert('Usuário ou senha incorretos!');
-      }
     }
+  };
+
+  // ==========================================
+  // LÓGICA DE LOGIN E PERFIL (SUPABASE AUTH)
+  // ==========================================
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: emailInput,
+      password: passwordInput,
+    });
+
+    if (error || !data?.user) {
+      alert('Email ou senha incorretos!');
+      return;
+    }
+
+    await loadCurrentUserProfile(data.user.id);
+    setEmailInput('');
+    setPasswordInput('');
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setCurrentUser(null);
+    setIsLoggedIn(false);
+    setIsNotifOpen(false);
   };
 
   const handleUpdateOwnPassword = async (e) => {
     e.preventDefault();
     if (!ownNewPassword.trim()) return;
 
-    const { error } = await supabase.from('users').update({ password: ownNewPassword }).eq('id', currentUser.id);
-    
+    const { error } = await supabase.auth.updateUser({ password: ownNewPassword });
+
     if (error) {
       alert("Erro ao alterar senha.");
       return;
     }
 
-    setUsers(users.map(u => u.id === currentUser.id ? { ...u, password: ownNewPassword } : u));
-    setCurrentUser({ ...currentUser, password: ownNewPassword });
     setOwnNewPassword('');
     setIsProfileModalOpen(false);
     alert('Senha alterada com sucesso!');
@@ -123,32 +156,84 @@ export default function AreaDoCliente() {
 
   // ==========================================
   // LÓGICA DE GESTÃO DE USUÁRIOS (SÓ ADMIN)
+  // Passa a chamar API routes protegidas, que usam a service_role key
+  // no servidor (criar/editar usuário em auth.users é operação privilegiada)
   // ==========================================
+  const getAuthToken = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.access_token;
+  };
+
   const openUserForm = (user = null) => {
     if (user) {
-      setEditingUser(user); setUserFormName(user.username); setUserFormPassword(user.password); setUserFormRole(user.role);
+      setEditingUser(user);
+      setUserFormName(user.username);
+      setUserFormEmail(''); // edição não altera e-mail nesta versão
+      setUserFormPassword('');
+      setUserFormRole(user.role);
+      setUserFormTrackingUrl(user.tracking_url || '');
     } else {
-      setEditingUser(null); setUserFormName(''); setUserFormPassword(''); setUserFormRole('cliente');
+      setEditingUser(null);
+      setUserFormName('');
+      setUserFormEmail('');
+      setUserFormPassword('');
+      setUserFormRole('cliente');
+      setUserFormTrackingUrl('');
     }
   };
 
   const handleSaveUser = async (e) => {
     e.preventDefault();
+    const token = await getAuthToken();
+
     if (editingUser) {
-      const { data, error } = await supabase.from('users').update({ username: userFormName, password: userFormPassword, role: userFormRole }).eq('id', editingUser.id).select();
-      if (!error && data) setUsers(users.map(u => u.id === editingUser.id ? data[0] : u));
+      const res = await fetch('/api/update-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          userId: editingUser.id,
+          username: userFormName,
+          role: userFormRole,
+          trackingUrl: userFormTrackingUrl,
+          newPassword: userFormPassword || undefined, // só reseta se preenchido
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) { alert(result.error || 'Erro ao editar usuário.'); return; }
+      setUsers(users.map(u => u.id === editingUser.id ? result.profile : u));
     } else {
-      const { data, error } = await supabase.from('users').insert([{ username: userFormName, password: userFormPassword, role: userFormRole }]).select();
-      if (!error && data) setUsers([...users, data[0]]);
+      const res = await fetch('/api/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          email: userFormEmail,
+          password: userFormPassword,
+          username: userFormName,
+          role: userFormRole,
+          trackingUrl: userFormTrackingUrl,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok) { alert(result.error || 'Erro ao criar usuário.'); return; }
+      setUsers([...users, result.profile]);
     }
-    setEditingUser(null); setUserFormName(''); setUserFormPassword('');
+
+    setEditingUser(null);
+    setUserFormName(''); setUserFormEmail(''); setUserFormPassword(''); setUserFormTrackingUrl('');
   };
 
   const handleDeleteUser = async (userId) => {
     if (userId === currentUser.id) return alert('Você não pode excluir a si mesmo!');
     if (confirm('Tem certeza que deseja excluir este usuário?')) {
-      const { error } = await supabase.from('users').delete().eq('id', userId);
-      if (!error) setUsers(users.filter(u => u.id !== userId));
+      const token = await getAuthToken();
+      const res = await fetch('/api/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ userId }),
+      });
+      const result = await res.json();
+      if (!res.ok) { alert(result.error || 'Erro ao excluir usuário.'); return; }
+      setUsers(users.filter(u => u.id !== userId));
     }
   };
 
@@ -304,7 +389,7 @@ export default function AreaDoCliente() {
     });
   }, [userSteps, searchTerm, filterStatus]);
 
-  if (isLoading) {
+  if (isLoading || !authChecked) {
     return (
       <div className="min-h-screen bg-gray-950 flex flex-col items-center justify-center text-white">
         <FaSpinner className="animate-spin text-4xl text-blue-500 mb-4" />
@@ -326,7 +411,7 @@ export default function AreaDoCliente() {
               <h1 className="text-2xl font-bold">Portal de Acesso</h1>
             </div>
             <form onSubmit={handleLogin} className="space-y-4">
-              <div><label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Usuário</label><input type="text" required value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} className="w-full bg-gray-800/80 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" /></div>
+              <div><label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Email</label><input type="email" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} className="w-full bg-gray-800/80 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" /></div>
               <div><label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Senha</label><input type="password" required value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} className="w-full bg-gray-800/80 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" /></div>
               <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg transition-all">Entrar</button>
             </form>
@@ -335,7 +420,7 @@ export default function AreaDoCliente() {
           /* ================= PAINEL LOGADO ================= */
           <div className="space-y-10">
             {/* Header com Perfil e SINO DE NOTIFICAÇÃO */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-900/60 border border-gray-800 rounded-2xl p-6 backdrop-blur-md">
+            <div className="relative z-40 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-900/60 border border-gray-800 rounded-2xl p-6 backdrop-blur-md">
               <div>
                 <div className="flex items-center gap-3">
                   <h1 className="text-2xl font-bold text-white flex items-center gap-2">
@@ -382,7 +467,7 @@ export default function AreaDoCliente() {
                 {/* FIM DO COMPONENTE DO SINO */}
 
                 <button onClick={() => setIsProfileModalOpen(true)} className="flex items-center gap-2 text-xs font-medium text-gray-300 hover:text-white bg-gray-800 hover:bg-gray-700 transition-colors border border-gray-700 px-3 py-2 rounded-lg"><FaKey /> Trocar Senha</button>
-                <button onClick={() => { setIsLoggedIn(false); setCurrentUser(null); setIsNotifOpen(false); }} className="text-xs font-medium text-gray-400 hover:text-red-400 transition-colors border border-gray-700 px-3 py-2 rounded-lg">Sair</button>
+                <button onClick={handleLogout} className="text-xs font-medium text-gray-400 hover:text-red-400 transition-colors border border-gray-700 px-3 py-2 rounded-lg">Sair</button>
               </div>
             </div>
 
@@ -431,7 +516,7 @@ export default function AreaDoCliente() {
                 <h2 className="text-2xl font-bold">Acessar Sistema de Monitoramento</h2>
                 <p className="text-gray-300 text-sm">Visualize sua frota em tempo real e relatórios de telemetria diretamente no portal oficial.</p>
               </div>
-              <a href="https://tracker.fullvision.one/v1/home" target="_blank" rel="noopener noreferrer" className="w-full md:w-auto inline-flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-3.5 rounded-xl shadow-lg transition-all hover:scale-105">Abrir Plataforma <FaExternalLinkAlt className="text-sm" /></a>
+              <a href={currentUser?.tracking_url || 'https://tracker.fullvision.one/v1/home'} target="_blank" rel="noopener noreferrer" className="w-full md:w-auto inline-flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-3.5 rounded-xl shadow-lg transition-all hover:scale-105">Abrir Plataforma <FaExternalLinkAlt className="text-sm" /></a>
             </div>
 
             {/* GRÁFICO ROADMAP OTIMIZADO */}
@@ -540,19 +625,27 @@ export default function AreaDoCliente() {
                     <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaUsers className="text-purple-400"/> Gerenciamento de Usuários</h3>
                     <button onClick={() => setIsAdminUsersModalOpen(false)} className="text-gray-400 hover:text-white"><FaTimes/></button>
                   </div>
-                  <form onSubmit={handleSaveUser} className="bg-gray-950 p-4 rounded-xl border border-gray-800 flex flex-col md:flex-row gap-4 items-end">
-                    <div className="flex-1 w-full"><label className="block text-xs text-gray-400 mb-1">Usuário</label><input type="text" required value={userFormName} onChange={e => setUserFormName(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500" /></div>
-                    <div className="flex-1 w-full"><label className="block text-xs text-gray-400 mb-1">Senha</label><input type="text" required value={userFormPassword} onChange={e => setUserFormPassword(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500" /></div>
-                    <div className="w-full md:w-32"><label className="block text-xs text-gray-400 mb-1">Cargo</label><select value={userFormRole} onChange={e => setUserFormRole(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500"><option value="cliente">Cliente</option><option value="admin">Admin</option></select></div>
-                    <button type="submit" className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">{editingUser ? 'Salvar Edição' : '+ Adicionar'}</button>
-                    {editingUser && <button type="button" onClick={() => openUserForm(null)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>}
+                  <form onSubmit={handleSaveUser} className="bg-gray-950 p-4 rounded-xl border border-gray-800 space-y-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="flex-1 w-full"><label className="block text-xs text-gray-400 mb-1">Usuário (nome de exibição)</label><input type="text" required value={userFormName} onChange={e => setUserFormName(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500" /></div>
+                      <div className="w-full md:w-32"><label className="block text-xs text-gray-400 mb-1">Cargo</label><select value={userFormRole} onChange={e => setUserFormRole(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500"><option value="cliente">Cliente</option><option value="admin">Admin</option></select></div>
+                    </div>
+                    {!editingUser && (
+                      <div className="flex-1 w-full"><label className="block text-xs text-gray-400 mb-1">Email de acesso</label><input type="email" required value={userFormEmail} onChange={e => setUserFormEmail(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500" /></div>
+                    )}
+                    <div className="flex-1 w-full"><label className="block text-xs text-gray-400 mb-1">{editingUser ? 'Nova senha (deixe em branco para manter)' : 'Senha inicial'}</label><input type="text" required={!editingUser} value={userFormPassword} onChange={e => setUserFormPassword(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500" /></div>
+                    <div className="flex-1 w-full"><label className="block text-xs text-gray-400 mb-1">Link da plataforma de rastreio</label><input type="url" value={userFormTrackingUrl} onChange={e => setUserFormTrackingUrl(e.target.value)} placeholder="https://tracker.fullvision.one/..." className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500" /></div>
+                    <div className="flex gap-3">
+                      <button type="submit" className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg text-sm font-semibold whitespace-nowrap">{editingUser ? 'Salvar Edição' : '+ Adicionar'}</button>
+                      {editingUser && <button type="button" onClick={() => openUserForm(null)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>}
+                    </div>
                   </form>
                   <div className="border border-gray-800 rounded-xl overflow-hidden">
                     <table className="w-full text-left text-sm">
-                      <thead className="bg-gray-950 text-gray-400 text-xs uppercase"><tr><th className="p-3">Usuário</th><th className="p-3">Senha</th><th className="p-3">Cargo</th><th className="p-3 text-right">Ações</th></tr></thead>
+                      <thead className="bg-gray-950 text-gray-400 text-xs uppercase"><tr><th className="p-3">Usuário</th><th className="p-3">Cargo</th><th className="p-3">Link de Rastreio</th><th className="p-3 text-right">Ações</th></tr></thead>
                       <tbody className="divide-y divide-gray-800">
                         {users.map(u => (
-                          <tr key={u.id} className="hover:bg-gray-800/50"><td className="p-3 text-white font-medium"><FaUser className="inline text-gray-500 mr-2"/>{u.username}</td><td className="p-3 text-gray-400 font-mono">{u.password}</td><td className="p-3">{u.role === 'admin' ? <span className="text-purple-400 text-xs font-bold bg-purple-500/10 px-2 py-1 rounded">ADMIN</span> : <span className="text-blue-400 text-xs font-bold bg-blue-500/10 px-2 py-1 rounded">CLIENTE</span>}</td><td className="p-3 text-right"><button onClick={() => openUserForm(u)} className="text-gray-400 hover:text-blue-400 p-2"><FaEdit /></button><button onClick={() => handleDeleteUser(u.id)} className="text-gray-400 hover:text-red-400 p-2"><FaTrashAlt /></button></td></tr>
+                          <tr key={u.id} className="hover:bg-gray-800/50"><td className="p-3 text-white font-medium"><FaUser className="inline text-gray-500 mr-2"/>{u.username}</td><td className="p-3">{u.role === 'admin' ? <span className="text-purple-400 text-xs font-bold bg-purple-500/10 px-2 py-1 rounded">ADMIN</span> : <span className="text-blue-400 text-xs font-bold bg-blue-500/10 px-2 py-1 rounded">CLIENTE</span>}</td><td className="p-3 text-gray-400 text-xs truncate max-w-[160px]">{u.tracking_url || '—'}</td><td className="p-3 text-right"><button onClick={() => openUserForm(u)} className="text-gray-400 hover:text-blue-400 p-2"><FaEdit /></button><button onClick={() => handleDeleteUser(u.id)} className="text-gray-400 hover:text-red-400 p-2"><FaTrashAlt /></button></td></tr>
                         ))}
                       </tbody>
                     </table>
