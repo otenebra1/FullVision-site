@@ -533,13 +533,17 @@ export default function AreaDoCliente() {
     const placa = data.veiculos?.placa || data.placa_nova || 'veículo';
     const acao = decision === 'confirmado' ? 'confirmou' : 'recusou';
     const motivoTexto = decision === 'recusado' && motivo ? ` Motivo: ${motivo}` : '';
-    const { data: nData, error: nError } = await supabase.from('notifications').insert([{
-      target_user: 'admin',
-      message: `${data.empresas?.nome || 'Cliente'} ${acao} a data proposta para o serviço em ${placa}.${motivoTexto}`,
-      is_read: false,
-    }]).select();
-    if (nError) console.error('Erro ao notificar admin:', nError);
-    if (nData) setNotifications(prev => [...prev, nData[0]]);
+    if (adminUsername) {
+      const { data: nData, error: nError } = await supabase.from('notifications').insert([{
+        target_user: adminUsername,
+        message: `${data.empresas?.nome || 'Cliente'} ${acao} a data proposta para o serviço em ${placa}.${motivoTexto}`,
+        is_read: false,
+      }]).select();
+      if (nError) console.error('Erro ao notificar admin:', nError);
+      if (nData) setNotifications(prev => [...prev, nData[0]]);
+    } else {
+      console.warn('Notificação de resposta do cliente não enviada: não achei um usuário admin.');
+    }
   };
 
   const handleConfirmReject = async () => {
@@ -679,7 +683,7 @@ export default function AreaDoCliente() {
       setNewComment('');
 
       // DISPARA NOTIFICAÇÃO DE COMENTÁRIO
-      const targetUser = isAdmin ? usernameByEmpresaId[selectedStep.empresa_id] : 'admin';
+      const targetUser = isAdmin ? usernameByEmpresaId[selectedStep.empresa_id] : adminUsername;
       if (targetUser) {
         const authorMasked = currentUser.username;
         const { data: nData, error: nError } = await supabase.from('notifications').insert([{ target_user: targetUser, message: `Novo comentário de ${authorMasked} na etapa "${selectedStep.title}".`, is_read: false }]).select();
@@ -711,6 +715,9 @@ export default function AreaDoCliente() {
   // ==========================================
   const isAdmin = currentUser?.role === 'admin';
   const clientUsers = useMemo(() => users.filter(u => u.role === 'cliente'), [users]);
+
+  // Descobre automaticamente o username de quem é admin, em vez de assumir o texto fixo 'admin'
+  const adminUsername = useMemo(() => users.find(u => u.role === 'admin')?.username, [users]);
 
   // Mapa empresa_id -> username do login vinculado (usado só pra manter as notificações funcionando)
   const usernameByEmpresaId = useMemo(() => {
