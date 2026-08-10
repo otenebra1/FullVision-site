@@ -13,7 +13,7 @@ import {
 // Linha da tabela de "Solicitações de Serviço" no painel do admin.
 // Componente separado porque cada linha precisa do próprio estado local
 // pro campo de data/hora antes de enviar pro cliente.
-function AdminServiceRow({ s, onUpdateStatus, onSetSchedule, serviceTypeLabel, serviceStatusLabel, serviceStatusColor }) {
+function AdminServiceRow({ s, onUpdateStatus, onSetSchedule, onEdit, onDelete, serviceTypeLabel, serviceStatusLabel, serviceStatusColor }) {
   const [dataPrevista, setDataPrevista] = useState(
     s.data_hora_prevista ? new Date(s.data_hora_prevista).toISOString().slice(0, 16) : ''
   );
@@ -35,46 +35,54 @@ function AdminServiceRow({ s, onUpdateStatus, onSetSchedule, serviceTypeLabel, s
       </td>
       <td className="p-3 text-gray-400 text-xs max-w-[200px]">{s.descricao || '—'}</td>
       <td className="p-3">
-        <span className={`text-xs font-bold px-2 py-1 rounded border ${serviceStatusColor[s.status]}`}>{serviceStatusLabel[s.status] || s.status}</span>
+        <span className={`text-xs font-bold px-2 py-1 rounded border whitespace-nowrap ${serviceStatusColor[s.status]}`}>{serviceStatusLabel[s.status] || s.status}</span>
         {s.status === 'recusado' && s.motivo_recusa && (
           <div className="text-[11px] text-red-400 mt-1 max-w-[160px]">Motivo: {s.motivo_recusa}</div>
         )}
       </td>
-      <td className="p-3 text-right space-y-2">
-        {podeDefinirData && (
-          <div className="flex flex-col gap-1.5 items-end">
+      <td className="p-3">
+        {podeDefinirData ? (
+          <div className="flex items-center gap-2">
             <input
               type="datetime-local"
               value={dataPrevista}
               onChange={e => setDataPrevista(e.target.value)}
-              className="bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-amber-500"
+              className="bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-amber-500 w-[150px]"
             />
             <button
               onClick={() => onSetSchedule(s.id, dataPrevista)}
-              className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap"
+              title="Enviar data ao cliente"
+              className="bg-cyan-600 hover:bg-cyan-500 text-white p-2 rounded-lg shrink-0"
             >
-              Enviar data ao cliente
+              <FaPaperPlane size={12} />
             </button>
           </div>
-        )}
-        {!podeDefinirData && s.data_hora_prevista && (
+        ) : s.data_hora_prevista ? (
           <div className="text-xs text-gray-300 whitespace-nowrap">
             {new Date(s.data_hora_prevista).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
           </div>
+        ) : (
+          <span className="text-gray-600 text-xs">—</span>
         )}
-        <select
-          value={s.status}
-          onChange={e => onUpdateStatus(s.id, e.target.value)}
-          className="bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-amber-500"
-        >
-          <option value="pendente">Pendente</option>
-          <option value="aguardando_confirmacao">Aguardando Confirmação</option>
-          <option value="confirmado">Confirmado</option>
-          <option value="recusado">Recusado</option>
-          <option value="em_andamento">Em Andamento</option>
-          <option value="concluido">Concluído</option>
-          <option value="cancelado">Cancelado</option>
-        </select>
+      </td>
+      <td className="p-3">
+        <div className="flex items-center gap-2">
+          <select
+            value={s.status}
+            onChange={e => onUpdateStatus(s.id, e.target.value)}
+            className="bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-amber-500"
+          >
+            <option value="pendente">Pendente</option>
+            <option value="aguardando_confirmacao">Aguardando Confirmação</option>
+            <option value="confirmado">Confirmado</option>
+            <option value="recusado">Recusado</option>
+            <option value="em_andamento">Em Andamento</option>
+            <option value="concluido">Concluído</option>
+            <option value="cancelado">Cancelado</option>
+          </select>
+          <button onClick={() => onEdit(s)} title="Editar" className="text-gray-400 hover:text-blue-400 p-1.5"><FaEdit size={14} /></button>
+          <button onClick={() => onDelete(s.id)} title="Excluir" className="text-gray-400 hover:text-red-400 p-1.5"><FaTrashAlt size={14} /></button>
+        </div>
       </td>
     </tr>
   );
@@ -140,6 +148,16 @@ export default function AreaDoCliente() {
   const [newServicePlacaNova, setNewServicePlacaNova] = useState('');
   const [isSubmittingService, setIsSubmittingService] = useState(false);
 
+  // Edição de solicitação (Admin)
+  const [editingSolicitacao, setEditingSolicitacao] = useState(null);
+  const [editServiceTipo, setEditServiceTipo] = useState('manutencao');
+  const [editServiceVeiculoId, setEditServiceVeiculoId] = useState('');
+  const [editServicePlacaNova, setEditServicePlacaNova] = useState('');
+  const [editServiceTelefone, setEditServiceTelefone] = useState('');
+  const [editServiceEndereco, setEditServiceEndereco] = useState('');
+  const [editServiceDescricao, setEditServiceDescricao] = useState('');
+  const [isSavingServiceEdit, setIsSavingServiceEdit] = useState(false);
+
   // ==========================================
   // BUSCA INICIAL DE DADOS + SESSÃO (SUPABASE AUTH)
   // ==========================================
@@ -182,7 +200,7 @@ export default function AreaDoCliente() {
 
     const { data: veiculosData, error: veiculosError } = await supabase
       .from('veiculos')
-      .select('id, placa, modelo, status')
+      .select('id, empresa_id, placa, modelo, status')
       .order('placa');
     if (!veiculosError && veiculosData) setVeiculos(veiculosData);
 
@@ -383,6 +401,54 @@ export default function AreaDoCliente() {
 
     if (error) { alert('Erro ao enviar data ao cliente.'); return; }
     setSolicitacoes(solicitacoes.map(s => s.id === id ? data : s));
+  };
+
+  // Admin edita os dados de uma solicitação
+  const openEditSolicitacao = (s) => {
+    setEditingSolicitacao(s);
+    setEditServiceTipo(s.tipo_servico);
+    setEditServiceVeiculoId(s.veiculo_id || '');
+    setEditServicePlacaNova(s.placa_nova || '');
+    setEditServiceTelefone(s.telefone_contato || '');
+    setEditServiceEndereco(s.endereco || '');
+    setEditServiceDescricao(s.descricao || '');
+  };
+
+  const handleSaveSolicitacaoEdit = async (e) => {
+    e.preventDefault();
+    if (!editingSolicitacao) return;
+
+    const isNovaInstalacao = editServiceTipo === 'nova_instalacao';
+    if (isNovaInstalacao && !editServicePlacaNova.trim()) { alert('Informe a placa a ser instalada.'); return; }
+    if (!isNovaInstalacao && !editServiceVeiculoId) { alert('Selecione a placa do veículo.'); return; }
+
+    setIsSavingServiceEdit(true);
+    const { data, error } = await supabase
+      .from('solicitacoes_servico')
+      .update({
+        tipo_servico: editServiceTipo,
+        veiculo_id: isNovaInstalacao ? null : editServiceVeiculoId,
+        placa_nova: isNovaInstalacao ? editServicePlacaNova.trim().toUpperCase() : null,
+        telefone_contato: editServiceTelefone || null,
+        endereco: editServiceEndereco || null,
+        descricao: editServiceDescricao || null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', editingSolicitacao.id)
+      .select('*, empresas(nome), veiculos(placa, modelo)')
+      .single();
+    setIsSavingServiceEdit(false);
+
+    if (error) { alert('Erro ao salvar edição.'); return; }
+    setSolicitacoes(solicitacoes.map(s => s.id === data.id ? data : s));
+    setEditingSolicitacao(null);
+  };
+
+  const handleDeleteSolicitacao = async (id) => {
+    if (!confirm('Tem certeza que deseja excluir esta solicitação? Essa ação não pode ser desfeita.')) return;
+    const { error } = await supabase.from('solicitacoes_servico').delete().eq('id', id);
+    if (error) { alert('Erro ao excluir solicitação.'); return; }
+    setSolicitacoes(solicitacoes.filter(s => s.id !== id));
   };
 
   const handleCreateServiceRequest = async (e) => {
@@ -1059,12 +1125,13 @@ export default function AreaDoCliente() {
                           <th className="p-3">Telefone</th>
                           <th className="p-3">Descrição</th>
                           <th className="p-3">Status</th>
-                          <th className="p-3 text-right">Ação</th>
+                          <th className="p-3">Agendamento</th>
+                          <th className="p-3">Gerenciar</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-800">
                         {filteredSolicitacoes.length === 0 ? (
-                          <tr><td colSpan={7} className="p-6 text-center text-gray-500 text-sm">Nenhuma solicitação encontrada.</td></tr>
+                          <tr><td colSpan={8} className="p-6 text-center text-gray-500 text-sm">Nenhuma solicitação encontrada.</td></tr>
                         ) : (
                           filteredSolicitacoes.map(s => (
                             <AdminServiceRow
@@ -1072,6 +1139,8 @@ export default function AreaDoCliente() {
                               s={s}
                               onUpdateStatus={handleUpdateServiceStatus}
                               onSetSchedule={handleSetSchedule}
+                              onEdit={openEditSolicitacao}
+                              onDelete={handleDeleteSolicitacao}
                               serviceTypeLabel={serviceTypeLabel}
                               serviceStatusLabel={serviceStatusLabel}
                               serviceStatusColor={serviceStatusColor}
@@ -1081,6 +1150,68 @@ export default function AreaDoCliente() {
                       </tbody>
                     </table>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* 2.2 Modal Editar Solicitação */}
+            {editingSolicitacao && isAdmin && (
+              <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                <div className="bg-gray-900 border border-blue-500/30 rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+                  <div className="flex justify-between items-center border-b border-gray-800 pb-4">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaEdit className="text-blue-400"/> Editar Solicitação</h3>
+                    <button onClick={() => setEditingSolicitacao(null)} className="text-gray-400 hover:text-white"><FaTimes/></button>
+                  </div>
+                  <div className="text-xs text-gray-400">Empresa: <span className="text-white font-semibold">{editingSolicitacao.empresas?.nome}</span></div>
+
+                  <form onSubmit={handleSaveSolicitacaoEdit} className="space-y-4">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Tipo de serviço</label>
+                      <select value={editServiceTipo} onChange={e => setEditServiceTipo(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
+                        <option value="manutencao">Manutenção</option>
+                        <option value="troca">Troca</option>
+                        <option value="desinstalacao">Desinstalação</option>
+                        <option value="nova_instalacao">Nova Instalação</option>
+                      </select>
+                    </div>
+
+                    {editServiceTipo === 'nova_instalacao' ? (
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Placa a ser instalada</label>
+                        <input type="text" required value={editServicePlacaNova} onChange={e => setEditServicePlacaNova(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500 uppercase" />
+                      </div>
+                    ) : (
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Placa do veículo</label>
+                        <select required value={editServiceVeiculoId} onChange={e => setEditServiceVeiculoId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
+                          <option value="">Selecione a placa...</option>
+                          {veiculos.filter(v => v.empresa_id === editingSolicitacao.empresa_id).map(v => (
+                            <option key={v.id} value={v.id}>{v.placa}{v.modelo ? ` — ${v.modelo}` : ''}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Telefone para contato</label>
+                      <input type="tel" value={editServiceTelefone} onChange={e => setEditServiceTelefone(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Endereço</label>
+                      <input type="text" value={editServiceEndereco} onChange={e => setEditServiceEndereco(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Descrição</label>
+                      <textarea value={editServiceDescricao} onChange={e => setEditServiceDescricao(e.target.value)} rows={3} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500 resize-none" />
+                    </div>
+
+                    <div className="flex gap-3 pt-2">
+                      <button type="submit" disabled={isSavingServiceEdit} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+                        {isSavingServiceEdit ? 'Salvando...' : 'Salvar Alterações'}
+                      </button>
+                      <button type="button" onClick={() => setEditingSolicitacao(null)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
+                    </div>
+                  </form>
                 </div>
               </div>
             )}
