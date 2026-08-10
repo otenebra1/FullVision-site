@@ -84,6 +84,7 @@ export default function PainelAdmin() {
   const [filterEmpresaId, setFilterEmpresaId] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [activeSection, setActiveSection] = useState('resumo'); // 'resumo' | 'veiculos' | 'rastreadores' | 'ordens'
   const itemsPerPage = 20;
 
   const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
@@ -769,7 +770,30 @@ export default function PainelAdmin() {
                 </a>
               </div>
 
+              {/* Abas: mostra só uma seção por vez */}
+              <div className="flex flex-wrap gap-2 border-b border-gray-800 pb-1">
+                {[
+                  { key: 'resumo', label: 'Resumo por Cliente', icon: <FaBuilding /> },
+                  { key: 'veiculos', label: 'Banco de Veículos', icon: <FaDatabase /> },
+                  { key: 'rastreadores', label: 'Rastreadores', icon: <FaSatelliteDish /> },
+                  { key: 'ordens', label: 'Ordens de Serviço', icon: <FaClipboardList /> },
+                ].map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setActiveSection(tab.key)}
+                    className={`flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-t-xl transition-all ${
+                      activeSection === tab.key
+                        ? 'bg-gray-900/70 text-white border border-gray-800 border-b-0'
+                        : 'text-gray-500 hover:text-gray-300'
+                    }`}
+                  >
+                    {tab.icon} {tab.label}
+                  </button>
+                ))}
+              </div>
+
               {/* Resumo por cliente/grupo */}
+              {activeSection === 'resumo' && (
               <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 space-y-4">
                 <h2 className="text-lg font-bold flex items-center gap-2"><FaBuilding className="text-blue-400" /> Resumo por Cliente</h2>
                 <div className="border border-gray-800 rounded-xl overflow-x-auto">
@@ -803,8 +827,10 @@ export default function PainelAdmin() {
                   </table>
                 </div>
               </div>
+              )}
 
               {/* Banco de Dados de Veículos */}
+              {activeSection === 'veiculos' && (
               <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 space-y-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <h2 className="text-lg font-bold flex items-center gap-2"><FaDatabase className="text-emerald-400" /> Banco de Dados de Veículos</h2>
@@ -901,8 +927,10 @@ export default function PainelAdmin() {
                   </div>
                 )}
               </div>
+              )}
 
               {/* Rastreadores (Estoque) */}
+              {activeSection === 'rastreadores' && (
               <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 space-y-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <h2 className="text-lg font-bold flex items-center gap-2"><FaSatelliteDish className="text-cyan-400" /> Rastreadores (Estoque)</h2>
@@ -1016,8 +1044,10 @@ export default function PainelAdmin() {
                   </div>
                 )}
               </div>
+              )}
 
               {/* Ordens de Serviço */}
+              {activeSection === 'ordens' && (
               <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 space-y-4">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <h2 className="text-lg font-bold flex items-center gap-2"><FaClipboardList className="text-orange-400" /> Ordens de Serviço</h2>
@@ -1117,6 +1147,7 @@ export default function PainelAdmin() {
                   </div>
                 )}
               </div>
+              )}
             </>
           )}
         </div>
