@@ -55,27 +55,26 @@ export default function AreaDoCliente() {
   // BUSCA INICIAL DE DADOS + SESSÃO (SUPABASE AUTH)
   // ==========================================
   useEffect(() => {
-    const init = async () => {
-      await fetchInitialData();
+  const init = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      await loadCurrentUserProfile(session.user.id);
+    }
+    await fetchInitialData();
+    setAuthChecked(true);
+  };
+  init();
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await loadCurrentUserProfile(session.user.id);
-      }
-      setAuthChecked(true);
-    };
-    init();
+  // Mantém o estado sincronizado caso a sessão expire/seja revogada em outra aba
+  const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') {
+      setCurrentUser(null);
+      setIsLoggedIn(false);
+    }
+  });
 
-    // Mantém o estado sincronizado caso a sessão expire/seja revogada em outra aba
-    const { data: authListener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_OUT') {
-        setCurrentUser(null);
-        setIsLoggedIn(false);
-      }
-    });
-
-    return () => authListener.subscription.unsubscribe();
-  }, []);
+  return () => authListener.subscription.unsubscribe();
+}, []);
 
   const fetchInitialData = async () => {
     setIsLoading(true);
@@ -127,6 +126,7 @@ export default function AreaDoCliente() {
     }
 
     await loadCurrentUserProfile(data.user.id);
+    await fetchInitialData();
     setEmailInput('');
     setPasswordInput('');
   };
