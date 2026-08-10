@@ -471,13 +471,17 @@ export default function AreaDoCliente() {
     if (error) { alert('Erro ao salvar edição.'); return; }
     setSolicitacoes(solicitacoes.map(s => s.id === data.id ? data : s));
     setEditingSolicitacao(null);
+    showToast('Solicitação atualizada com sucesso!');
   };
 
+  const [deletingSolicitacaoId, setDeletingSolicitacaoId] = useState(null);
+
   const handleDeleteSolicitacao = async (id) => {
-    if (!confirm('Tem certeza que deseja excluir esta solicitação? Essa ação não pode ser desfeita.')) return;
     const { error } = await supabase.from('solicitacoes_servico').delete().eq('id', id);
-    if (error) { alert('Erro ao excluir solicitação.'); return; }
+    if (error) { alert('Erro ao excluir solicitação.'); setDeletingSolicitacaoId(null); return; }
     setSolicitacoes(solicitacoes.filter(s => s.id !== id));
+    setDeletingSolicitacaoId(null);
+    showToast('Solicitação excluída com sucesso!');
   };
 
   const handleCreateServiceRequest = async (e) => {
@@ -1246,7 +1250,7 @@ export default function AreaDoCliente() {
                               onUpdateStatus={handleUpdateServiceStatus}
                               onSetSchedule={handleSetSchedule}
                               onEdit={openEditSolicitacao}
-                              onDelete={handleDeleteSolicitacao}
+                              onDelete={setDeletingSolicitacaoId}
                               serviceTypeLabel={serviceTypeLabel}
                               serviceStatusLabel={serviceStatusLabel}
                               serviceStatusColor={serviceStatusColor}
@@ -1318,6 +1322,20 @@ export default function AreaDoCliente() {
                       <button type="button" onClick={() => setEditingSolicitacao(null)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
                     </div>
                   </form>
+                </div>
+              </div>
+            )}
+
+            {/* Modal de confirmação: excluir solicitação de serviço */}
+            {deletingSolicitacaoId && (
+              <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                <div className="bg-gray-900 border border-red-500/30 rounded-2xl max-w-sm w-full p-6 space-y-4">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaExclamationCircle className="text-red-400" /> Excluir Solicitação</h3>
+                  <p className="text-sm text-gray-400">Tem certeza que deseja excluir esta solicitação de serviço? Essa ação não pode ser desfeita.</p>
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={() => handleDeleteSolicitacao(deletingSolicitacaoId)} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">Excluir</button>
+                    <button onClick={() => setDeletingSolicitacaoId(null)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
+                  </div>
                 </div>
               </div>
             )}

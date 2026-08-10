@@ -150,6 +150,7 @@ export default function PainelAdmin() {
   const [osFormRastreadorRetiradoId, setOsFormRastreadorRetiradoId] = useState('');
   const [osFormLocalInstalacao, setOsFormLocalInstalacao] = useState('');
   const [osFormKm, setOsFormKm] = useState('');
+  const [osFormValorKm, setOsFormValorKm] = useState('');
   const [osFormObservacoes, setOsFormObservacoes] = useState('');
   const [osFormCustoTecnico, setOsFormCustoTecnico] = useState('');
   const [osFormFaturamentoCliente, setOsFormFaturamentoCliente] = useState('');
@@ -613,7 +614,7 @@ export default function PainelAdmin() {
     setOsFormServicos([]); setOsFormEmpresaId('');
     setOsFormIsNovaPlaca(false); setOsFormVeiculoId(''); setOsFormPlacaTexto('');
     setOsFormRastreadorInstaladoId(''); setOsFormRastreadorRetiradoId('');
-    setOsFormLocalInstalacao(''); setOsFormKm('');
+    setOsFormLocalInstalacao(''); setOsFormKm(''); setOsFormValorKm('');
     setOsFormObservacoes(''); setOsFormCustoTecnico(''); setOsFormFaturamentoCliente('');
     setOsFormFotos({});
   };
@@ -642,6 +643,11 @@ export default function PainelAdmin() {
     setIsSavingOs(true);
     setOsUploadProgress('Salvando ordem de serviço...');
 
+    const temKm = osFormServicos.includes('KM');
+    const kmAdicional = temKm ? (Number(osFormKm) || 0) * (Number(osFormValorKm) || 0) : 0;
+    const custoTecnicoBase = osFormCustoTecnico === '' ? 0 : Number(osFormCustoTecnico);
+    const faturamentoClienteBase = osFormFaturamentoCliente === '' ? 0 : Number(osFormFaturamentoCliente);
+
     const payload = {
       data: osFormData,
       tecnico_nome: osFormTecnicoNome.trim(),
@@ -653,10 +659,11 @@ export default function PainelAdmin() {
       rastreador_instalado_id: osFormRastreadorInstaladoId || null,
       rastreador_retirado_id: osFormRastreadorRetiradoId || null,
       local_instalacao: osFormLocalInstalacao || null,
-      km_percorrido: osFormKm === '' ? null : Number(osFormKm),
+      km_percorrido: temKm && osFormKm !== '' ? Number(osFormKm) : null,
+      valor_km: temKm && osFormValorKm !== '' ? Number(osFormValorKm) : null,
       observacoes: osFormObservacoes || null,
-      custo_tecnico: osFormCustoTecnico === '' ? 0 : Number(osFormCustoTecnico),
-      faturamento_cliente: osFormFaturamentoCliente === '' ? 0 : Number(osFormFaturamentoCliente),
+      custo_tecnico: custoTecnicoBase + kmAdicional,
+      faturamento_cliente: faturamentoClienteBase + kmAdicional,
     };
 
     const { data: novaOs, error: errOs } = await supabase
@@ -1457,11 +1464,28 @@ export default function PainelAdmin() {
                   <label className="block text-xs text-gray-400 mb-1">Local da Instalação</label>
                   <input type="text" value={osFormLocalInstalacao} onChange={e => setOsFormLocalInstalacao(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500" />
                 </div>
-                <div className="w-32">
-                  <label className="block text-xs text-gray-400 mb-1">KM Percorrido</label>
-                  <input type="number" step="0.1" value={osFormKm} onChange={e => setOsFormKm(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500" />
-                </div>
               </div>
+
+              {osFormServicos.includes('KM') && (
+                <div className="bg-gray-950 border border-gray-800 rounded-xl p-4 space-y-3">
+                  <div className="text-xs font-bold text-gray-300 uppercase">Cálculo por KM</div>
+                  <div className="flex gap-4">
+                    <div className="flex-1">
+                      <label className="block text-xs text-gray-400 mb-1">KM Percorrido</label>
+                      <input type="number" step="0.1" value={osFormKm} onChange={e => setOsFormKm(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs text-gray-400 mb-1">Valor do KM (R$)</label>
+                      <input type="number" step="0.01" value={osFormValorKm} onChange={e => setOsFormValorKm(e.target.value)} placeholder="0,00" className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500" />
+                    </div>
+                  </div>
+                  {(osFormKm !== '' && osFormValorKm !== '') && (
+                    <div className="text-xs text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 rounded-lg px-3 py-2">
+                      Adicional calculado: {((Number(osFormKm) || 0) * (Number(osFormValorKm) || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} — será somado automaticamente ao faturamento do cliente e ao custo do técnico, abaixo.
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Observações</label>
@@ -1473,16 +1497,22 @@ export default function PainelAdmin() {
                 <div className="text-xs font-bold text-gray-300 uppercase flex items-center gap-2"><FaMoneyBillWave className="text-amber-400" /> Financeiro dessa OS</div>
                 <div className="flex gap-4">
                   <div className="flex-1">
-                    <label className="block text-xs text-gray-400 mb-1">Faturamento do Cliente (R$)</label>
+                    <label className="block text-xs text-gray-400 mb-1">Faturamento do Cliente (R$){osFormServicos.includes('KM') ? ' — base' : ''}</label>
                     <input type="number" step="0.01" value={osFormFaturamentoCliente} onChange={e => setOsFormFaturamentoCliente(e.target.value)} placeholder="0,00" className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
-                    <span className="text-[11px] text-gray-500">O que você vai cobrar do cliente</span>
+                    <span className="text-[11px] text-gray-500">O que você vai cobrar do cliente{osFormServicos.includes('KM') ? ' (sem contar o KM, que é somado à parte)' : ''}</span>
                   </div>
                   <div className="flex-1">
-                    <label className="block text-xs text-gray-400 mb-1">Custo do Técnico (R$)</label>
+                    <label className="block text-xs text-gray-400 mb-1">Custo do Técnico (R$){osFormServicos.includes('KM') ? ' — base' : ''}</label>
                     <input type="number" step="0.01" value={osFormCustoTecnico} onChange={e => setOsFormCustoTecnico(e.target.value)} placeholder="0,00" className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-red-500" />
-                    <span className="text-[11px] text-gray-500">O que você vai pagar ao técnico</span>
+                    <span className="text-[11px] text-gray-500">O que você vai pagar ao técnico{osFormServicos.includes('KM') ? ' (sem contar o KM, que é somado à parte)' : ''}</span>
                   </div>
                 </div>
+                {osFormServicos.includes('KM') && (osFormKm !== '' && osFormValorKm !== '') && (
+                  <div className="flex gap-4 pt-2 border-t border-gray-800 text-xs">
+                    <div className="flex-1 text-emerald-400">Total faturamento: {((Number(osFormFaturamentoCliente) || 0) + (Number(osFormKm) || 0) * (Number(osFormValorKm) || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                    <div className="flex-1 text-red-400">Total custo técnico: {((Number(osFormCustoTecnico) || 0) + (Number(osFormKm) || 0) * (Number(osFormValorKm) || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                  </div>
+                )}
               </div>
 
               {/* Fotos obrigatórias */}
@@ -1537,6 +1567,7 @@ export default function PainelAdmin() {
               <div className="col-span-2"><span className="text-gray-500 text-xs block">Serviço(s)</span><span className="text-white">{viewingOs.servico_realizado}</span></div>
               {viewingOs.local_instalacao && <div><span className="text-gray-500 text-xs block">Local</span><span className="text-white">{viewingOs.local_instalacao}</span></div>}
               {viewingOs.km_percorrido != null && <div><span className="text-gray-500 text-xs block">KM Percorrido</span><span className="text-white">{viewingOs.km_percorrido}</span></div>}
+              {viewingOs.valor_km != null && <div><span className="text-gray-500 text-xs block">Valor do KM</span><span className="text-white">{Number(viewingOs.valor_km).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>}
               {viewingOs.observacoes && <div className="col-span-2"><span className="text-gray-500 text-xs block">Observações</span><span className="text-white">{viewingOs.observacoes}</span></div>}
             </div>
 
