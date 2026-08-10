@@ -50,6 +50,8 @@ export default function AreaDoCliente() {
   const [userFormPassword, setUserFormPassword] = useState('');
   const [userFormRole, setUserFormRole] = useState('cliente');
   const [userFormTrackingUrl, setUserFormTrackingUrl] = useState('');
+  const [userFormEmpresaId, setUserFormEmpresaId] = useState('');
+  const [empresas, setEmpresas] = useState([]);
 
   // ==========================================
   // BUSCA INICIAL DE DADOS + SESSÃO (SUPABASE AUTH)
@@ -81,6 +83,9 @@ export default function AreaDoCliente() {
 
     const { data: profilesData, error: profilesError } = await supabase.from('profiles').select('*');
     if (!profilesError && profilesData) setUsers(profilesData);
+
+    const { data: empresasData, error: empresasError } = await supabase.from('empresas').select('id, nome').order('nome');
+    if (!empresasError && empresasData) setEmpresas(empresasData);
 
     const { data: stepsData, error: stepsError } = await supabase.from('steps').select('*');
     const { data: commentsData, error: commentsError } = await supabase.from('comments').select('*');
@@ -172,6 +177,7 @@ export default function AreaDoCliente() {
       setUserFormPassword('');
       setUserFormRole(user.role);
       setUserFormTrackingUrl(user.tracking_url || '');
+      setUserFormEmpresaId(user.empresa_id || '');
     } else {
       setEditingUser(null);
       setUserFormName('');
@@ -179,11 +185,18 @@ export default function AreaDoCliente() {
       setUserFormPassword('');
       setUserFormRole('cliente');
       setUserFormTrackingUrl('');
+      setUserFormEmpresaId('');
     }
   };
 
   const handleSaveUser = async (e) => {
     e.preventDefault();
+
+    if (userFormRole !== 'admin' && !userFormEmpresaId) {
+      alert('Selecione a empresa vinculada a este usuário.');
+      return;
+    }
+
     const token = await getAuthToken();
 
     if (editingUser) {
@@ -195,6 +208,7 @@ export default function AreaDoCliente() {
           username: userFormName,
           role: userFormRole,
           trackingUrl: userFormTrackingUrl,
+          empresaId: userFormRole === 'admin' ? null : userFormEmpresaId,
           newPassword: userFormPassword || undefined, // só reseta se preenchido
         }),
       });
@@ -211,6 +225,7 @@ export default function AreaDoCliente() {
           username: userFormName,
           role: userFormRole,
           trackingUrl: userFormTrackingUrl,
+          empresaId: userFormRole === 'admin' ? null : userFormEmpresaId,
         }),
       });
       const result = await res.json();
@@ -219,7 +234,7 @@ export default function AreaDoCliente() {
     }
 
     setEditingUser(null);
-    setUserFormName(''); setUserFormEmail(''); setUserFormPassword(''); setUserFormTrackingUrl('');
+    setUserFormName(''); setUserFormEmail(''); setUserFormPassword(''); setUserFormTrackingUrl(''); setUserFormEmpresaId('');
   };
 
   const handleDeleteUser = async (userId) => {
@@ -633,6 +648,17 @@ export default function AreaDoCliente() {
                     {!editingUser && (
                       <div className="flex-1 w-full"><label className="block text-xs text-gray-400 mb-1">Email de acesso</label><input type="email" required value={userFormEmail} onChange={e => setUserFormEmail(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500" /></div>
                     )}
+                    {userFormRole !== 'admin' && (
+                      <div className="flex-1 w-full">
+                        <label className="block text-xs text-gray-400 mb-1">Empresa</label>
+                        <select required value={userFormEmpresaId} onChange={e => setUserFormEmpresaId(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500">
+                          <option value="">Selecione a empresa...</option>
+                          {empresas.map(emp => (
+                            <option key={emp.id} value={emp.id}>{emp.nome}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                     <div className="flex-1 w-full"><label className="block text-xs text-gray-400 mb-1">{editingUser ? 'Nova senha (deixe em branco para manter)' : 'Senha inicial'}</label><input type="text" required={!editingUser} value={userFormPassword} onChange={e => setUserFormPassword(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500" /></div>
                     <div className="flex-1 w-full"><label className="block text-xs text-gray-400 mb-1">Link da plataforma de rastreio</label><input type="url" value={userFormTrackingUrl} onChange={e => setUserFormTrackingUrl(e.target.value)} placeholder="https://tracker.fullvision.one/..." className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500" /></div>
                     <div className="flex gap-3">
@@ -642,10 +668,10 @@ export default function AreaDoCliente() {
                   </form>
                   <div className="border border-gray-800 rounded-xl overflow-hidden">
                     <table className="w-full text-left text-sm">
-                      <thead className="bg-gray-950 text-gray-400 text-xs uppercase"><tr><th className="p-3">Usuário</th><th className="p-3">Cargo</th><th className="p-3">Link de Rastreio</th><th className="p-3 text-right">Ações</th></tr></thead>
+                      <thead className="bg-gray-950 text-gray-400 text-xs uppercase"><tr><th className="p-3">Usuário</th><th className="p-3">Cargo</th><th className="p-3">Empresa</th><th className="p-3">Link de Rastreio</th><th className="p-3 text-right">Ações</th></tr></thead>
                       <tbody className="divide-y divide-gray-800">
                         {users.map(u => (
-                          <tr key={u.id} className="hover:bg-gray-800/50"><td className="p-3 text-white font-medium"><FaUser className="inline text-gray-500 mr-2"/>{u.username}</td><td className="p-3">{u.role === 'admin' ? <span className="text-purple-400 text-xs font-bold bg-purple-500/10 px-2 py-1 rounded">ADMIN</span> : <span className="text-blue-400 text-xs font-bold bg-blue-500/10 px-2 py-1 rounded">CLIENTE</span>}</td><td className="p-3 text-gray-400 text-xs truncate max-w-[160px]">{u.tracking_url || '—'}</td><td className="p-3 text-right"><button onClick={() => openUserForm(u)} className="text-gray-400 hover:text-blue-400 p-2"><FaEdit /></button><button onClick={() => handleDeleteUser(u.id)} className="text-gray-400 hover:text-red-400 p-2"><FaTrashAlt /></button></td></tr>
+                          <tr key={u.id} className="hover:bg-gray-800/50"><td className="p-3 text-white font-medium"><FaUser className="inline text-gray-500 mr-2"/>{u.username}</td><td className="p-3">{u.role === 'admin' ? <span className="text-purple-400 text-xs font-bold bg-purple-500/10 px-2 py-1 rounded">ADMIN</span> : <span className="text-blue-400 text-xs font-bold bg-blue-500/10 px-2 py-1 rounded">CLIENTE</span>}</td><td className="p-3 text-gray-400 text-xs">{empresas.find(emp => emp.id === u.empresa_id)?.nome || '—'}</td><td className="p-3 text-gray-400 text-xs truncate max-w-[160px]">{u.tracking_url || '—'}</td><td className="p-3 text-right"><button onClick={() => openUserForm(u)} className="text-gray-400 hover:text-blue-400 p-2"><FaEdit /></button><button onClick={() => handleDeleteUser(u.id)} className="text-gray-400 hover:text-red-400 p-2"><FaTrashAlt /></button></td></tr>
                         ))}
                       </tbody>
                     </table>

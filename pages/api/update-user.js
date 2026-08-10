@@ -23,16 +23,22 @@ export default async function handler(req, res) {
   const admin = await getRequestingAdmin(req);
   if (!admin) return res.status(403).json({ error: 'Apenas administradores podem editar usuários.' });
 
-  const { userId, username, role, trackingUrl, newPassword } = req.body;
+  const { userId, username, role, trackingUrl, empresaId, newPassword } = req.body;
   if (!userId) return res.status(400).json({ error: 'userId é obrigatório.' });
 
-  // Atualiza o perfil (username, role, link de rastreio)
+  // Empresa é obrigatória para qualquer usuário que não seja admin
+  if (role && role !== 'admin' && !empresaId) {
+    return res.status(400).json({ error: 'Selecione a empresa vinculada a este usuário.' });
+  }
+
+  // Atualiza o perfil (username, role, link de rastreio, empresa)
   const { data: profile, error: profileError } = await supabaseAdmin
     .from('profiles')
     .update({
       ...(username && { username }),
       ...(role && { role }),
       ...(trackingUrl !== undefined && { tracking_url: trackingUrl }),
+      ...(role !== undefined && { empresa_id: role === 'admin' ? null : empresaId }),
     })
     .eq('id', userId)
     .select()

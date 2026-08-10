@@ -24,10 +24,16 @@ export default async function handler(req, res) {
   const admin = await getRequestingAdmin(req);
   if (!admin) return res.status(403).json({ error: 'Apenas administradores podem criar usuários.' });
 
-  const { email, password, username, role, trackingUrl } = req.body;
+  const { email, password, username, role, trackingUrl, empresaId } = req.body;
 
   if (!email || !password || !username) {
     return res.status(400).json({ error: 'email, password e username são obrigatórios.' });
+  }
+
+  // Empresa é obrigatória para qualquer usuário que não seja admin
+  const finalRole = role || 'cliente';
+  if (finalRole !== 'admin' && !empresaId) {
+    return res.status(400).json({ error: 'Selecione a empresa vinculada a este usuário.' });
   }
 
   // 1) Cria o usuário na auth.users (senha já sai com hash)
@@ -47,8 +53,9 @@ export default async function handler(req, res) {
     .insert([{
       id: created.user.id,
       username,
-      role: role || 'cliente',
+      role: finalRole,
       tracking_url: trackingUrl || null,
+      empresa_id: finalRole === 'admin' ? null : empresaId,
     }])
     .select()
     .single();
