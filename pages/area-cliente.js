@@ -117,7 +117,7 @@ export default function AreaDoCliente() {
   const [formTitle, setFormTitle] = useState('');
   const [formDescription, setFormDescription] = useState('');
   const [formStatus, setFormStatus] = useState('Em desenvolvimento');
-  const [formClientOwner, setFormClientOwner] = useState('');
+  const [formEmpresaId, setFormEmpresaId] = useState('');
   const [newComment, setNewComment] = useState('');
 
   // Modais (Usuários, Perfil e Notificações)
@@ -570,13 +570,13 @@ export default function AreaDoCliente() {
   // ==========================================
   const openNewStepModal = () => {
     setEditingStep(null); setFormTitle(''); setFormDescription(''); setFormStatus('Em desenvolvimento'); 
-    setFormClientOwner(selectedClientView !== 'all' ? selectedClientView : (clientUsers[0]?.username || ''));
+    setFormEmpresaId(selectedClientView !== 'all' ? selectedClientView : (empresasComLogin[0]?.id || ''));
     setIsStepModalOpen(true);
   };
 
   const openEditStepModal = (step, e) => {
     e.stopPropagation(); setEditingStep(step); setFormTitle(step.title); setFormDescription(step.description); 
-    setFormStatus(step.status); setFormClientOwner(step.client_owner || '');
+    setFormStatus(step.status); setFormEmpresaId(step.empresa_id || '');
     setIsStepModalOpen(true);
   };
 
@@ -584,25 +584,27 @@ export default function AreaDoCliente() {
     e.preventDefault();
     if (!formTitle.trim()) return;
 
+    const notifyUsername = usernameByEmpresaId[formEmpresaId];
+
     if (editingStep) {
-      const { data, error } = await supabase.from('steps').update({ title: formTitle, description: formDescription, status: formStatus, client_owner: formClientOwner }).eq('id', editingStep.id).select();
+      const { data, error } = await supabase.from('steps').update({ title: formTitle, description: formDescription, status: formStatus, empresa_id: formEmpresaId }).eq('id', editingStep.id).select();
       if (!error && data) {
         setSteps(steps.map((s) => s.id === editingStep.id ? { ...data[0], comments: s.comments } : s));
         
         // DISPARA NOTIFICAÇÃO (Edição)
-        if (isAdmin && formClientOwner) {
-          const { data: nData } = await supabase.from('notifications').insert([{ target_user: formClientOwner, message: `A etapa "${formTitle}" foi atualizada pelo Admin.`, is_read: false }]).select();
+        if (isAdmin && notifyUsername) {
+          const { data: nData } = await supabase.from('notifications').insert([{ target_user: notifyUsername, message: `A etapa "${formTitle}" foi atualizada pelo Admin.`, is_read: false }]).select();
           if (nData) setNotifications([...notifications, nData[0]]);
         }
       }
     } else {
-      const { data, error } = await supabase.from('steps').insert([{ title: formTitle, description: formDescription, status: formStatus, client_owner: formClientOwner }]).select();
+      const { data, error } = await supabase.from('steps').insert([{ title: formTitle, description: formDescription, status: formStatus, empresa_id: formEmpresaId }]).select();
       if (!error && data) {
         setSteps([...steps, { ...data[0], comments: [] }]);
 
         // DISPARA NOTIFICAÇÃO (Criação)
-        if (isAdmin && formClientOwner) {
-          const { data: nData } = await supabase.from('notifications').insert([{ target_user: formClientOwner, message: `Nova etapa adicionada ao seu roadmap: "${formTitle}".`, is_read: false }]).select();
+        if (isAdmin && notifyUsername) {
+          const { data: nData } = await supabase.from('notifications').insert([{ target_user: notifyUsername, message: `Nova etapa adicionada ao seu roadmap: "${formTitle}".`, is_read: false }]).select();
           if (nData) setNotifications([...notifications, nData[0]]);
         }
       }
@@ -639,10 +641,12 @@ export default function AreaDoCliente() {
       setNewComment('');
 
       // DISPARA NOTIFICAÇÃO DE COMENTÁRIO
-      const targetUser = isAdmin ? selectedStep.client_owner : 'admin';
-      const authorMasked = currentUser.username === 'adoro_frango' ? "Ad'oro Frango" : currentUser.username === 'adoro_racao' ? "Ad'oro Ração" : currentUser.username;
-      const { data: nData } = await supabase.from('notifications').insert([{ target_user: targetUser, message: `Novo comentário de ${authorMasked} na etapa "${selectedStep.title}".`, is_read: false }]).select();
-      if (nData) setNotifications([...notifications, nData[0]]);
+      const targetUser = isAdmin ? usernameByEmpresaId[selectedStep.empresa_id] : 'admin';
+      if (targetUser) {
+        const authorMasked = currentUser.username;
+        const { data: nData } = await supabase.from('notifications').insert([{ target_user: targetUser, message: `Novo comentário de ${authorMasked} na etapa "${selectedStep.title}".`, is_read: false }]).select();
+        if (nData) setNotifications([...notifications, nData[0]]);
+      }
     }
   };
 
@@ -663,6 +667,24 @@ export default function AreaDoCliente() {
   const isAdmin = currentUser?.role === 'admin';
   const clientUsers = useMemo(() => users.filter(u => u.role === 'cliente'), [users]);
 
+  // Mapa empresa_id -> username do login vinculado (usado só pra manter as notificações funcionando)
+  const usernameByEmpresaId = useMemo(() => {
+    const map = {};
+    clientUsers.forEach(u => { if (u.empresa_id) map[u.empresa_id] = u.username; });
+    return map;
+  }, [clientUsers]);
+
+  // Empresas "folha" (sem filhos) — são as que de fato têm login e roadmap próprio.
+  // Grupos consolidadores (ex: "ADORO") ficam de fora do seletor do Roadmap.
+  const empresaIdsComFilhos = useMemo(
+    () => new Set(empresas.filter(e => e.grupo_id).map(e => e.grupo_id)),
+    [empresas]
+  );
+  const empresasComLogin = useMemo(
+    () => empresas.filter(e => !empresaIdsComFilhos.has(e.id)),
+    [empresas, empresaIdsComFilhos]
+  );
+
   // Filtra as notificações não lidas apenas para o usuário atual
   const myUnreadNotifs = useMemo(() => {
     if (!currentUser) return [];
@@ -673,9 +695,9 @@ export default function AreaDoCliente() {
     if (!currentUser) return [];
     if (isAdmin) {
       if (selectedClientView === 'all') return steps;
-      return steps.filter(s => s.client_owner === selectedClientView);
+      return steps.filter(s => s.empresa_id === selectedClientView);
     }
-    return steps.filter(s => s.client_owner === currentUser.username);
+    return steps.filter(s => s.empresa_id === currentUser.empresa_id);
   }, [steps, currentUser, isAdmin, selectedClientView]);
 
   const chartData = useMemo(() => {
@@ -835,9 +857,9 @@ export default function AreaDoCliente() {
                 <div className="relative w-full md:w-72">
                   <select value={selectedClientView} onChange={(e) => setSelectedClientView(e.target.value)} className="w-full appearance-none bg-gray-950 border border-gray-700 text-white text-sm font-medium rounded-xl pl-4 pr-10 py-3 focus:outline-none focus:border-blue-500 transition-all cursor-pointer shadow-inner">
                     <option value="all">Visão Geral (Todos)</option>
-                    {clientUsers.map(client => (
-                      <option key={client.id} value={client.username}>
-                        {client.username === 'adoro_frango' ? "Ad'oro Frango" : client.username === 'adoro_racao' ? "Ad'oro Ração" : `Cliente: ${client.username}`}
+                    {empresasComLogin.map(empresa => (
+                      <option key={empresa.id} value={empresa.id}>
+                        Cliente: {empresa.nome}
                       </option>
                     ))}
                   </select>
@@ -1280,9 +1302,9 @@ export default function AreaDoCliente() {
                     <div><label className="block text-xs font-semibold text-gray-400 mb-1">Título</label><input type="text" required value={formTitle} onChange={(e) => setFormTitle(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500" /></div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-400 mb-1">Pertence ao Cliente:</label>
-                      <select required value={formClientOwner} onChange={(e) => setFormClientOwner(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500">
+                      <select required value={formEmpresaId} onChange={(e) => setFormEmpresaId(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500">
                         <option value="" disabled>Selecione um cliente</option>
-                        {clientUsers.map(client => (<option key={client.id} value={client.username}>{client.username === 'adoro_frango' ? "Ad'oro Frango" : client.username === 'adoro_racao' ? "Ad'oro Ração" : client.username}</option>))}
+                        {empresasComLogin.map(empresa => (<option key={empresa.id} value={empresa.id}>{empresa.nome}</option>))}
                       </select>
                     </div>
                     <div><label className="block text-xs font-semibold text-gray-400 mb-1">Descrição</label><textarea rows={3} value={formDescription} onChange={(e) => setFormDescription(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500" /></div>
