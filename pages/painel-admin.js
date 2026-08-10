@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import {
   FaTruck, FaCheckCircle, FaTimesCircle, FaBuilding, FaMoneyBillWave,
   FaTools, FaSpinner, FaArrowLeft, FaChartPie, FaLayerGroup, FaExclamationCircle,
+  FaDatabase, FaSearch, FaPlus, FaEdit, FaTrashAlt, FaTimes, FaChevronLeft, FaChevronRight,
 } from 'react-icons/fa';
 
 // ==========================================
@@ -58,6 +59,28 @@ export default function PainelAdmin() {
   const [veiculos, setVeiculos] = useState([]);
   const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
 
+  // Banco de Dados de Veículos
+  const [searchPlaca, setSearchPlaca] = useState('');
+  const [filterEmpresaId, setFilterEmpresaId] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 20;
+
+  const [isVehicleModalOpen, setIsVehicleModalOpen] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState(null);
+  const [vFormEmpresaId, setVFormEmpresaId] = useState('');
+  const [vFormPlaca, setVFormPlaca] = useState('');
+  const [vFormStatus, setVFormStatus] = useState('Ativo');
+  const [vFormOperacao, setVFormOperacao] = useState('');
+  const [vFormModelo, setVFormModelo] = useState('');
+  const [vFormIdInstalado, setVFormIdInstalado] = useState('');
+  const [vFormDataInst, setVFormDataInst] = useState('');
+  const [vFormDataDesinst, setVFormDataDesinst] = useState('');
+  const [vFormMensalidade, setVFormMensalidade] = useState('');
+  const [vFormCustoTotal, setVFormCustoTotal] = useState('');
+  const [vFormDrePlaca, setVFormDrePlaca] = useState('');
+  const [isSavingVehicle, setIsSavingVehicle] = useState(false);
+
   // ------------------------------------------
   // Guard de acesso: só admin passa
   // ------------------------------------------
@@ -103,7 +126,8 @@ export default function PainelAdmin() {
 
       const { data: veiculosData } = await supabase
         .from('veiculos')
-        .select('id, empresa_id, status, mensalidade, custo_total');
+        .select('*')
+        .order('placa');
       if (veiculosData) setVeiculos(veiculosData);
 
       const { count } = await supabase
@@ -183,6 +207,108 @@ export default function PainelAdmin() {
 
     return { gruposComFilhos, avulsos };
   }, [empresas, empresaIdsComFilhos, resumoPorEmpresa]);
+
+  // ------------------------------------------
+  // Banco de Dados de Veículos: filtro, busca e paginação
+  // ------------------------------------------
+  const empresaNomeById = useMemo(() => {
+    const map = {};
+    empresas.forEach(e => { map[e.id] = e.nome; });
+    return map;
+  }, [empresas]);
+
+  const filteredVeiculos = useMemo(() => {
+    return veiculos.filter(v => {
+      const placaOk = !searchPlaca || v.placa?.toUpperCase().includes(searchPlaca.toUpperCase());
+      const empresaOk = filterEmpresaId === 'all' || v.empresa_id === filterEmpresaId;
+      const statusOk = filterStatus === 'all' || v.status === filterStatus;
+      return placaOk && empresaOk && statusOk;
+    });
+  }, [veiculos, searchPlaca, filterEmpresaId, filterStatus]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredVeiculos.length / itemsPerPage));
+  const paginatedVeiculos = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredVeiculos.slice(start, start + itemsPerPage);
+  }, [filteredVeiculos, currentPage]);
+
+  // Reseta pra página 1 sempre que o filtro muda
+  useEffect(() => { setCurrentPage(1); }, [searchPlaca, filterEmpresaId, filterStatus]);
+
+  const resetVehicleForm = () => {
+    setVFormEmpresaId(''); setVFormPlaca(''); setVFormStatus('Ativo');
+    setVFormOperacao(''); setVFormModelo(''); setVFormIdInstalado('');
+    setVFormDataInst(''); setVFormDataDesinst('');
+    setVFormMensalidade(''); setVFormCustoTotal(''); setVFormDrePlaca('');
+  };
+
+  const openVehicleForm = (v) => {
+    if (v) {
+      setEditingVehicle(v);
+      setVFormEmpresaId(v.empresa_id || '');
+      setVFormPlaca(v.placa || '');
+      setVFormStatus(v.status || 'Ativo');
+      setVFormOperacao(v.operacao || '');
+      setVFormModelo(v.modelo || '');
+      setVFormIdInstalado(v.id_instalado || '');
+      setVFormDataInst(v.data_inst || '');
+      setVFormDataDesinst(v.data_desinst || '');
+      setVFormMensalidade(v.mensalidade ?? '');
+      setVFormCustoTotal(v.custo_total ?? '');
+      setVFormDrePlaca(v.dre_placa ?? '');
+    } else {
+      setEditingVehicle(null);
+      resetVehicleForm();
+    }
+    setIsVehicleModalOpen(true);
+  };
+
+  const handleSaveVehicle = async (e) => {
+    e.preventDefault();
+    if (!vFormPlaca.trim()) { alert('Informe a placa.'); return; }
+    if (!vFormEmpresaId) { alert('Selecione a empresa.'); return; }
+
+    setIsSavingVehicle(true);
+    const payload = {
+      empresa_id: vFormEmpresaId,
+      placa: vFormPlaca.trim().toUpperCase(),
+      status: vFormStatus,
+      operacao: vFormOperacao || null,
+      modelo: vFormModelo || null,
+      id_instalado: vFormIdInstalado || null,
+      data_inst: vFormDataInst || null,
+      data_desinst: vFormDataDesinst || null,
+      mensalidade: vFormMensalidade === '' ? null : Number(vFormMensalidade),
+      custo_total: vFormCustoTotal === '' ? null : Number(vFormCustoTotal),
+      dre_placa: vFormDrePlaca === '' ? null : Number(vFormDrePlaca),
+    };
+
+    let result;
+    if (editingVehicle) {
+      result = await supabase.from('veiculos').update(payload).eq('id', editingVehicle.id).select().single();
+    } else {
+      result = await supabase.from('veiculos').insert([payload]).select().single();
+    }
+    setIsSavingVehicle(false);
+
+    if (result.error) { alert('Erro ao salvar veículo: ' + result.error.message); return; }
+
+    if (editingVehicle) {
+      setVeiculos(veiculos.map(v => v.id === result.data.id ? result.data : v));
+    } else {
+      setVeiculos([result.data, ...veiculos]);
+    }
+    setIsVehicleModalOpen(false);
+    setEditingVehicle(null);
+    resetVehicleForm();
+  };
+
+  const handleDeleteVehicle = async (id) => {
+    if (!confirm('Tem certeza que deseja excluir esta placa? Essa ação não pode ser desfeita.')) return;
+    const { error } = await supabase.from('veiculos').delete().eq('id', id);
+    if (error) { alert('Erro ao excluir veículo: ' + error.message); return; }
+    setVeiculos(veiculos.filter(v => v.id !== id));
+  };
 
   if (!authChecked) {
     return (
@@ -269,10 +395,195 @@ export default function PainelAdmin() {
                   </table>
                 </div>
               </div>
+
+              {/* Banco de Dados de Veículos */}
+              <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <h2 className="text-lg font-bold flex items-center gap-2"><FaDatabase className="text-emerald-400" /> Banco de Dados de Veículos</h2>
+                  <button onClick={() => openVehicleForm(null)} className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg self-start md:self-auto">
+                    <FaPlus /> Nova Placa
+                  </button>
+                </div>
+
+                {/* Filtros */}
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 relative">
+                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por placa..."
+                      value={searchPlaca}
+                      onChange={e => setSearchPlaca(e.target.value)}
+                      className="w-full bg-gray-950 border border-gray-700 rounded-lg pl-9 pr-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                  <select value={filterEmpresaId} onChange={e => setFilterEmpresaId(e.target.value)} className="w-full md:w-56 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500">
+                    <option value="all">Todas as empresas</option>
+                    {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+                  </select>
+                  <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full md:w-40 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500">
+                    <option value="all">Todos os status</option>
+                    <option value="Ativo">Ativo</option>
+                    <option value="Inativo">Inativo</option>
+                  </select>
+                </div>
+
+                <div className="text-xs text-gray-500">{filteredVeiculos.length} veículo(s) encontrado(s)</div>
+
+                <div className="border border-gray-800 rounded-xl overflow-x-auto">
+                  <table className="w-full min-w-[900px] text-left text-sm">
+                    <thead className="bg-gray-950 text-gray-400 text-xs uppercase">
+                      <tr>
+                        <th className="p-3">Placa</th>
+                        <th className="p-3">Empresa</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Operação</th>
+                        <th className="p-3">Modelo</th>
+                        <th className="p-3">ID Instalado</th>
+                        <th className="p-3">Mensalidade</th>
+                        <th className="p-3 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {paginatedVeiculos.length === 0 ? (
+                        <tr><td colSpan={8} className="p-6 text-center text-gray-500 text-sm">Nenhum veículo encontrado.</td></tr>
+                      ) : (
+                        paginatedVeiculos.map(v => (
+                          <tr key={v.id} className="hover:bg-gray-800/50">
+                            <td className="p-3 text-white font-semibold">{v.placa}</td>
+                            <td className="p-3 text-gray-300 text-xs">{empresaNomeById[v.empresa_id] || '—'}</td>
+                            <td className="p-3">
+                              <span className={`text-xs font-bold px-2 py-1 rounded border ${v.status === 'Ativo' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
+                                {v.status || '—'}
+                              </span>
+                            </td>
+                            <td className="p-3 text-gray-400 text-xs">{v.operacao || '—'}</td>
+                            <td className="p-3 text-gray-400 text-xs">{v.modelo || '—'}</td>
+                            <td className="p-3 text-gray-400 text-xs">{v.id_instalado || '—'}</td>
+                            <td className="p-3 text-gray-300 text-xs">{v.mensalidade != null ? Number(v.mensalidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}</td>
+                            <td className="p-3 text-right whitespace-nowrap">
+                              <button onClick={() => openVehicleForm(v)} title="Editar" className="text-gray-400 hover:text-blue-400 p-1.5"><FaEdit size={14} /></button>
+                              <button onClick={() => handleDeleteVehicle(v.id)} title="Excluir" className="text-gray-400 hover:text-red-400 p-1.5"><FaTrashAlt size={14} /></button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Paginação */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between text-sm text-gray-400">
+                    <button
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                      className="flex items-center gap-1 disabled:opacity-40 hover:text-white px-3 py-1.5"
+                    >
+                      <FaChevronLeft size={12} /> Anterior
+                    </button>
+                    <span>Página {currentPage} de {totalPages}</span>
+                    <button
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                      className="flex items-center gap-1 disabled:opacity-40 hover:text-white px-3 py-1.5"
+                    >
+                      Próxima <FaChevronRight size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
       </div>
+
+      {/* Modal Criar/Editar Veículo */}
+      {isVehicleModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-emerald-500/30 rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-gray-800 pb-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <FaTruck className="text-emerald-400" /> {editingVehicle ? 'Editar Veículo' : 'Nova Placa'}
+              </h3>
+              <button onClick={() => setIsVehicleModalOpen(false)} className="text-gray-400 hover:text-white"><FaTimes/></button>
+            </div>
+
+            <form onSubmit={handleSaveVehicle} className="space-y-4">
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Placa</label>
+                  <input type="text" required value={vFormPlaca} onChange={e => setVFormPlaca(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500 uppercase" />
+                </div>
+                <div className="w-36">
+                  <label className="block text-xs text-gray-400 mb-1">Status</label>
+                  <select value={vFormStatus} onChange={e => setVFormStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500">
+                    <option value="Ativo">Ativo</option>
+                    <option value="Inativo">Inativo</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Empresa</label>
+                <select required value={vFormEmpresaId} onChange={e => setVFormEmpresaId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500">
+                  <option value="">Selecione a empresa...</option>
+                  {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+                </select>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Operação</label>
+                  <input type="text" value={vFormOperacao} onChange={e => setVFormOperacao(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Modelo</label>
+                  <input type="text" value={vFormModelo} onChange={e => setVFormModelo(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">ID Instalado (serial do rastreador)</label>
+                <input type="text" value={vFormIdInstalado} onChange={e => setVFormIdInstalado(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Data Instalação</label>
+                  <input type="date" value={vFormDataInst} onChange={e => setVFormDataInst(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Data Desinstalação</label>
+                  <input type="date" value={vFormDataDesinst} onChange={e => setVFormDataDesinst(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Mensalidade (R$)</label>
+                  <input type="number" step="0.01" value={vFormMensalidade} onChange={e => setVFormMensalidade(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Custo Total (R$)</label>
+                  <input type="number" step="0.01" value={vFormCustoTotal} onChange={e => setVFormCustoTotal(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">DRE Placa (R$)</label>
+                  <input type="number" step="0.01" value={vFormDrePlaca} onChange={e => setVFormDrePlaca(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button type="submit" disabled={isSavingVehicle} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+                  {isSavingVehicle ? 'Salvando...' : (editingVehicle ? 'Salvar Alterações' : 'Criar Placa')}
+                </button>
+                <button type="button" onClick={() => setIsVehicleModalOpen(false)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </>
   );
 }
