@@ -104,6 +104,12 @@ export default function AreaDoCliente() {
   const [currentUser, setCurrentUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
+
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Filtros e Modais (Roadmap)
@@ -510,7 +516,7 @@ export default function AreaDoCliente() {
     setNewServiceEndereco('');
     setNewServiceTelefone('');
     setNewServicePlacaNova('');
-    alert('Solicitação enviada com sucesso!');
+    showToast('Solicitação enviada com sucesso!');
   };
 
   // Cliente aceita ou recusa a data/hora proposta pelo admin
@@ -699,15 +705,16 @@ export default function AreaDoCliente() {
     }
   };
 
+  const [deletingCommentId, setDeletingCommentId] = useState(null);
+
   const handleDeleteComment = async (commentId) => {
-    if (confirm('Deseja excluir este comentário?')) {
-      const { error } = await supabase.from('comments').delete().eq('id', commentId);
-      if (!error) {
-        const updatedSteps = steps.map((s) => s.id === selectedStep.id ? { ...s, comments: s.comments.filter((c) => c.id !== commentId) } : s);
-        setSteps(updatedSteps);
-        setSelectedStep({ ...selectedStep, comments: selectedStep.comments.filter((c) => c.id !== commentId) });
-      }
+    const { error } = await supabase.from('comments').delete().eq('id', commentId);
+    if (!error) {
+      const updatedSteps = steps.map((s) => s.id === selectedStep.id ? { ...s, comments: s.comments.filter((c) => c.id !== commentId) } : s);
+      setSteps(updatedSteps);
+      setSelectedStep({ ...selectedStep, comments: selectedStep.comments.filter((c) => c.id !== commentId) });
     }
+    setDeletingCommentId(null);
   };
 
   // ==========================================
@@ -793,6 +800,18 @@ export default function AreaDoCliente() {
   return (
     <div className="min-h-screen bg-gray-950 text-white font-sans pt-24 pb-16 px-4 sm:px-6 lg:px-8">
       <Head><title>Área do Cliente | Full Vision</title></Head>
+
+      {/* Toast flutuante (sucesso/erro) */}
+      {toast && (
+        <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 px-5 py-3 rounded-xl shadow-2xl border text-sm font-semibold animate-[fadeIn_0.2s_ease-out] ${
+          toast.type === 'success'
+            ? 'bg-emerald-950 border-emerald-500/40 text-emerald-400'
+            : 'bg-red-950 border-red-500/40 text-red-400'
+        }`}>
+          {toast.type === 'success' ? <FaCheckCircle /> : <FaExclamationCircle />}
+          {toast.message}
+        </div>
+      )}
 
       <div className="max-w-6xl mx-auto">
         {!isLoggedIn ? (
@@ -1308,6 +1327,20 @@ export default function AreaDoCliente() {
               </div>
             )}
 
+            {/* Modal de confirmação: excluir comentário */}
+            {deletingCommentId && (
+              <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                <div className="bg-gray-900 border border-red-500/30 rounded-2xl max-w-sm w-full p-6 space-y-4">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaExclamationCircle className="text-red-400" /> Excluir Comentário</h3>
+                  <p className="text-sm text-gray-400">Tem certeza que deseja excluir este comentário? Essa ação não pode ser desfeita.</p>
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={() => handleDeleteComment(deletingCommentId)} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">Excluir</button>
+                    <button onClick={() => setDeletingCommentId(null)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Modal de recusa da data proposta (cliente) */}
             {rejectingSolicitacaoId && (
               <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
@@ -1356,7 +1389,7 @@ export default function AreaDoCliente() {
                       {selectedStep.comments && selectedStep.comments.map((c) => (
                         <div key={c.id} className="bg-gray-950 border border-gray-800 rounded-xl p-3 text-sm flex justify-between items-start">
                           <div><span className="font-semibold text-blue-400 text-xs block">@{c.author === 'adoro_frango' ? "Ad'oro Frango" : c.author === 'adoro_racao' ? "Ad'oro Ração" : c.author}</span><p className="text-gray-300 text-xs mt-1">{c.text}</p></div>
-                          {isAdmin && <button onClick={() => handleDeleteComment(c.id)} className="text-gray-500 hover:text-red-400 p-1"><FaTrashAlt size={12} /></button>}
+                          {isAdmin && <button onClick={() => setDeletingCommentId(c.id)} className="text-gray-500 hover:text-red-400 p-1"><FaTrashAlt size={12} /></button>}
                         </div>
                       ))}
                     </div>
