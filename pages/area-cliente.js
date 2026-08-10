@@ -10,6 +10,76 @@ import {
   FaTools, FaClipboardList, FaCar
 } from 'react-icons/fa';
 
+// Linha da tabela de "Solicitações de Serviço" no painel do admin.
+// Componente separado porque cada linha precisa do próprio estado local
+// pro campo de data/hora antes de enviar pro cliente.
+function AdminServiceRow({ s, onUpdateStatus, onSetSchedule, serviceTypeLabel, serviceStatusLabel, serviceStatusColor }) {
+  const [dataPrevista, setDataPrevista] = useState(
+    s.data_hora_prevista ? new Date(s.data_hora_prevista).toISOString().slice(0, 16) : ''
+  );
+
+  const podeDefinirData = s.status === 'pendente' || s.status === 'recusado';
+  const placaExibida = s.tipo_servico === 'nova_instalacao'
+    ? `${s.placa_nova} (nova)`
+    : (s.veiculos?.placa || '—');
+
+  return (
+    <tr className="hover:bg-gray-800/50 align-top">
+      <td className="p-3 text-white font-medium">{s.empresas?.nome || '—'}</td>
+      <td className="p-3 text-gray-300"><FaCar className="inline text-gray-500 mr-1" />{placaExibida}</td>
+      <td className="p-3 text-gray-300">{serviceTypeLabel[s.tipo_servico] || s.tipo_servico}</td>
+      <td className="p-3 text-gray-400 text-xs">
+        {s.telefone_contato ? (
+          <a href={`tel:${s.telefone_contato}`} className="text-cyan-400 hover:underline">{s.telefone_contato}</a>
+        ) : '—'}
+      </td>
+      <td className="p-3 text-gray-400 text-xs max-w-[200px]">{s.descricao || '—'}</td>
+      <td className="p-3">
+        <span className={`text-xs font-bold px-2 py-1 rounded border ${serviceStatusColor[s.status]}`}>{serviceStatusLabel[s.status] || s.status}</span>
+        {s.status === 'recusado' && s.motivo_recusa && (
+          <div className="text-[11px] text-red-400 mt-1 max-w-[160px]">Motivo: {s.motivo_recusa}</div>
+        )}
+      </td>
+      <td className="p-3 text-right space-y-2">
+        {podeDefinirData && (
+          <div className="flex flex-col gap-1.5 items-end">
+            <input
+              type="datetime-local"
+              value={dataPrevista}
+              onChange={e => setDataPrevista(e.target.value)}
+              className="bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-amber-500"
+            />
+            <button
+              onClick={() => onSetSchedule(s.id, dataPrevista)}
+              className="bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg whitespace-nowrap"
+            >
+              Enviar data ao cliente
+            </button>
+          </div>
+        )}
+        {!podeDefinirData && s.data_hora_prevista && (
+          <div className="text-xs text-gray-300 whitespace-nowrap">
+            {new Date(s.data_hora_prevista).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+          </div>
+        )}
+        <select
+          value={s.status}
+          onChange={e => onUpdateStatus(s.id, e.target.value)}
+          className="bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-amber-500"
+        >
+          <option value="pendente">Pendente</option>
+          <option value="aguardando_confirmacao">Aguardando Confirmação</option>
+          <option value="confirmado">Confirmado</option>
+          <option value="recusado">Recusado</option>
+          <option value="em_andamento">Em Andamento</option>
+          <option value="concluido">Concluído</option>
+          <option value="cancelado">Cancelado</option>
+        </select>
+      </td>
+    </tr>
+  );
+}
+
 export default function AreaDoCliente() {
   // ==========================================
   // ESTADOS DO SISTEMA
@@ -66,6 +136,8 @@ export default function AreaDoCliente() {
   const [newServiceTipo, setNewServiceTipo] = useState('manutencao');
   const [newServiceDescricao, setNewServiceDescricao] = useState('');
   const [newServiceEndereco, setNewServiceEndereco] = useState('');
+  const [newServiceTelefone, setNewServiceTelefone] = useState('');
+  const [newServicePlacaNova, setNewServicePlacaNova] = useState('');
   const [isSubmittingService, setIsSubmittingService] = useState(false);
 
   // ==========================================
@@ -294,9 +366,33 @@ export default function AreaDoCliente() {
     setSolicitacoes(solicitacoes.map(s => s.id === id ? data : s));
   };
 
+  // Admin propõe (ou re-propõe) data/hora e envia pra confirmação do cliente
+  const handleSetSchedule = async (id, dataHoraLocal) => {
+    if (!dataHoraLocal) { alert('Escolha uma data e horário.'); return; }
+    const { data, error } = await supabase
+      .from('solicitacoes_servico')
+      .update({
+        data_hora_prevista: new Date(dataHoraLocal).toISOString(),
+        status: 'aguardando_confirmacao',
+        motivo_recusa: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select('*, empresas(nome), veiculos(placa, modelo)')
+      .single();
+
+    if (error) { alert('Erro ao enviar data ao cliente.'); return; }
+    setSolicitacoes(solicitacoes.map(s => s.id === id ? data : s));
+  };
+
   const handleCreateServiceRequest = async (e) => {
     e.preventDefault();
-    if (!newServiceVeiculoId) { alert('Selecione a placa do veículo.'); return; }
+
+    const isNovaInstalacao = newServiceTipo === 'nova_instalacao';
+
+    if (isNovaInstalacao && !newServicePlacaNova.trim()) { alert('Informe a placa a ser instalada.'); return; }
+    if (!isNovaInstalacao && !newServiceVeiculoId) { alert('Selecione a placa do veículo.'); return; }
+    if (!newServiceTelefone.trim()) { alert('Informe um telefone para contato.'); return; }
     if (!currentUser?.empresa_id) { alert('Sua conta não está vinculada a uma empresa. Fale com o suporte.'); return; }
 
     setIsSubmittingService(true);
@@ -304,10 +400,12 @@ export default function AreaDoCliente() {
       .from('solicitacoes_servico')
       .insert([{
         empresa_id: currentUser.empresa_id,
-        veiculo_id: newServiceVeiculoId,
+        veiculo_id: isNovaInstalacao ? null : newServiceVeiculoId,
+        placa_nova: isNovaInstalacao ? newServicePlacaNova.trim().toUpperCase() : null,
         tipo_servico: newServiceTipo,
         descricao: newServiceDescricao || null,
         endereco: newServiceEndereco || null,
+        telefone_contato: newServiceTelefone.trim(),
       }])
       .select('*, empresas(nome), veiculos(placa, modelo)')
       .single();
@@ -320,7 +418,30 @@ export default function AreaDoCliente() {
     setNewServiceTipo('manutencao');
     setNewServiceDescricao('');
     setNewServiceEndereco('');
+    setNewServiceTelefone('');
+    setNewServicePlacaNova('');
     alert('Solicitação enviada com sucesso!');
+  };
+
+  // Cliente aceita ou recusa a data/hora proposta pelo admin
+  const handleClientRespondDate = async (id, decision) => {
+    let motivo = null;
+    if (decision === 'recusado') {
+      motivo = prompt('Opcional: por que essa data não funciona pra você?') || null;
+    }
+    const { data, error } = await supabase
+      .from('solicitacoes_servico')
+      .update({
+        status: decision, // 'confirmado' ou 'recusado'
+        motivo_recusa: motivo,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .select('*, empresas(nome), veiculos(placa, modelo)')
+      .single();
+
+    if (error) { alert('Erro ao responder a data proposta.'); return; }
+    setSolicitacoes(solicitacoes.map(s => s.id === id ? data : s));
   };
 
   const myServiceRequests = useMemo(() => {
@@ -341,13 +462,24 @@ export default function AreaDoCliente() {
     [solicitacoes]
   );
 
-  const serviceTypeLabel = { manutencao: 'Manutenção', troca: 'Troca', desinstalacao: 'Desinstalação' };
-  const serviceStatusLabel = { pendente: 'Pendente', em_andamento: 'Em Andamento', concluido: 'Concluído', cancelado: 'Cancelado' };
+  const serviceTypeLabel = { manutencao: 'Manutenção', troca: 'Troca', desinstalacao: 'Desinstalação', nova_instalacao: 'Nova Instalação' };
+  const serviceStatusLabel = {
+    pendente: 'Pendente (aguardando triagem)',
+    aguardando_confirmacao: 'Aguardando sua confirmação',
+    confirmado: 'Confirmado',
+    recusado: 'Data recusada',
+    em_andamento: 'Em Andamento',
+    concluido: 'Concluído',
+    cancelado: 'Cancelado',
+  };
   const serviceStatusColor = {
     pendente: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+    aguardando_confirmacao: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
+    confirmado: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+    recusado: 'bg-red-500/10 text-red-400 border-red-500/30',
     em_andamento: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
     concluido: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-    cancelado: 'bg-red-500/10 text-red-400 border-red-500/30',
+    cancelado: 'bg-gray-500/10 text-gray-400 border-gray-500/30',
   };
 
   // ==========================================
@@ -647,28 +779,45 @@ export default function AreaDoCliente() {
 
                 <form onSubmit={handleCreateServiceRequest} className="bg-gray-950 p-4 rounded-xl border border-gray-800 space-y-4">
                   <div className="flex flex-col md:flex-row gap-4">
-                    <div className="flex-1 w-full">
-                      <label className="block text-xs text-gray-400 mb-1">Placa do veículo</label>
-                      <select required value={newServiceVeiculoId} onChange={e => setNewServiceVeiculoId(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500">
-                        <option value="">Selecione a placa...</option>
-                        {veiculos.map(v => (
-                          <option key={v.id} value={v.id}>{v.placa}{v.modelo ? ` — ${v.modelo}` : ''}</option>
-                        ))}
-                      </select>
-                    </div>
                     <div className="w-full md:w-56">
                       <label className="block text-xs text-gray-400 mb-1">Tipo de serviço</label>
                       <select value={newServiceTipo} onChange={e => setNewServiceTipo(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500">
                         <option value="manutencao">Manutenção</option>
                         <option value="troca">Troca</option>
                         <option value="desinstalacao">Desinstalação</option>
+                        <option value="nova_instalacao">Nova Instalação</option>
                       </select>
                     </div>
+
+                    {newServiceTipo === 'nova_instalacao' ? (
+                      <div className="flex-1 w-full">
+                        <label className="block text-xs text-gray-400 mb-1">Placa a ser instalada</label>
+                        <input type="text" required value={newServicePlacaNova} onChange={e => setNewServicePlacaNova(e.target.value)} placeholder="Ex: ABC1D23" className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500 uppercase" />
+                      </div>
+                    ) : (
+                      <div className="flex-1 w-full">
+                        <label className="block text-xs text-gray-400 mb-1">Placa do veículo</label>
+                        <select required value={newServiceVeiculoId} onChange={e => setNewServiceVeiculoId(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500">
+                          <option value="">Selecione a placa...</option>
+                          {veiculos.map(v => (
+                            <option key={v.id} value={v.id}>{v.placa}{v.modelo ? ` — ${v.modelo}` : ''}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex-1 w-full">
-                    <label className="block text-xs text-gray-400 mb-1">Endereço para o serviço</label>
-                    <input type="text" value={newServiceEndereco} onChange={e => setNewServiceEndereco(e.target.value)} placeholder="Rua, número, cidade..." className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500" />
+
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 w-full">
+                      <label className="block text-xs text-gray-400 mb-1">Telefone para contato</label>
+                      <input type="tel" required value={newServiceTelefone} onChange={e => setNewServiceTelefone(e.target.value)} placeholder="(11) 99999-9999" className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500" />
+                    </div>
+                    <div className="flex-1 w-full">
+                      <label className="block text-xs text-gray-400 mb-1">Endereço para o serviço</label>
+                      <input type="text" value={newServiceEndereco} onChange={e => setNewServiceEndereco(e.target.value)} placeholder="Rua, número, cidade..." className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500" />
+                    </div>
                   </div>
+
                   <div className="flex-1 w-full">
                     <label className="block text-xs text-gray-400 mb-1">Descrição (opcional)</label>
                     <textarea value={newServiceDescricao} onChange={e => setNewServiceDescricao(e.target.value)} rows={3} placeholder="Detalhe o problema ou pedido..." className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500 resize-none" />
@@ -686,19 +835,33 @@ export default function AreaDoCliente() {
                         <th className="p-3">Placa</th>
                         <th className="p-3">Serviço</th>
                         <th className="p-3">Status</th>
-                        <th className="p-3">Data</th>
+                        <th className="p-3">Data Prevista</th>
+                        <th className="p-3 text-right">Ação</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-800">
                       {myServiceRequests.length === 0 ? (
-                        <tr><td colSpan={4} className="p-6 text-center text-gray-500 text-sm">Você ainda não enviou nenhuma solicitação.</td></tr>
+                        <tr><td colSpan={5} className="p-6 text-center text-gray-500 text-sm">Você ainda não enviou nenhuma solicitação.</td></tr>
                       ) : (
                         myServiceRequests.map(s => (
-                          <tr key={s.id} className="hover:bg-gray-800/50">
-                            <td className="p-3 text-white font-medium"><FaCar className="inline text-gray-500 mr-1" />{s.veiculos?.placa || '—'}</td>
+                          <tr key={s.id} className="hover:bg-gray-800/50 align-top">
+                            <td className="p-3 text-white font-medium">
+                              <FaCar className="inline text-gray-500 mr-1" />
+                              {s.tipo_servico === 'nova_instalacao' ? `${s.placa_nova} (nova)` : (s.veiculos?.placa || '—')}
+                            </td>
                             <td className="p-3 text-gray-300">{serviceTypeLabel[s.tipo_servico] || s.tipo_servico}</td>
                             <td className="p-3"><span className={`text-xs font-bold px-2 py-1 rounded border ${serviceStatusColor[s.status]}`}>{serviceStatusLabel[s.status] || s.status}</span></td>
-                            <td className="p-3 text-gray-500 text-xs whitespace-nowrap">{new Date(s.created_at).toLocaleDateString('pt-BR')}</td>
+                            <td className="p-3 text-gray-400 text-xs whitespace-nowrap">{s.data_hora_prevista ? new Date(s.data_hora_prevista).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—'}</td>
+                            <td className="p-3 text-right">
+                              {s.status === 'aguardando_confirmacao' ? (
+                                <div className="flex gap-2 justify-end">
+                                  <button onClick={() => handleClientRespondDate(s.id, 'confirmado')} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">Confirmar</button>
+                                  <button onClick={() => handleClientRespondDate(s.id, 'recusado')} className="bg-red-600/80 hover:bg-red-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">Recusar</button>
+                                </div>
+                              ) : (
+                                <span className="text-gray-600 text-xs">—</span>
+                              )}
+                            </td>
                           </tr>
                         ))
                       )}
@@ -869,6 +1032,9 @@ export default function AreaDoCliente() {
                       <select value={filterServiceStatus} onChange={e => setFilterServiceStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500">
                         <option value="all">Todos</option>
                         <option value="pendente">Pendente</option>
+                        <option value="aguardando_confirmacao">Aguardando Confirmação</option>
+                        <option value="confirmado">Confirmado</option>
+                        <option value="recusado">Recusado</option>
                         <option value="em_andamento">Em Andamento</option>
                         <option value="concluido">Concluído</option>
                         <option value="cancelado">Cancelado</option>
@@ -890,9 +1056,9 @@ export default function AreaDoCliente() {
                           <th className="p-3">Empresa</th>
                           <th className="p-3">Placa</th>
                           <th className="p-3">Serviço</th>
+                          <th className="p-3">Telefone</th>
                           <th className="p-3">Descrição</th>
                           <th className="p-3">Status</th>
-                          <th className="p-3">Data</th>
                           <th className="p-3 text-right">Ação</th>
                         </tr>
                       </thead>
@@ -901,28 +1067,15 @@ export default function AreaDoCliente() {
                           <tr><td colSpan={7} className="p-6 text-center text-gray-500 text-sm">Nenhuma solicitação encontrada.</td></tr>
                         ) : (
                           filteredSolicitacoes.map(s => (
-                            <tr key={s.id} className="hover:bg-gray-800/50 align-top">
-                              <td className="p-3 text-white font-medium">{s.empresas?.nome || '—'}</td>
-                              <td className="p-3 text-gray-300"><FaCar className="inline text-gray-500 mr-1" />{s.veiculos?.placa || '—'}</td>
-                              <td className="p-3 text-gray-300">{serviceTypeLabel[s.tipo_servico] || s.tipo_servico}</td>
-                              <td className="p-3 text-gray-400 text-xs max-w-[220px]">{s.descricao || '—'}</td>
-                              <td className="p-3">
-                                <span className={`text-xs font-bold px-2 py-1 rounded border ${serviceStatusColor[s.status]}`}>{serviceStatusLabel[s.status] || s.status}</span>
-                              </td>
-                              <td className="p-3 text-gray-500 text-xs whitespace-nowrap">{new Date(s.created_at).toLocaleDateString('pt-BR')}</td>
-                              <td className="p-3 text-right">
-                                <select
-                                  value={s.status}
-                                  onChange={e => handleUpdateServiceStatus(s.id, e.target.value)}
-                                  className="bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-amber-500"
-                                >
-                                  <option value="pendente">Pendente</option>
-                                  <option value="em_andamento">Em Andamento</option>
-                                  <option value="concluido">Concluído</option>
-                                  <option value="cancelado">Cancelado</option>
-                                </select>
-                              </td>
-                            </tr>
+                            <AdminServiceRow
+                              key={s.id}
+                              s={s}
+                              onUpdateStatus={handleUpdateServiceStatus}
+                              onSetSchedule={handleSetSchedule}
+                              serviceTypeLabel={serviceTypeLabel}
+                              serviceStatusLabel={serviceStatusLabel}
+                              serviceStatusColor={serviceStatusColor}
+                            />
                           ))
                         )}
                       </tbody>
