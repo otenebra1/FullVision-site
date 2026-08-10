@@ -6,8 +6,27 @@ import {
   FaTruck, FaCheckCircle, FaTimesCircle, FaBuilding, FaMoneyBillWave,
   FaTools, FaSpinner, FaArrowLeft, FaChartPie, FaLayerGroup, FaExclamationCircle,
   FaDatabase, FaSearch, FaPlus, FaEdit, FaTrashAlt, FaTimes, FaChevronLeft, FaChevronRight,
-  FaSatelliteDish, FaLink, FaUnlink, FaBoxes,
+  FaSatelliteDish, FaLink, FaUnlink, FaBoxes, FaClipboardList, FaCamera, FaUserCog,
+  FaArrowUp, FaArrowDown, FaEquals, FaEye,
 } from 'react-icons/fa';
+
+// Tags de serviço usadas na Ordem de Serviço (mesmas da planilha original)
+const SERVICO_TAGS = [
+  'MANUTENÇÃO', 'TROCA EQUIPAMENTO', 'INSTALAÇÃO LOCALIZADOR', 'RETIRADA LOCALIZADOR',
+  'INSTALAÇÃO BLOQUEIO', 'INSTALAÇÃO SENSOR EXTERNO CABINE', 'INSTALAÇÃO SENSOR INTERNO CABINE',
+  'UPGRADE LOCALIZADOR', 'EXTRAVIO LOCALIZADOR', 'KM',
+];
+
+// As 7 fotos obrigatórias de toda Ordem de Serviço
+const FOTO_TIPOS = [
+  { key: 'equipamento_placa', label: 'Equipamento na frente da placa (com o ID visível)' },
+  { key: 'painel_ligado_antes', label: 'Painel com o motor ligado (antes)' },
+  { key: 'regiao_desmontada', label: 'Região que será desmontada' },
+  { key: 'fiacao', label: 'Fiação onde o equipamento será instalado' },
+  { key: 'acabamento', label: 'Acabamento da instalação/retirada' },
+  { key: 'painel_fechado', label: 'Painel fechado' },
+  { key: 'painel_ligado_depois', label: 'Painel com o motor ligado (depois do serviço)' },
+];
 
 // ==========================================
 // Card de estatística do topo do dashboard
@@ -107,6 +126,38 @@ export default function PainelAdmin() {
   const [installTargetRastreador, setInstallTargetRastreador] = useState(null);
   const [installVeiculoId, setInstallVeiculoId] = useState('');
 
+  // Ordens de Serviço
+  const [ordensServico, setOrdensServico] = useState([]);
+  const [osSearch, setOsSearch] = useState('');
+  const [osFilterEmpresa, setOsFilterEmpresa] = useState('all');
+  const [osPage, setOsPage] = useState(1);
+  const osPerPage = 15;
+
+  const [isOsModalOpen, setIsOsModalOpen] = useState(false);
+  const [isSavingOs, setIsSavingOs] = useState(false);
+  const [osUploadProgress, setOsUploadProgress] = useState('');
+
+  const [osFormData, setOsFormData] = useState(new Date().toISOString().slice(0, 10));
+  const [osFormTecnicoNome, setOsFormTecnicoNome] = useState('');
+  const [osFormTecnicoEmail, setOsFormTecnicoEmail] = useState('');
+  const [osFormServicos, setOsFormServicos] = useState([]);
+  const [osFormEmpresaId, setOsFormEmpresaId] = useState('');
+  const [osFormIsNovaPlaca, setOsFormIsNovaPlaca] = useState(false);
+  const [osFormVeiculoId, setOsFormVeiculoId] = useState('');
+  const [osFormPlacaTexto, setOsFormPlacaTexto] = useState('');
+  const [osFormRastreadorInstaladoId, setOsFormRastreadorInstaladoId] = useState('');
+  const [osFormRastreadorRetiradoId, setOsFormRastreadorRetiradoId] = useState('');
+  const [osFormLocalInstalacao, setOsFormLocalInstalacao] = useState('');
+  const [osFormKm, setOsFormKm] = useState('');
+  const [osFormObservacoes, setOsFormObservacoes] = useState('');
+  const [osFormCustoTecnico, setOsFormCustoTecnico] = useState('');
+  const [osFormFaturamentoCliente, setOsFormFaturamentoCliente] = useState('');
+  const [osFormFotos, setOsFormFotos] = useState({});
+
+  const [viewingOs, setViewingOs] = useState(null);
+  const [viewingOsFotos, setViewingOsFotos] = useState([]);
+  const [isLoadingOsFotos, setIsLoadingOsFotos] = useState(false);
+
   // ------------------------------------------
   // Guard de acesso: só admin passa
   // ------------------------------------------
@@ -167,6 +218,12 @@ export default function PainelAdmin() {
         .select('*')
         .order('serial');
       if (rastreadoresData) setRastreadores(rastreadoresData);
+
+      const { data: ordensData } = await supabase
+        .from('ordens_servico')
+        .select('*, empresas(nome), veiculos(placa)')
+        .order('data', { ascending: false });
+      if (ordensData) setOrdensServico(ordensData);
 
       setIsLoadingData(false);
     };
@@ -513,6 +570,154 @@ export default function PainelAdmin() {
     setRastreadores(rastreadores.map(rr => rr.id === updatedRastreador.id ? updatedRastreador : rr));
   };
 
+  // ------------------------------------------
+  // Ordens de Serviço: filtro, paginação, CRUD e fotos
+  // ------------------------------------------
+  const rastreadoresDisponiveis = useMemo(
+    () => rastreadores.filter(r => r.status === 'estoque_central' || r.status === 'estoque_tecnico'),
+    [rastreadores]
+  );
+  const rastreadoresInstalados = useMemo(
+    () => rastreadores.filter(r => r.status === 'instalado'),
+    [rastreadores]
+  );
+
+  const filteredOrdens = useMemo(() => {
+    return ordensServico.filter(o => {
+      const q = osSearch.toUpperCase();
+      const placa = o.veiculos?.placa || o.placa_texto || '';
+      const searchOk = !q || placa.toUpperCase().includes(q) || o.tecnico_nome?.toUpperCase().includes(q);
+      const empresaOk = osFilterEmpresa === 'all' || o.empresa_id === osFilterEmpresa;
+      return searchOk && empresaOk;
+    });
+  }, [ordensServico, osSearch, osFilterEmpresa]);
+
+  const osTotalPages = Math.max(1, Math.ceil(filteredOrdens.length / osPerPage));
+  const paginatedOrdens = useMemo(() => {
+    const start = (osPage - 1) * osPerPage;
+    return filteredOrdens.slice(start, start + osPerPage);
+  }, [filteredOrdens, osPage]);
+
+  useEffect(() => { setOsPage(1); }, [osSearch, osFilterEmpresa]);
+
+  const osStats = useMemo(() => {
+    const faturamentoTotal = filteredOrdens.reduce((sum, o) => sum + (Number(o.faturamento_cliente) || 0), 0);
+    const custoTotal = filteredOrdens.reduce((sum, o) => sum + (Number(o.custo_tecnico) || 0), 0);
+    return { faturamentoTotal, custoTotal, lucroTotal: faturamentoTotal - custoTotal };
+  }, [filteredOrdens]);
+
+  const resetOsForm = () => {
+    setOsFormData(new Date().toISOString().slice(0, 10));
+    setOsFormTecnicoNome(''); setOsFormTecnicoEmail('');
+    setOsFormServicos([]); setOsFormEmpresaId('');
+    setOsFormIsNovaPlaca(false); setOsFormVeiculoId(''); setOsFormPlacaTexto('');
+    setOsFormRastreadorInstaladoId(''); setOsFormRastreadorRetiradoId('');
+    setOsFormLocalInstalacao(''); setOsFormKm('');
+    setOsFormObservacoes(''); setOsFormCustoTecnico(''); setOsFormFaturamentoCliente('');
+    setOsFormFotos({});
+  };
+
+  const toggleServicoTag = (tag) => {
+    setOsFormServicos(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
+  };
+
+  const handleFotoChange = (tipoKey, file) => {
+    setOsFormFotos(prev => ({ ...prev, [tipoKey]: file }));
+  };
+
+  const handleSaveOs = async (e) => {
+    e.preventDefault();
+    if (!osFormTecnicoNome.trim()) { alert('Informe o nome do técnico.'); return; }
+    if (osFormServicos.length === 0) { alert('Selecione ao menos um serviço realizado.'); return; }
+    if (!osFormEmpresaId) { alert('Selecione a empresa/cliente.'); return; }
+    if (osFormIsNovaPlaca ? !osFormPlacaTexto.trim() : !osFormVeiculoId) { alert('Informe a placa.'); return; }
+
+    const fotosFaltando = FOTO_TIPOS.filter(ft => !osFormFotos[ft.key]);
+    if (fotosFaltando.length > 0) {
+      alert('Todas as 7 fotos são obrigatórias. Faltam:\n' + fotosFaltando.map(f => '• ' + f.label).join('\n'));
+      return;
+    }
+
+    setIsSavingOs(true);
+    setOsUploadProgress('Salvando ordem de serviço...');
+
+    const payload = {
+      data: osFormData,
+      tecnico_nome: osFormTecnicoNome.trim(),
+      tecnico_email: osFormTecnicoEmail || null,
+      servico_realizado: osFormServicos.join(', '),
+      empresa_id: osFormEmpresaId,
+      veiculo_id: osFormIsNovaPlaca ? null : osFormVeiculoId,
+      placa_texto: osFormIsNovaPlaca ? osFormPlacaTexto.trim().toUpperCase() : null,
+      rastreador_instalado_id: osFormRastreadorInstaladoId || null,
+      rastreador_retirado_id: osFormRastreadorRetiradoId || null,
+      local_instalacao: osFormLocalInstalacao || null,
+      km_percorrido: osFormKm === '' ? null : Number(osFormKm),
+      observacoes: osFormObservacoes || null,
+      custo_tecnico: osFormCustoTecnico === '' ? 0 : Number(osFormCustoTecnico),
+      faturamento_cliente: osFormFaturamentoCliente === '' ? 0 : Number(osFormFaturamentoCliente),
+    };
+
+    const { data: novaOs, error: errOs } = await supabase
+      .from('ordens_servico')
+      .insert([payload])
+      .select('*, empresas(nome), veiculos(placa)')
+      .single();
+
+    if (errOs) {
+      setIsSavingOs(false); setOsUploadProgress('');
+      alert('Erro ao salvar a Ordem de Serviço: ' + errOs.message);
+      return;
+    }
+
+    const falhas = [];
+    for (const ft of FOTO_TIPOS) {
+      const file = osFormFotos[ft.key];
+      setOsUploadProgress(`Enviando foto: ${ft.label}...`);
+      const ext = file.name.split('.').pop();
+      const path = `${novaOs.id}/${ft.key}-${Date.now()}.${ext}`;
+      const { error: errUpload } = await supabase.storage.from('os-fotos').upload(path, file);
+      if (errUpload) { falhas.push(ft.label); continue; }
+      await supabase.from('ordens_servico_fotos').insert([{ ordem_servico_id: novaOs.id, tipo: ft.key, storage_path: path }]);
+    }
+
+    setIsSavingOs(false);
+    setOsUploadProgress('');
+
+    if (falhas.length > 0) {
+      alert('A Ordem de Serviço foi salva, mas estas fotos falharam ao enviar:\n' + falhas.join('\n') + '\n\nVocê pode abrir a OS depois e tentar novamente.');
+    }
+
+    setOrdensServico([novaOs, ...ordensServico]);
+    setIsOsModalOpen(false);
+    resetOsForm();
+  };
+
+  const handleDeleteOs = async (id) => {
+    if (!confirm('Excluir esta Ordem de Serviço e todas as fotos anexadas? Essa ação não pode ser desfeita.')) return;
+
+    const { data: fotos } = await supabase.from('ordens_servico_fotos').select('storage_path').eq('ordem_servico_id', id);
+    if (fotos && fotos.length > 0) {
+      await supabase.storage.from('os-fotos').remove(fotos.map(f => f.storage_path));
+    }
+
+    const { error } = await supabase.from('ordens_servico').delete().eq('id', id);
+    if (error) { alert('Erro ao excluir a Ordem de Serviço: ' + error.message); return; }
+    setOrdensServico(ordensServico.filter(o => o.id !== id));
+  };
+
+  const openViewOs = async (os) => {
+    setViewingOs(os);
+    setIsLoadingOsFotos(true);
+    const { data: fotos } = await supabase.from('ordens_servico_fotos').select('*').eq('ordem_servico_id', os.id);
+    const fotosComUrl = (fotos || []).map(f => ({
+      ...f,
+      url: supabase.storage.from('os-fotos').getPublicUrl(f.storage_path).data.publicUrl,
+    }));
+    setViewingOsFotos(fotosComUrl);
+    setIsLoadingOsFotos(false);
+  };
+
   if (!authChecked) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -811,6 +1016,107 @@ export default function PainelAdmin() {
                   </div>
                 )}
               </div>
+
+              {/* Ordens de Serviço */}
+              <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <h2 className="text-lg font-bold flex items-center gap-2"><FaClipboardList className="text-orange-400" /> Ordens de Serviço</h2>
+                  <button onClick={() => { resetOsForm(); setIsOsModalOpen(true); }} className="inline-flex items-center gap-2 bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg self-start md:self-auto">
+                    <FaPlus /> Nova OS
+                  </button>
+                </div>
+
+                {/* Mini-cards financeiros */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-gray-950 border border-gray-800 rounded-xl p-3 text-center">
+                    <div className="text-lg font-bold text-emerald-400">{osStats.faturamentoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                    <div className="text-[11px] text-gray-500 uppercase font-semibold">Faturado do Cliente</div>
+                  </div>
+                  <div className="bg-gray-950 border border-gray-800 rounded-xl p-3 text-center">
+                    <div className="text-lg font-bold text-red-400">{osStats.custoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                    <div className="text-[11px] text-gray-500 uppercase font-semibold">Pago ao Técnico</div>
+                  </div>
+                  <div className="bg-gray-950 border border-gray-800 rounded-xl p-3 text-center">
+                    <div className={`text-lg font-bold ${osStats.lucroTotal >= 0 ? 'text-cyan-400' : 'text-red-400'}`}>{osStats.lucroTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
+                    <div className="text-[11px] text-gray-500 uppercase font-semibold">Lucro (filtro atual)</div>
+                  </div>
+                </div>
+
+                {/* Filtros */}
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 relative">
+                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por placa ou técnico..."
+                      value={osSearch}
+                      onChange={e => setOsSearch(e.target.value)}
+                      className="w-full bg-gray-950 border border-gray-700 rounded-lg pl-9 pr-3 py-2 text-sm text-white outline-none focus:border-orange-500"
+                    />
+                  </div>
+                  <select value={osFilterEmpresa} onChange={e => setOsFilterEmpresa(e.target.value)} className="w-full md:w-56 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500">
+                    <option value="all">Todas as empresas</option>
+                    {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+                  </select>
+                </div>
+
+                <div className="text-xs text-gray-500">{filteredOrdens.length} ordem(ns) de serviço encontrada(s)</div>
+
+                <div className="border border-gray-800 rounded-xl overflow-x-auto">
+                  <table className="w-full min-w-[900px] text-left text-sm">
+                    <thead className="bg-gray-950 text-gray-400 text-xs uppercase">
+                      <tr>
+                        <th className="p-3">Data</th>
+                        <th className="p-3">Técnico</th>
+                        <th className="p-3">Empresa</th>
+                        <th className="p-3">Placa</th>
+                        <th className="p-3">Serviço</th>
+                        <th className="p-3">Faturado</th>
+                        <th className="p-3">Pago Técnico</th>
+                        <th className="p-3">Lucro</th>
+                        <th className="p-3 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {paginatedOrdens.length === 0 ? (
+                        <tr><td colSpan={9} className="p-6 text-center text-gray-500 text-sm">Nenhuma ordem de serviço encontrada.</td></tr>
+                      ) : (
+                        paginatedOrdens.map(o => {
+                          const lucro = (Number(o.faturamento_cliente) || 0) - (Number(o.custo_tecnico) || 0);
+                          return (
+                            <tr key={o.id} className="hover:bg-gray-800/50">
+                              <td className="p-3 text-gray-300 text-xs whitespace-nowrap">{new Date(o.data + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                              <td className="p-3 text-gray-300 text-xs">{o.tecnico_nome}</td>
+                              <td className="p-3 text-gray-300 text-xs">{o.empresas?.nome || '—'}</td>
+                              <td className="p-3 text-white font-semibold text-xs">{o.veiculos?.placa || o.placa_texto || '—'}</td>
+                              <td className="p-3 text-gray-400 text-xs max-w-[160px] truncate" title={o.servico_realizado}>{o.servico_realizado}</td>
+                              <td className="p-3 text-emerald-400 text-xs whitespace-nowrap">{Number(o.faturamento_cliente || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                              <td className="p-3 text-red-400 text-xs whitespace-nowrap">{Number(o.custo_tecnico || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                              <td className={`p-3 text-xs font-semibold whitespace-nowrap ${lucro >= 0 ? 'text-cyan-400' : 'text-red-400'}`}>{lucro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
+                              <td className="p-3 text-right whitespace-nowrap">
+                                <button onClick={() => openViewOs(o)} title="Ver detalhes e fotos" className="text-gray-400 hover:text-blue-400 p-1.5"><FaEye size={14} /></button>
+                                <button onClick={() => handleDeleteOs(o.id)} title="Excluir" className="text-gray-400 hover:text-red-400 p-1.5"><FaTrashAlt size={14} /></button>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {osTotalPages > 1 && (
+                  <div className="flex items-center justify-between text-sm text-gray-400">
+                    <button onClick={() => setOsPage(p => Math.max(1, p - 1))} disabled={osPage === 1} className="flex items-center gap-1 disabled:opacity-40 hover:text-white px-3 py-1.5">
+                      <FaChevronLeft size={12} /> Anterior
+                    </button>
+                    <span>Página {osPage} de {osTotalPages}</span>
+                    <button onClick={() => setOsPage(p => Math.min(osTotalPages, p + 1))} disabled={osPage === osTotalPages} className="flex items-center gap-1 disabled:opacity-40 hover:text-white px-3 py-1.5">
+                      Próxima <FaChevronRight size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -1014,6 +1320,224 @@ export default function PainelAdmin() {
             <div className="flex gap-3 pt-2">
               <button onClick={handleInstallRastreador} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">Confirmar Instalação</button>
               <button onClick={() => { setInstallTargetRastreador(null); setInstallVeiculoId(''); }} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Nova Ordem de Serviço */}
+      {isOsModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-orange-500/30 rounded-2xl max-w-2xl w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-gray-800 pb-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaClipboardList className="text-orange-400" /> Nova Ordem de Serviço</h3>
+              <button onClick={() => setIsOsModalOpen(false)} className="text-gray-400 hover:text-white"><FaTimes/></button>
+            </div>
+
+            <form onSubmit={handleSaveOs} className="space-y-5">
+              {/* Técnico e data */}
+              <div className="flex gap-4">
+                <div className="w-40">
+                  <label className="block text-xs text-gray-400 mb-1">Data</label>
+                  <input type="date" required value={osFormData} onChange={e => setOsFormData(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Nome do Técnico</label>
+                  <input type="text" required value={osFormTecnicoNome} onChange={e => setOsFormTecnicoNome(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">E-mail do Técnico (opcional)</label>
+                <input type="email" value={osFormTecnicoEmail} onChange={e => setOsFormTecnicoEmail(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500" />
+              </div>
+
+              {/* Serviços realizados */}
+              <div>
+                <label className="block text-xs text-gray-400 mb-2">Serviço(s) Realizado(s)</label>
+                <div className="flex flex-wrap gap-2">
+                  {SERVICO_TAGS.map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => toggleServicoTag(tag)}
+                      className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
+                        osFormServicos.includes(tag)
+                          ? 'bg-orange-600 border-orange-500 text-white'
+                          : 'bg-gray-950 border-gray-700 text-gray-400 hover:border-gray-500'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Empresa e placa */}
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Empresa / Cliente</label>
+                <select required value={osFormEmpresaId} onChange={e => setOsFormEmpresaId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500">
+                  <option value="">Selecione a empresa...</option>
+                  {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <input type="checkbox" id="osNovaPlaca" checked={osFormIsNovaPlaca} onChange={e => setOsFormIsNovaPlaca(e.target.checked)} className="accent-orange-500" />
+                <label htmlFor="osNovaPlaca" className="text-xs text-gray-400">Essa OS é de uma placa nova (ainda não cadastrada no sistema)</label>
+              </div>
+
+              {osFormIsNovaPlaca ? (
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Placa nova</label>
+                  <input type="text" required value={osFormPlacaTexto} onChange={e => setOsFormPlacaTexto(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500 uppercase" />
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Placa</label>
+                  <select required value={osFormVeiculoId} onChange={e => setOsFormVeiculoId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500">
+                    <option value="">Selecione a placa...</option>
+                    {veiculos.filter(v => !osFormEmpresaId || v.empresa_id === osFormEmpresaId).map(v => (
+                      <option key={v.id} value={v.id}>{v.placa}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Rastreadores */}
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Rastreador Instalado (opcional)</label>
+                  <select value={osFormRastreadorInstaladoId} onChange={e => setOsFormRastreadorInstaladoId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500">
+                    <option value="">Nenhum</option>
+                    {rastreadoresDisponiveis.map(r => <option key={r.id} value={r.id}>{r.serial} — {r.modelo}</option>)}
+                  </select>
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Rastreador Retirado (opcional)</label>
+                  <select value={osFormRastreadorRetiradoId} onChange={e => setOsFormRastreadorRetiradoId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500">
+                    <option value="">Nenhum</option>
+                    {rastreadoresInstalados.map(r => <option key={r.id} value={r.id}>{r.serial} — {r.modelo}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Local da Instalação</label>
+                  <input type="text" value={osFormLocalInstalacao} onChange={e => setOsFormLocalInstalacao(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500" />
+                </div>
+                <div className="w-32">
+                  <label className="block text-xs text-gray-400 mb-1">KM Percorrido</label>
+                  <input type="number" step="0.1" value={osFormKm} onChange={e => setOsFormKm(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Observações</label>
+                <textarea value={osFormObservacoes} onChange={e => setOsFormObservacoes(e.target.value)} rows={2} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500 resize-none" />
+              </div>
+
+              {/* Financeiro */}
+              <div className="bg-gray-950 border border-gray-800 rounded-xl p-4 space-y-3">
+                <div className="text-xs font-bold text-gray-300 uppercase flex items-center gap-2"><FaMoneyBillWave className="text-amber-400" /> Financeiro dessa OS</div>
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-400 mb-1">Faturamento do Cliente (R$)</label>
+                    <input type="number" step="0.01" value={osFormFaturamentoCliente} onChange={e => setOsFormFaturamentoCliente(e.target.value)} placeholder="0,00" className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+                    <span className="text-[11px] text-gray-500">O que você vai cobrar do cliente</span>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-400 mb-1">Custo do Técnico (R$)</label>
+                    <input type="number" step="0.01" value={osFormCustoTecnico} onChange={e => setOsFormCustoTecnico(e.target.value)} placeholder="0,00" className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-red-500" />
+                    <span className="text-[11px] text-gray-500">O que você vai pagar ao técnico</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Fotos obrigatórias */}
+              <div className="space-y-3">
+                <div className="text-xs font-bold text-gray-300 uppercase flex items-center gap-2"><FaCamera className="text-cyan-400" /> Fotos obrigatórias (7)</div>
+                {FOTO_TIPOS.map(ft => (
+                  <div key={ft.key} className="flex items-center gap-3">
+                    <label className="flex-1 text-xs text-gray-400">{ft.label}</label>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      required
+                      onChange={e => handleFotoChange(ft.key, e.target.files[0])}
+                      className="text-xs text-gray-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-cyan-600 file:text-white file:text-xs file:font-semibold file:cursor-pointer w-56"
+                    />
+                    {osFormFotos[ft.key] && <FaCheckCircle className="text-emerald-400 shrink-0" />}
+                  </div>
+                ))}
+              </div>
+
+              {osUploadProgress && (
+                <div className="flex items-center gap-2 text-xs text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 rounded-lg px-3 py-2">
+                  <FaSpinner className="animate-spin" /> {osUploadProgress}
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2 border-t border-gray-800">
+                <button type="submit" disabled={isSavingOs} className="bg-orange-600 hover:bg-orange-500 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-semibold mt-4">
+                  {isSavingOs ? 'Salvando...' : 'Criar Ordem de Serviço'}
+                </button>
+                <button type="button" onClick={() => setIsOsModalOpen(false)} className="text-gray-400 hover:text-white text-sm px-2 mt-4">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Visualizar OS (detalhes + fotos) */}
+      {viewingOs && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-blue-500/30 rounded-2xl max-w-3xl w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-gray-800 pb-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaClipboardList className="text-blue-400" /> Ordem de Serviço</h3>
+              <button onClick={() => { setViewingOs(null); setViewingOsFotos([]); }} className="text-gray-400 hover:text-white"><FaTimes/></button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div><span className="text-gray-500 text-xs block">Data</span><span className="text-white">{new Date(viewingOs.data + 'T00:00:00').toLocaleDateString('pt-BR')}</span></div>
+              <div><span className="text-gray-500 text-xs block">Técnico</span><span className="text-white">{viewingOs.tecnico_nome}</span></div>
+              <div><span className="text-gray-500 text-xs block">Empresa</span><span className="text-white">{viewingOs.empresas?.nome || '—'}</span></div>
+              <div><span className="text-gray-500 text-xs block">Placa</span><span className="text-white">{viewingOs.veiculos?.placa || viewingOs.placa_texto || '—'}</span></div>
+              <div className="col-span-2"><span className="text-gray-500 text-xs block">Serviço(s)</span><span className="text-white">{viewingOs.servico_realizado}</span></div>
+              {viewingOs.local_instalacao && <div><span className="text-gray-500 text-xs block">Local</span><span className="text-white">{viewingOs.local_instalacao}</span></div>}
+              {viewingOs.km_percorrido != null && <div><span className="text-gray-500 text-xs block">KM Percorrido</span><span className="text-white">{viewingOs.km_percorrido}</span></div>}
+              {viewingOs.observacoes && <div className="col-span-2"><span className="text-gray-500 text-xs block">Observações</span><span className="text-white">{viewingOs.observacoes}</span></div>}
+            </div>
+
+            <div className="bg-gray-950 border border-gray-800 rounded-xl p-4 flex gap-6">
+              <div><span className="text-gray-500 text-xs block">Faturado do Cliente</span><span className="text-emerald-400 font-bold">{Number(viewingOs.faturamento_cliente || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
+              <div><span className="text-gray-500 text-xs block">Pago ao Técnico</span><span className="text-red-400 font-bold">{Number(viewingOs.custo_tecnico || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
+              <div><span className="text-gray-500 text-xs block">Lucro</span><span className="text-cyan-400 font-bold">{(Number(viewingOs.faturamento_cliente || 0) - Number(viewingOs.custo_tecnico || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
+            </div>
+
+            <div>
+              <div className="text-xs font-bold text-gray-300 uppercase mb-2 flex items-center gap-2"><FaCamera className="text-cyan-400" /> Fotos</div>
+              {isLoadingOsFotos ? (
+                <div className="flex items-center gap-2 text-gray-500 text-sm"><FaSpinner className="animate-spin" /> Carregando fotos...</div>
+              ) : viewingOsFotos.length === 0 ? (
+                viewingOs.fotos_legado_nota ? (
+                  <div className="text-xs text-gray-500 bg-gray-950 border border-gray-800 rounded-lg p-3">
+                    <span className="text-amber-400 font-semibold block mb-1">OS migrada do sistema antigo — fotos originais não disponíveis aqui.</span>
+                    Arquivos referenciados na planilha original: {viewingOs.fotos_legado_nota}
+                  </div>
+                ) : (
+                  <div className="text-gray-500 text-sm">Nenhuma foto encontrada pra essa OS.</div>
+                )
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {viewingOsFotos.map(f => (
+                    <a key={f.id} href={f.url} target="_blank" rel="noopener noreferrer" className="block group">
+                      <img src={f.url} alt={f.tipo} className="w-full h-28 object-cover rounded-lg border border-gray-800 group-hover:border-blue-500 transition-all" />
+                      <div className="text-[10px] text-gray-500 mt-1 truncate">{FOTO_TIPOS.find(ft => ft.key === f.tipo)?.label || f.tipo}</div>
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
