@@ -6,7 +6,8 @@ import {
   FaCommentDots, FaPaperPlane, FaLock, FaExternalLinkAlt,
   FaPlus, FaEdit, FaTrashAlt, FaUserShield, FaChartPie,
   FaGoogleDrive, FaUserTie, FaDatabase, FaSearch,
-  FaKey, FaUsers, FaUser, FaUserCircle, FaFilter, FaExclamationCircle, FaBell, FaTimes
+  FaKey, FaUsers, FaUser, FaUserCircle, FaFilter, FaExclamationCircle, FaBell, FaTimes,
+  FaTools, FaClipboardList, FaCar
 } from 'react-icons/fa';
 
 export default function AreaDoCliente() {
@@ -53,6 +54,12 @@ export default function AreaDoCliente() {
   const [userFormEmpresaId, setUserFormEmpresaId] = useState('');
   const [empresas, setEmpresas] = useState([]);
 
+  // Solicitações de Serviço (Admin)
+  const [solicitacoes, setSolicitacoes] = useState([]);
+  const [isAdminServiceModalOpen, setIsAdminServiceModalOpen] = useState(false);
+  const [filterServiceStatus, setFilterServiceStatus] = useState('all');
+  const [filterServiceEmpresa, setFilterServiceEmpresa] = useState('all');
+
   // ==========================================
   // BUSCA INICIAL DE DADOS + SESSÃO (SUPABASE AUTH)
   // ==========================================
@@ -86,6 +93,12 @@ export default function AreaDoCliente() {
 
     const { data: empresasData, error: empresasError } = await supabase.from('empresas').select('id, nome').order('nome');
     if (!empresasError && empresasData) setEmpresas(empresasData);
+
+    const { data: solicitacoesData, error: solicitacoesError } = await supabase
+      .from('solicitacoes_servico')
+      .select('*, empresas(nome), veiculos(placa, modelo)')
+      .order('created_at', { ascending: false });
+    if (!solicitacoesError && solicitacoesData) setSolicitacoes(solicitacoesData);
 
     const { data: stepsData, error: stepsError } = await supabase.from('steps').select('*');
     const { data: commentsData, error: commentsError } = await supabase.from('comments').select('*');
@@ -250,6 +263,43 @@ export default function AreaDoCliente() {
       if (!res.ok) { alert(result.error || 'Erro ao excluir usuário.'); return; }
       setUsers(users.filter(u => u.id !== userId));
     }
+  };
+
+  // ==========================================
+  // LÓGICA DE SOLICITAÇÕES DE SERVIÇO (Admin)
+  // ==========================================
+  const handleUpdateServiceStatus = async (id, newStatus) => {
+    const { data, error } = await supabase
+      .from('solicitacoes_servico')
+      .update({ status: newStatus, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select('*, empresas(nome), veiculos(placa, modelo)')
+      .single();
+
+    if (error) { alert('Erro ao atualizar status da solicitação.'); return; }
+    setSolicitacoes(solicitacoes.map(s => s.id === id ? data : s));
+  };
+
+  const filteredSolicitacoes = useMemo(() => {
+    return solicitacoes.filter(s => {
+      const statusOk = filterServiceStatus === 'all' || s.status === filterServiceStatus;
+      const empresaOk = filterServiceEmpresa === 'all' || s.empresa_id === filterServiceEmpresa;
+      return statusOk && empresaOk;
+    });
+  }, [solicitacoes, filterServiceStatus, filterServiceEmpresa]);
+
+  const pendingServiceCount = useMemo(
+    () => solicitacoes.filter(s => s.status === 'pendente').length,
+    [solicitacoes]
+  );
+
+  const serviceTypeLabel = { manutencao: 'Manutenção', troca: 'Troca', desinstalacao: 'Desinstalação' };
+  const serviceStatusLabel = { pendente: 'Pendente', em_andamento: 'Em Andamento', concluido: 'Concluído', cancelado: 'Cancelado' };
+  const serviceStatusColor = {
+    pendente: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+    em_andamento: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+    concluido: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+    cancelado: 'bg-red-500/10 text-red-400 border-red-500/30',
   };
 
   // ==========================================
@@ -491,7 +541,15 @@ export default function AreaDoCliente() {
               <div className="bg-gradient-to-r from-purple-950/50 via-gray-900 to-gray-900 border border-purple-500/30 rounded-2xl p-6 shadow-2xl space-y-4">
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-lg font-bold text-white flex items-center gap-2"><FaUserShield className="text-purple-400"/> Ferramentas Administrativas</h2>
-                  <button onClick={() => setIsAdminUsersModalOpen(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg"><FaUsers /> Gerenciar Usuários</button>
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <button onClick={() => setIsAdminServiceModalOpen(true)} className="relative flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg">
+                      <FaTools /> Solicitações de Serviço
+                      {pendingServiceCount > 0 && (
+                        <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center font-bold text-white shadow-lg">{pendingServiceCount}</span>
+                      )}
+                    </button>
+                    <button onClick={() => setIsAdminUsersModalOpen(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg"><FaUsers /> Gerenciar Usuários</button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                   <a href="https://drive.google.com/drive/u/1/folders/1jra6a5Te3NBLsyrpNCds0JGk-t01Rs7a" className="bg-gray-950/80 hover:bg-gray-800 border border-gray-800 rounded-xl p-3 flex items-center gap-3 transition-all"><FaGoogleDrive className="text-emerald-400 text-lg" /> <span className="text-sm font-semibold">Drive</span></a>
@@ -673,6 +731,84 @@ export default function AreaDoCliente() {
                         {users.map(u => (
                           <tr key={u.id} className="hover:bg-gray-800/50"><td className="p-3 text-white font-medium"><FaUser className="inline text-gray-500 mr-2"/>{u.username}</td><td className="p-3">{u.role === 'admin' ? <span className="text-purple-400 text-xs font-bold bg-purple-500/10 px-2 py-1 rounded">ADMIN</span> : <span className="text-blue-400 text-xs font-bold bg-blue-500/10 px-2 py-1 rounded">CLIENTE</span>}</td><td className="p-3 text-gray-400 text-xs">{empresas.find(emp => emp.id === u.empresa_id)?.nome || '—'}</td><td className="p-3 text-gray-400 text-xs truncate max-w-[160px]">{u.tracking_url || '—'}</td><td className="p-3 text-right"><button onClick={() => openUserForm(u)} className="text-gray-400 hover:text-blue-400 p-2"><FaEdit /></button><button onClick={() => handleDeleteUser(u.id)} className="text-gray-400 hover:text-red-400 p-2"><FaTrashAlt /></button></td></tr>
                         ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 2.1 Modal Solicitações de Serviço */}
+            {isAdminServiceModalOpen && isAdmin && (
+              <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                <div className="bg-gray-900 border border-amber-500/30 rounded-2xl max-w-5xl w-full p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+                  <div className="flex justify-between items-center border-b border-gray-800 pb-4">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaTools className="text-amber-400"/> Solicitações de Serviço</h3>
+                    <button onClick={() => setIsAdminServiceModalOpen(false)} className="text-gray-400 hover:text-white"><FaTimes/></button>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1">
+                      <label className="block text-xs text-gray-400 mb-1">Status</label>
+                      <select value={filterServiceStatus} onChange={e => setFilterServiceStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500">
+                        <option value="all">Todos</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="em_andamento">Em Andamento</option>
+                        <option value="concluido">Concluído</option>
+                        <option value="cancelado">Cancelado</option>
+                      </select>
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-xs text-gray-400 mb-1">Empresa</label>
+                      <select value={filterServiceEmpresa} onChange={e => setFilterServiceEmpresa(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500">
+                        <option value="all">Todas</option>
+                        {empresas.map(emp => (<option key={emp.id} value={emp.id}>{emp.nome}</option>))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="border border-gray-800 rounded-xl overflow-hidden">
+                    <table className="w-full text-left text-sm">
+                      <thead className="bg-gray-950 text-gray-400 text-xs uppercase">
+                        <tr>
+                          <th className="p-3">Empresa</th>
+                          <th className="p-3">Placa</th>
+                          <th className="p-3">Serviço</th>
+                          <th className="p-3">Descrição</th>
+                          <th className="p-3">Status</th>
+                          <th className="p-3">Data</th>
+                          <th className="p-3 text-right">Ação</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-800">
+                        {filteredSolicitacoes.length === 0 ? (
+                          <tr><td colSpan={7} className="p-6 text-center text-gray-500 text-sm">Nenhuma solicitação encontrada.</td></tr>
+                        ) : (
+                          filteredSolicitacoes.map(s => (
+                            <tr key={s.id} className="hover:bg-gray-800/50 align-top">
+                              <td className="p-3 text-white font-medium">{s.empresas?.nome || '—'}</td>
+                              <td className="p-3 text-gray-300"><FaCar className="inline text-gray-500 mr-1" />{s.veiculos?.placa || '—'}</td>
+                              <td className="p-3 text-gray-300">{serviceTypeLabel[s.tipo_servico] || s.tipo_servico}</td>
+                              <td className="p-3 text-gray-400 text-xs max-w-[220px]">{s.descricao || '—'}</td>
+                              <td className="p-3">
+                                <span className={`text-xs font-bold px-2 py-1 rounded border ${serviceStatusColor[s.status]}`}>{serviceStatusLabel[s.status] || s.status}</span>
+                              </td>
+                              <td className="p-3 text-gray-500 text-xs whitespace-nowrap">{new Date(s.created_at).toLocaleDateString('pt-BR')}</td>
+                              <td className="p-3 text-right">
+                                <select
+                                  value={s.status}
+                                  onChange={e => handleUpdateServiceStatus(s.id, e.target.value)}
+                                  className="bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-amber-500"
+                                >
+                                  <option value="pendente">Pendente</option>
+                                  <option value="em_andamento">Em Andamento</option>
+                                  <option value="concluido">Concluído</option>
+                                  <option value="cancelado">Cancelado</option>
+                                </select>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
