@@ -197,7 +197,7 @@ export default function PainelAdmin() {
   return (
     <>
       <Head><title>Painel Administrativo | Full Vision</title></Head>
-      <div className="min-h-screen bg-black text-white p-4 md:p-8">
+      <div className="min-h-screen bg-black text-white pt-24 pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto space-y-8">
 
           {/* Cabeçalho */}
