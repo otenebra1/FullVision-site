@@ -103,6 +103,8 @@ export default function AreaDoCliente() {
   const [passwordInput, setPasswordInput] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [loginError, setLoginError] = useState('');
+  const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Filtros e Modais (Roadmap)
   const [searchTerm, setSearchTerm] = useState('');
@@ -237,13 +239,17 @@ export default function AreaDoCliente() {
   // ==========================================
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoginError('');
+    setIsLoggingIn(true);
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email: emailInput,
       password: passwordInput,
     });
 
     if (error || !data?.user) {
-      alert('Email ou senha incorretos!');
+      setLoginError('Email ou senha incorretos. Confira os dados e tente novamente.');
+      setIsLoggingIn(false);
       return;
     }
 
@@ -251,6 +257,7 @@ export default function AreaDoCliente() {
     await fetchInitialData();
     setEmailInput('');
     setPasswordInput('');
+    setIsLoggingIn(false);
   };
 
   const handleLogout = async () => {
@@ -722,9 +729,17 @@ export default function AreaDoCliente() {
               <h1 className="text-2xl font-bold">Portal de Acesso</h1>
             </div>
             <form onSubmit={handleLogin} className="space-y-4">
-              <div><label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Email</label><input type="email" required value={emailInput} onChange={(e) => setEmailInput(e.target.value)} className="w-full bg-gray-800/80 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" /></div>
-              <div><label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Senha</label><input type="password" required value={passwordInput} onChange={(e) => setPasswordInput(e.target.value)} className="w-full bg-gray-800/80 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" /></div>
-              <button type="submit" className="w-full bg-blue-600 hover:bg-blue-500 text-white font-semibold py-3 rounded-lg transition-all">Entrar</button>
+              {loginError && (
+                <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
+                  <FaExclamationCircle className="mt-0.5 shrink-0" />
+                  <span>{loginError}</span>
+                </div>
+              )}
+              <div><label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Email</label><input type="email" required value={emailInput} onChange={(e) => { setEmailInput(e.target.value); setLoginError(''); }} className="w-full bg-gray-800/80 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" /></div>
+              <div><label className="block text-xs font-semibold uppercase text-gray-400 mb-1">Senha</label><input type="password" required value={passwordInput} onChange={(e) => { setPasswordInput(e.target.value); setLoginError(''); }} className="w-full bg-gray-800/80 border border-gray-700 rounded-lg px-4 py-2.5 text-white focus:outline-none focus:border-blue-500" /></div>
+              <button type="submit" disabled={isLoggingIn} className="w-full flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white font-semibold py-3 rounded-lg transition-all">
+                {isLoggingIn ? <><FaSpinner className="animate-spin" /> Entrando...</> : 'Entrar'}
+              </button>
             </form>
           </div>
         ) : (
@@ -1086,7 +1101,7 @@ export default function AreaDoCliente() {
             {/* 2.1 Modal Solicitações de Serviço */}
             {isAdminServiceModalOpen && isAdmin && (
               <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-                <div className="bg-gray-900 border border-amber-500/30 rounded-2xl max-w-5xl w-full p-6 space-y-6 max-h-[90vh] overflow-y-auto">
+                <div className="bg-gray-900 border border-amber-500/30 rounded-2xl max-w-6xl w-full p-6 space-y-6 max-h-[90vh] overflow-y-auto">
                   <div className="flex justify-between items-center border-b border-gray-800 pb-4">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaTools className="text-amber-400"/> Solicitações de Serviço</h3>
                     <button onClick={() => setIsAdminServiceModalOpen(false)} className="text-gray-400 hover:text-white"><FaTimes/></button>
@@ -1115,8 +1130,8 @@ export default function AreaDoCliente() {
                     </div>
                   </div>
 
-                  <div className="border border-gray-800 rounded-xl overflow-hidden">
-                    <table className="w-full text-left text-sm">
+                  <div className="border border-gray-800 rounded-xl overflow-x-auto">
+                    <table className="w-full min-w-[1000px] text-left text-sm">
                       <thead className="bg-gray-950 text-gray-400 text-xs uppercase">
                         <tr>
                           <th className="p-3">Empresa</th>
