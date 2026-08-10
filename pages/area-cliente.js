@@ -803,6 +803,9 @@ export default function AreaDoCliente() {
                 <div className="flex items-center justify-between mb-2">
                   <h2 className="text-lg font-bold text-white flex items-center gap-2"><FaUserShield className="text-purple-400"/> Ferramentas Administrativas</h2>
                   <div className="flex items-center gap-3 flex-wrap">
+                    <a href="/painel-admin" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg">
+                      <FaChartPie /> Painel Administrativo
+                    </a>
                     <button onClick={() => setIsAdminServiceModalOpen(true)} className="relative flex items-center gap-2 bg-amber-600 hover:bg-amber-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg">
                       <FaTools /> Solicitações de Serviço
                       {pendingServiceCount > 0 && (
