@@ -148,6 +148,10 @@ export default function AreaDoCliente() {
   const [newServiceEndereco, setNewServiceEndereco] = useState('');
   const [newServiceTelefone, setNewServiceTelefone] = useState('');
   const [newServicePlacaNova, setNewServicePlacaNova] = useState('');
+
+  // Modal de recusa de data proposta (cliente)
+  const [rejectingSolicitacaoId, setRejectingSolicitacaoId] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
   const [isSubmittingService, setIsSubmittingService] = useState(false);
 
   // Edição de solicitação (Admin)
@@ -497,11 +501,7 @@ export default function AreaDoCliente() {
   };
 
   // Cliente aceita ou recusa a data/hora proposta pelo admin
-  const handleClientRespondDate = async (id, decision) => {
-    let motivo = null;
-    if (decision === 'recusado') {
-      motivo = prompt('Opcional: por que essa data não funciona pra você?') || null;
-    }
+  const handleClientRespondDate = async (id, decision, motivo = null) => {
     const { data, error } = await supabase
       .from('solicitacoes_servico')
       .update({
@@ -515,6 +515,13 @@ export default function AreaDoCliente() {
 
     if (error) { alert('Erro ao responder a data proposta.'); return; }
     setSolicitacoes(solicitacoes.map(s => s.id === id ? data : s));
+  };
+
+  const handleConfirmReject = async () => {
+    if (!rejectingSolicitacaoId) return;
+    await handleClientRespondDate(rejectingSolicitacaoId, 'recusado', rejectReason.trim() || null);
+    setRejectingSolicitacaoId(null);
+    setRejectReason('');
   };
 
   const myServiceRequests = useMemo(() => {
@@ -962,7 +969,7 @@ export default function AreaDoCliente() {
                               {s.status === 'aguardando_confirmacao' ? (
                                 <div className="flex gap-2 justify-end">
                                   <button onClick={() => handleClientRespondDate(s.id, 'confirmado')} className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">Confirmar</button>
-                                  <button onClick={() => handleClientRespondDate(s.id, 'recusado')} className="bg-red-600/80 hover:bg-red-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">Recusar</button>
+                                  <button onClick={() => { setRejectingSolicitacaoId(s.id); setRejectReason(''); }} className="bg-red-600/80 hover:bg-red-500 text-white text-xs font-semibold px-3 py-1.5 rounded-lg">Recusar</button>
                                 </div>
                               ) : (
                                 <span className="text-gray-600 text-xs">—</span>
@@ -1252,6 +1259,33 @@ export default function AreaDoCliente() {
                       <button type="button" onClick={() => setEditingSolicitacao(null)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
                     </div>
                   </form>
+                </div>
+              </div>
+            )}
+
+            {/* Modal de recusa da data proposta (cliente) */}
+            {rejectingSolicitacaoId && (
+              <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                <div className="bg-gray-900 border border-red-500/30 rounded-2xl max-w-md w-full p-6 space-y-4">
+                  <div className="flex justify-between items-center border-b border-gray-800 pb-4">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaExclamationCircle className="text-red-400" /> Recusar Data Proposta</h3>
+                    <button onClick={() => { setRejectingSolicitacaoId(null); setRejectReason(''); }} className="text-gray-400 hover:text-white"><FaTimes/></button>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Opcional: por que essa data não funciona pra você?</label>
+                    <textarea
+                      autoFocus
+                      value={rejectReason}
+                      onChange={e => setRejectReason(e.target.value)}
+                      rows={3}
+                      placeholder="Ex: nesse dia não teremos ninguém disponível no local..."
+                      className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-red-500 resize-none"
+                    />
+                  </div>
+                  <div className="flex gap-3 pt-2">
+                    <button onClick={handleConfirmReject} className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">Confirmar Recusa</button>
+                    <button onClick={() => { setRejectingSolicitacaoId(null); setRejectReason(''); }} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
+                  </div>
                 </div>
               </div>
             )}
