@@ -60,6 +60,14 @@ export default function AreaDoCliente() {
   const [filterServiceStatus, setFilterServiceStatus] = useState('all');
   const [filterServiceEmpresa, setFilterServiceEmpresa] = useState('all');
 
+  // Solicitações de Serviço (Cliente) + veículos da empresa logada
+  const [veiculos, setVeiculos] = useState([]);
+  const [newServiceVeiculoId, setNewServiceVeiculoId] = useState('');
+  const [newServiceTipo, setNewServiceTipo] = useState('manutencao');
+  const [newServiceDescricao, setNewServiceDescricao] = useState('');
+  const [newServiceEndereco, setNewServiceEndereco] = useState('');
+  const [isSubmittingService, setIsSubmittingService] = useState(false);
+
   // ==========================================
   // BUSCA INICIAL DE DADOS + SESSÃO (SUPABASE AUTH)
   // ==========================================
@@ -99,6 +107,12 @@ export default function AreaDoCliente() {
       .select('*, empresas(nome), veiculos(placa, modelo)')
       .order('created_at', { ascending: false });
     if (!solicitacoesError && solicitacoesData) setSolicitacoes(solicitacoesData);
+
+    const { data: veiculosData, error: veiculosError } = await supabase
+      .from('veiculos')
+      .select('id, placa, modelo, status')
+      .order('placa');
+    if (!veiculosError && veiculosData) setVeiculos(veiculosData);
 
     const { data: stepsData, error: stepsError } = await supabase.from('steps').select('*');
     const { data: commentsData, error: commentsError } = await supabase.from('comments').select('*');
@@ -279,6 +293,40 @@ export default function AreaDoCliente() {
     if (error) { alert('Erro ao atualizar status da solicitação.'); return; }
     setSolicitacoes(solicitacoes.map(s => s.id === id ? data : s));
   };
+
+  const handleCreateServiceRequest = async (e) => {
+    e.preventDefault();
+    if (!newServiceVeiculoId) { alert('Selecione a placa do veículo.'); return; }
+    if (!currentUser?.empresa_id) { alert('Sua conta não está vinculada a uma empresa. Fale com o suporte.'); return; }
+
+    setIsSubmittingService(true);
+    const { data, error } = await supabase
+      .from('solicitacoes_servico')
+      .insert([{
+        empresa_id: currentUser.empresa_id,
+        veiculo_id: newServiceVeiculoId,
+        tipo_servico: newServiceTipo,
+        descricao: newServiceDescricao || null,
+        endereco: newServiceEndereco || null,
+      }])
+      .select('*, empresas(nome), veiculos(placa, modelo)')
+      .single();
+    setIsSubmittingService(false);
+
+    if (error) { alert('Erro ao enviar solicitação. Tente novamente.'); return; }
+
+    setSolicitacoes([data, ...solicitacoes]);
+    setNewServiceVeiculoId('');
+    setNewServiceTipo('manutencao');
+    setNewServiceDescricao('');
+    setNewServiceEndereco('');
+    alert('Solicitação enviada com sucesso!');
+  };
+
+  const myServiceRequests = useMemo(() => {
+    if (!currentUser) return [];
+    return solicitacoes.filter(s => s.empresa_id === currentUser.empresa_id);
+  }, [solicitacoes, currentUser]);
 
   const filteredSolicitacoes = useMemo(() => {
     return solicitacoes.filter(s => {
@@ -591,6 +639,74 @@ export default function AreaDoCliente() {
               </div>
               <a href={currentUser?.tracking_url || 'https://tracker.fullvision.one/v1/home'} target="_blank" rel="noopener noreferrer" className="w-full md:w-auto inline-flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-3.5 rounded-xl shadow-lg transition-all hover:scale-105">Abrir Plataforma <FaExternalLinkAlt className="text-sm" /></a>
             </div>
+
+            {/* SEÇÃO SOLICITAÇÃO DE SERVIÇO (Cliente) */}
+            {!isAdmin && (
+              <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 md:p-8 shadow-xl space-y-6">
+                <h2 className="text-xl font-bold flex items-center gap-2 text-white"><FaTools className="text-amber-400" /> Solicitar Serviço</h2>
+
+                <form onSubmit={handleCreateServiceRequest} className="bg-gray-950 p-4 rounded-xl border border-gray-800 space-y-4">
+                  <div className="flex flex-col md:flex-row gap-4">
+                    <div className="flex-1 w-full">
+                      <label className="block text-xs text-gray-400 mb-1">Placa do veículo</label>
+                      <select required value={newServiceVeiculoId} onChange={e => setNewServiceVeiculoId(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500">
+                        <option value="">Selecione a placa...</option>
+                        {veiculos.map(v => (
+                          <option key={v.id} value={v.id}>{v.placa}{v.modelo ? ` — ${v.modelo}` : ''}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="w-full md:w-56">
+                      <label className="block text-xs text-gray-400 mb-1">Tipo de serviço</label>
+                      <select value={newServiceTipo} onChange={e => setNewServiceTipo(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500">
+                        <option value="manutencao">Manutenção</option>
+                        <option value="troca">Troca</option>
+                        <option value="desinstalacao">Desinstalação</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex-1 w-full">
+                    <label className="block text-xs text-gray-400 mb-1">Endereço para o serviço</label>
+                    <input type="text" value={newServiceEndereco} onChange={e => setNewServiceEndereco(e.target.value)} placeholder="Rua, número, cidade..." className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500" />
+                  </div>
+                  <div className="flex-1 w-full">
+                    <label className="block text-xs text-gray-400 mb-1">Descrição (opcional)</label>
+                    <textarea value={newServiceDescricao} onChange={e => setNewServiceDescricao(e.target.value)} rows={3} placeholder="Detalhe o problema ou pedido..." className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500 resize-none" />
+                  </div>
+                  <button type="submit" disabled={isSubmittingService} className="inline-flex items-center gap-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-60 text-white font-semibold px-4 py-2.5 rounded-xl text-xs shadow-lg transition-all">
+                    {isSubmittingService ? <FaSpinner className="animate-spin" /> : <FaPaperPlane />} Enviar Solicitação
+                  </button>
+                </form>
+
+                {/* Histórico das próprias solicitações */}
+                <div className="border border-gray-800 rounded-xl overflow-hidden">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-950 text-gray-400 text-xs uppercase">
+                      <tr>
+                        <th className="p-3">Placa</th>
+                        <th className="p-3">Serviço</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Data</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {myServiceRequests.length === 0 ? (
+                        <tr><td colSpan={4} className="p-6 text-center text-gray-500 text-sm">Você ainda não enviou nenhuma solicitação.</td></tr>
+                      ) : (
+                        myServiceRequests.map(s => (
+                          <tr key={s.id} className="hover:bg-gray-800/50">
+                            <td className="p-3 text-white font-medium"><FaCar className="inline text-gray-500 mr-1" />{s.veiculos?.placa || '—'}</td>
+                            <td className="p-3 text-gray-300">{serviceTypeLabel[s.tipo_servico] || s.tipo_servico}</td>
+                            <td className="p-3"><span className={`text-xs font-bold px-2 py-1 rounded border ${serviceStatusColor[s.status]}`}>{serviceStatusLabel[s.status] || s.status}</span></td>
+                            <td className="p-3 text-gray-500 text-xs whitespace-nowrap">{new Date(s.created_at).toLocaleDateString('pt-BR')}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {/* GRÁFICO ROADMAP OTIMIZADO */}
             <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 md:p-8 shadow-xl space-y-6">
