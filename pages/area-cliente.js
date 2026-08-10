@@ -423,13 +423,12 @@ export default function AreaDoCliente() {
     const notifyUsername = usernameByEmpresaId[data.empresa_id];
     if (notifyUsername) {
       const dataFormatada = new Date(data.data_hora_prevista).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
-      const { data: nData, error: nError } = await supabase.from('notifications').insert([{
+      const { error: nError } = await supabase.from('notifications').insert([{
         target_user: notifyUsername,
         message: `Data proposta para o serviço em ${data.veiculos?.placa || data.placa_nova || 'seu veículo'}: ${dataFormatada}. Confirme ou recuse na área de solicitações.`,
         is_read: false,
-      }]).select();
+      }]);
       if (nError) console.error('Erro ao notificar cliente:', nError);
-      if (nData) setNotifications(prev => [...prev, nData[0]]);
     }
   };
 
@@ -540,13 +539,12 @@ export default function AreaDoCliente() {
     const acao = decision === 'confirmado' ? 'confirmou' : 'recusou';
     const motivoTexto = decision === 'recusado' && motivo ? ` Motivo: ${motivo}` : '';
     if (adminUsername) {
-      const { data: nData, error: nError } = await supabase.from('notifications').insert([{
+      const { error: nError } = await supabase.from('notifications').insert([{
         target_user: adminUsername,
         message: `${data.empresas?.nome || 'Cliente'} ${acao} a data proposta para o serviço em ${placa}.${motivoTexto}`,
         is_read: false,
-      }]).select();
+      }]);
       if (nError) console.error('Erro ao notificar admin:', nError);
-      if (nData) setNotifications(prev => [...prev, nData[0]]);
     } else {
       console.warn('Notificação de resposta do cliente não enviada: não achei um usuário admin.');
     }
@@ -635,9 +633,8 @@ export default function AreaDoCliente() {
         
         // DISPARA NOTIFICAÇÃO (Edição)
         if (isAdmin && notifyUsername) {
-          const { data: nData, error: nError } = await supabase.from('notifications').insert([{ target_user: notifyUsername, message: `A etapa "${formTitle}" foi atualizada pelo Admin.`, is_read: false }]).select();
+          const { error: nError } = await supabase.from('notifications').insert([{ target_user: notifyUsername, message: `A etapa "${formTitle}" foi atualizada pelo Admin.`, is_read: false }]);
           if (nError) console.error('Erro ao notificar (edição de etapa):', nError);
-          if (nData) setNotifications([...notifications, nData[0]]);
         } else if (isAdmin) {
           console.warn('Notificação de edição não enviada: não achei o destinatário.', { formEmpresaId, usernameByEmpresaId });
         }
@@ -649,9 +646,8 @@ export default function AreaDoCliente() {
 
         // DISPARA NOTIFICAÇÃO (Criação)
         if (isAdmin && notifyUsername) {
-          const { data: nData, error: nError } = await supabase.from('notifications').insert([{ target_user: notifyUsername, message: `Nova etapa adicionada ao seu roadmap: "${formTitle}".`, is_read: false }]).select();
+          const { error: nError } = await supabase.from('notifications').insert([{ target_user: notifyUsername, message: `Nova etapa adicionada ao seu roadmap: "${formTitle}".`, is_read: false }]);
           if (nError) console.error('Erro ao notificar (nova etapa):', nError);
-          if (nData) setNotifications([...notifications, nData[0]]);
         } else if (isAdmin) {
           console.warn('Notificação de nova etapa não enviada: não achei o destinatário.', { formEmpresaId, usernameByEmpresaId });
         }
@@ -692,9 +688,8 @@ export default function AreaDoCliente() {
       const targetUser = isAdmin ? usernameByEmpresaId[selectedStep.empresa_id] : adminUsername;
       if (targetUser) {
         const authorMasked = currentUser.username;
-        const { data: nData, error: nError } = await supabase.from('notifications').insert([{ target_user: targetUser, message: `Novo comentário de ${authorMasked} na etapa "${selectedStep.title}".`, is_read: false }]).select();
+        const { error: nError } = await supabase.from('notifications').insert([{ target_user: targetUser, message: `Novo comentário de ${authorMasked} na etapa "${selectedStep.title}".`, is_read: false }]);
         if (nError) console.error('Erro ao notificar (comentário):', nError);
-        if (nData) setNotifications([...notifications, nData[0]]);
       } else {
         console.warn('Notificação de comentário não enviada: não achei o destinatário.', {
           isAdmin,
