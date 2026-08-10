@@ -6,6 +6,7 @@ import {
   FaTruck, FaCheckCircle, FaTimesCircle, FaBuilding, FaMoneyBillWave,
   FaTools, FaSpinner, FaArrowLeft, FaChartPie, FaLayerGroup, FaExclamationCircle,
   FaDatabase, FaSearch, FaPlus, FaEdit, FaTrashAlt, FaTimes, FaChevronLeft, FaChevronRight,
+  FaSatelliteDish, FaLink, FaUnlink, FaBoxes,
 } from 'react-icons/fa';
 
 // ==========================================
@@ -81,6 +82,31 @@ export default function PainelAdmin() {
   const [vFormDrePlaca, setVFormDrePlaca] = useState('');
   const [isSavingVehicle, setIsSavingVehicle] = useState(false);
 
+  // Rastreadores (Estoque)
+  const [rastreadores, setRastreadores] = useState([]);
+  const [searchRastreador, setSearchRastreador] = useState('');
+  const [filterRastreadorStatus, setFilterRastreadorStatus] = useState('all');
+  const [rastreadorPage, setRastreadorPage] = useState(1);
+  const rastreadoresPerPage = 20;
+
+  const [isRastreadorModalOpen, setIsRastreadorModalOpen] = useState(false);
+  const [editingRastreador, setEditingRastreador] = useState(null);
+  const [rFormCategoria, setRFormCategoria] = useState('');
+  const [rFormModelo, setRFormModelo] = useState('');
+  const [rFormSerial, setRFormSerial] = useState('');
+  const [rFormSimCard, setRFormSimCard] = useState('');
+  const [rFormOperadora, setRFormOperadora] = useState('');
+  const [rFormDataEntrada, setRFormDataEntrada] = useState('');
+  const [rFormCustoAquisicao, setRFormCustoAquisicao] = useState('');
+  const [rFormCustoMensal, setRFormCustoMensal] = useState('');
+  const [rFormValorMensalidade, setRFormValorMensalidade] = useState('');
+  const [rFormStatus, setRFormStatus] = useState('estoque_central');
+  const [rFormLocalizacao, setRFormLocalizacao] = useState('');
+  const [isSavingRastreador, setIsSavingRastreador] = useState(false);
+
+  const [installTargetRastreador, setInstallTargetRastreador] = useState(null);
+  const [installVeiculoId, setInstallVeiculoId] = useState('');
+
   // ------------------------------------------
   // Guard de acesso: só admin passa
   // ------------------------------------------
@@ -135,6 +161,12 @@ export default function PainelAdmin() {
         .select('id', { count: 'exact', head: true })
         .eq('status', 'pendente');
       setPendingRequestsCount(count || 0);
+
+      const { data: rastreadoresData } = await supabase
+        .from('rastreadores')
+        .select('*')
+        .order('serial');
+      if (rastreadoresData) setRastreadores(rastreadoresData);
 
       setIsLoadingData(false);
     };
@@ -308,6 +340,177 @@ export default function PainelAdmin() {
     const { error } = await supabase.from('veiculos').delete().eq('id', id);
     if (error) { alert('Erro ao excluir veículo: ' + error.message); return; }
     setVeiculos(veiculos.filter(v => v.id !== id));
+  };
+
+  // ------------------------------------------
+  // Rastreadores (Estoque): filtro, paginação e CRUD
+  // ------------------------------------------
+  const veiculoPlacaById = useMemo(() => {
+    const map = {};
+    veiculos.forEach(v => { map[v.id] = v.placa; });
+    return map;
+  }, [veiculos]);
+
+  const rastreadorStatusLabel = {
+    estoque_central: 'Estoque Central',
+    estoque_tecnico: 'Estoque c/ Técnico',
+    instalado: 'Instalado',
+    aguardando_manutencao: 'Aguardando Manutenção',
+    baixado: 'Baixado',
+  };
+  const rastreadorStatusColor = {
+    estoque_central: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
+    estoque_tecnico: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
+    instalado: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
+    aguardando_manutencao: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
+    baixado: 'bg-gray-500/10 text-gray-400 border-gray-500/30',
+  };
+
+  const rastreadorStats = useMemo(() => {
+    const disponiveis = rastreadores.filter(r => r.status === 'estoque_central' || r.status === 'estoque_tecnico').length;
+    const instalados = rastreadores.filter(r => r.status === 'instalado').length;
+    const manutencao = rastreadores.filter(r => r.status === 'aguardando_manutencao').length;
+    return { disponiveis, instalados, manutencao, total: rastreadores.length };
+  }, [rastreadores]);
+
+  const filteredRastreadores = useMemo(() => {
+    return rastreadores.filter(r => {
+      const q = searchRastreador.toUpperCase();
+      const searchOk = !q || r.serial?.toUpperCase().includes(q) || r.modelo?.toUpperCase().includes(q);
+      const statusOk = filterRastreadorStatus === 'all' || r.status === filterRastreadorStatus;
+      return searchOk && statusOk;
+    });
+  }, [rastreadores, searchRastreador, filterRastreadorStatus]);
+
+  const rastreadorTotalPages = Math.max(1, Math.ceil(filteredRastreadores.length / rastreadoresPerPage));
+  const paginatedRastreadores = useMemo(() => {
+    const start = (rastreadorPage - 1) * rastreadoresPerPage;
+    return filteredRastreadores.slice(start, start + rastreadoresPerPage);
+  }, [filteredRastreadores, rastreadorPage]);
+
+  useEffect(() => { setRastreadorPage(1); }, [searchRastreador, filterRastreadorStatus]);
+
+  const resetRastreadorForm = () => {
+    setRFormCategoria('LOCALIZADOR'); setRFormModelo(''); setRFormSerial('');
+    setRFormSimCard(''); setRFormOperadora(''); setRFormDataEntrada('');
+    setRFormCustoAquisicao(''); setRFormCustoMensal(''); setRFormValorMensalidade('');
+    setRFormStatus('estoque_central'); setRFormLocalizacao('');
+  };
+
+  const openRastreadorForm = (r) => {
+    if (r) {
+      setEditingRastreador(r);
+      setRFormCategoria(r.categoria || '');
+      setRFormModelo(r.modelo || '');
+      setRFormSerial(r.serial || '');
+      setRFormSimCard(r.sim_card || '');
+      setRFormOperadora(r.operadora || '');
+      setRFormDataEntrada(r.data_entrada || '');
+      setRFormCustoAquisicao(r.custo_aquisicao ?? '');
+      setRFormCustoMensal(r.custo_mensal ?? '');
+      setRFormValorMensalidade(r.valor_mensalidade ?? '');
+      setRFormStatus(r.status || 'estoque_central');
+      setRFormLocalizacao(r.localizacao_atual || '');
+    } else {
+      setEditingRastreador(null);
+      resetRastreadorForm();
+    }
+    setIsRastreadorModalOpen(true);
+  };
+
+  const handleSaveRastreador = async (e) => {
+    e.preventDefault();
+    if (!rFormSerial.trim()) { alert('Informe o serial.'); return; }
+
+    setIsSavingRastreador(true);
+    const payload = {
+      categoria: rFormCategoria || null,
+      modelo: rFormModelo || null,
+      serial: rFormSerial.trim(),
+      sim_card: rFormSimCard || null,
+      operadora: rFormOperadora || null,
+      data_entrada: rFormDataEntrada || null,
+      custo_aquisicao: rFormCustoAquisicao === '' ? null : Number(rFormCustoAquisicao),
+      custo_mensal: rFormCustoMensal === '' ? null : Number(rFormCustoMensal),
+      valor_mensalidade: rFormValorMensalidade === '' ? null : Number(rFormValorMensalidade),
+      status: rFormStatus,
+      localizacao_atual: rFormLocalizacao || null,
+    };
+
+    let result;
+    if (editingRastreador) {
+      result = await supabase.from('rastreadores').update(payload).eq('id', editingRastreador.id).select().single();
+    } else {
+      result = await supabase.from('rastreadores').insert([payload]).select().single();
+    }
+    setIsSavingRastreador(false);
+
+    if (result.error) { alert('Erro ao salvar rastreador: ' + result.error.message); return; }
+
+    if (editingRastreador) {
+      setRastreadores(rastreadores.map(r => r.id === result.data.id ? result.data : r));
+    } else {
+      setRastreadores([result.data, ...rastreadores]);
+    }
+    setIsRastreadorModalOpen(false);
+    setEditingRastreador(null);
+    resetRastreadorForm();
+  };
+
+  const handleDeleteRastreador = async (id) => {
+    if (!confirm('Tem certeza que deseja excluir este rastreador do estoque?')) return;
+    const { error } = await supabase.from('rastreadores').delete().eq('id', id);
+    if (error) { alert('Erro ao excluir rastreador: ' + error.message); return; }
+    setRastreadores(rastreadores.filter(r => r.id !== id));
+  };
+
+  // Instalar rastreador num veículo: atualiza os dois lados (rastreador + veiculo.id_instalado)
+  const handleInstallRastreador = async () => {
+    if (!installTargetRastreador || !installVeiculoId) { alert('Selecione um veículo.'); return; }
+
+    const { data: updatedRastreador, error: errR } = await supabase
+      .from('rastreadores')
+      .update({ veiculo_id: installVeiculoId, status: 'instalado', placa_atual: veiculoPlacaById[installVeiculoId] || null })
+      .eq('id', installTargetRastreador.id)
+      .select()
+      .single();
+    if (errR) { alert('Erro ao instalar rastreador: ' + errR.message); return; }
+
+    const { error: errV } = await supabase
+      .from('veiculos')
+      .update({ id_instalado: installTargetRastreador.serial })
+      .eq('id', installVeiculoId);
+    if (errV) { alert('Rastreador vinculado, mas houve erro ao atualizar o veículo: ' + errV.message); }
+
+    setRastreadores(rastreadores.map(r => r.id === updatedRastreador.id ? updatedRastreador : r));
+    setVeiculos(veiculos.map(v => v.id === installVeiculoId ? { ...v, id_instalado: installTargetRastreador.serial } : v));
+    setInstallTargetRastreador(null);
+    setInstallVeiculoId('');
+  };
+
+  // Retirar rastreador do veículo atual
+  const handleUninstallRastreador = async (r) => {
+    if (!confirm(`Retirar o rastreador ${r.serial} do veículo atual?`)) return;
+    const veiculoAnteriorId = r.veiculo_id;
+
+    const { data: updatedRastreador, error: errR } = await supabase
+      .from('rastreadores')
+      .update({ veiculo_id: null, status: 'estoque_central', placa_atual: null })
+      .eq('id', r.id)
+      .select()
+      .single();
+    if (errR) { alert('Erro ao retirar rastreador: ' + errR.message); return; }
+
+    if (veiculoAnteriorId) {
+      const { error: errV } = await supabase
+        .from('veiculos')
+        .update({ id_instalado: null })
+        .eq('id', veiculoAnteriorId);
+      if (errV) { alert('Rastreador desvinculado, mas houve erro ao atualizar o veículo: ' + errV.message); }
+      setVeiculos(veiculos.map(v => v.id === veiculoAnteriorId ? { ...v, id_instalado: null } : v));
+    }
+
+    setRastreadores(rastreadores.map(rr => rr.id === updatedRastreador.id ? updatedRastreador : rr));
   };
 
   if (!authChecked) {
@@ -493,6 +696,121 @@ export default function PainelAdmin() {
                   </div>
                 )}
               </div>
+
+              {/* Rastreadores (Estoque) */}
+              <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 space-y-4">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <h2 className="text-lg font-bold flex items-center gap-2"><FaSatelliteDish className="text-cyan-400" /> Rastreadores (Estoque)</h2>
+                  <button onClick={() => openRastreadorForm(null)} className="inline-flex items-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg self-start md:self-auto">
+                    <FaPlus /> Novo Rastreador
+                  </button>
+                </div>
+
+                {/* Mini-cards de status */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-gray-950 border border-gray-800 rounded-xl p-3 text-center">
+                    <div className="text-xl font-bold text-blue-400">{rastreadorStats.disponiveis}</div>
+                    <div className="text-[11px] text-gray-500 uppercase font-semibold">Disponíveis</div>
+                  </div>
+                  <div className="bg-gray-950 border border-gray-800 rounded-xl p-3 text-center">
+                    <div className="text-xl font-bold text-emerald-400">{rastreadorStats.instalados}</div>
+                    <div className="text-[11px] text-gray-500 uppercase font-semibold">Instalados</div>
+                  </div>
+                  <div className="bg-gray-950 border border-gray-800 rounded-xl p-3 text-center">
+                    <div className="text-xl font-bold text-amber-400">{rastreadorStats.manutencao}</div>
+                    <div className="text-[11px] text-gray-500 uppercase font-semibold">Aguard. Manutenção</div>
+                  </div>
+                </div>
+
+                {/* Filtros */}
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 relative">
+                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
+                    <input
+                      type="text"
+                      placeholder="Buscar por serial ou modelo..."
+                      value={searchRastreador}
+                      onChange={e => setSearchRastreador(e.target.value)}
+                      className="w-full bg-gray-950 border border-gray-700 rounded-lg pl-9 pr-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
+                    />
+                  </div>
+                  <select value={filterRastreadorStatus} onChange={e => setFilterRastreadorStatus(e.target.value)} className="w-full md:w-56 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500">
+                    <option value="all">Todos os status</option>
+                    <option value="estoque_central">Estoque Central</option>
+                    <option value="estoque_tecnico">Estoque c/ Técnico</option>
+                    <option value="instalado">Instalado</option>
+                    <option value="aguardando_manutencao">Aguardando Manutenção</option>
+                    <option value="baixado">Baixado</option>
+                  </select>
+                </div>
+
+                <div className="text-xs text-gray-500">{filteredRastreadores.length} rastreador(es) encontrado(s)</div>
+
+                <div className="border border-gray-800 rounded-xl overflow-x-auto">
+                  <table className="w-full min-w-[900px] text-left text-sm">
+                    <thead className="bg-gray-950 text-gray-400 text-xs uppercase">
+                      <tr>
+                        <th className="p-3">Serial</th>
+                        <th className="p-3">Modelo</th>
+                        <th className="p-3">SIM / Operadora</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Veículo / Local</th>
+                        <th className="p-3 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800">
+                      {paginatedRastreadores.length === 0 ? (
+                        <tr><td colSpan={6} className="p-6 text-center text-gray-500 text-sm">Nenhum rastreador encontrado.</td></tr>
+                      ) : (
+                        paginatedRastreadores.map(r => (
+                          <tr key={r.id} className="hover:bg-gray-800/50">
+                            <td className="p-3 text-white font-semibold">{r.serial}</td>
+                            <td className="p-3 text-gray-400 text-xs">{r.categoria} {r.modelo ? `— ${r.modelo}` : ''}</td>
+                            <td className="p-3 text-gray-400 text-xs">{r.sim_card || '—'} {r.operadora ? `(${r.operadora})` : ''}</td>
+                            <td className="p-3">
+                              <span className={`text-xs font-bold px-2 py-1 rounded border whitespace-nowrap ${rastreadorStatusColor[r.status]}`}>{rastreadorStatusLabel[r.status] || r.status}</span>
+                            </td>
+                            <td className="p-3 text-gray-400 text-xs">
+                              {r.status === 'instalado'
+                                ? (veiculoPlacaById[r.veiculo_id] || r.placa_atual || '—')
+                                : (r.localizacao_atual || '—')}
+                            </td>
+                            <td className="p-3 text-right whitespace-nowrap">
+                              {r.status === 'instalado' ? (
+                                <button onClick={() => handleUninstallRastreador(r)} title="Retirar do veículo" className="text-gray-400 hover:text-amber-400 p-1.5"><FaUnlink size={14} /></button>
+                              ) : (
+                                <button onClick={() => { setInstallTargetRastreador(r); setInstallVeiculoId(''); }} title="Instalar em um veículo" className="text-gray-400 hover:text-emerald-400 p-1.5"><FaLink size={14} /></button>
+                              )}
+                              <button onClick={() => openRastreadorForm(r)} title="Editar" className="text-gray-400 hover:text-blue-400 p-1.5"><FaEdit size={14} /></button>
+                              <button onClick={() => handleDeleteRastreador(r.id)} title="Excluir" className="text-gray-400 hover:text-red-400 p-1.5"><FaTrashAlt size={14} /></button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {rastreadorTotalPages > 1 && (
+                  <div className="flex items-center justify-between text-sm text-gray-400">
+                    <button
+                      onClick={() => setRastreadorPage(p => Math.max(1, p - 1))}
+                      disabled={rastreadorPage === 1}
+                      className="flex items-center gap-1 disabled:opacity-40 hover:text-white px-3 py-1.5"
+                    >
+                      <FaChevronLeft size={12} /> Anterior
+                    </button>
+                    <span>Página {rastreadorPage} de {rastreadorTotalPages}</span>
+                    <button
+                      onClick={() => setRastreadorPage(p => Math.min(rastreadorTotalPages, p + 1))}
+                      disabled={rastreadorPage === rastreadorTotalPages}
+                      className="flex items-center gap-1 disabled:opacity-40 hover:text-white px-3 py-1.5"
+                    >
+                      Próxima <FaChevronRight size={12} />
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
         </div>
@@ -581,6 +899,122 @@ export default function PainelAdmin() {
                 <button type="button" onClick={() => setIsVehicleModalOpen(false)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Criar/Editar Rastreador */}
+      {isRastreadorModalOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-cyan-500/30 rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-gray-800 pb-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <FaSatelliteDish className="text-cyan-400" /> {editingRastreador ? 'Editar Rastreador' : 'Novo Rastreador'}
+              </h3>
+              <button onClick={() => setIsRastreadorModalOpen(false)} className="text-gray-400 hover:text-white"><FaTimes/></button>
+            </div>
+
+            <form onSubmit={handleSaveRastreador} className="space-y-4">
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Categoria</label>
+                  <input type="text" value={rFormCategoria} onChange={e => setRFormCategoria(e.target.value)} placeholder="LOCALIZADOR" className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Modelo</label>
+                  <input type="text" value={rFormModelo} onChange={e => setRFormModelo(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Serial</label>
+                <input type="text" required value={rFormSerial} onChange={e => setRFormSerial(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">SIM Card</label>
+                  <input type="text" value={rFormSimCard} onChange={e => setRFormSimCard(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                </div>
+                <div className="w-32">
+                  <label className="block text-xs text-gray-400 mb-1">Operadora</label>
+                  <input type="text" value={rFormOperadora} onChange={e => setRFormOperadora(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Data de Entrada</label>
+                  <input type="date" value={rFormDataEntrada} onChange={e => setRFormDataEntrada(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Status</label>
+                  <select value={rFormStatus} onChange={e => setRFormStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500">
+                    <option value="estoque_central">Estoque Central</option>
+                    <option value="estoque_tecnico">Estoque c/ Técnico</option>
+                    <option value="aguardando_manutencao">Aguardando Manutenção</option>
+                    <option value="baixado">Baixado</option>
+                    <option value="instalado" disabled={!editingRastreador || editingRastreador.status !== 'instalado'}>Instalado (use o botão de vincular)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Localização atual (técnico responsável, se aplicável)</label>
+                <input type="text" value={rFormLocalizacao} onChange={e => setRFormLocalizacao(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Custo Aquisição (R$)</label>
+                  <input type="number" step="0.01" value={rFormCustoAquisicao} onChange={e => setRFormCustoAquisicao(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Custo Mensal (R$)</label>
+                  <input type="number" step="0.01" value={rFormCustoMensal} onChange={e => setRFormCustoMensal(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Valor Mensalidade (R$)</label>
+                  <input type="number" step="0.01" value={rFormValorMensalidade} onChange={e => setRFormValorMensalidade(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button type="submit" disabled={isSavingRastreador} className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+                  {isSavingRastreador ? 'Salvando...' : (editingRastreador ? 'Salvar Alterações' : 'Cadastrar Rastreador')}
+                </button>
+                <button type="button" onClick={() => setIsRastreadorModalOpen(false)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Instalar Rastreador em Veículo */}
+      {installTargetRastreador && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-emerald-500/30 rounded-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex justify-between items-center border-b border-gray-800 pb-4">
+              <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaLink className="text-emerald-400" /> Instalar Rastreador</h3>
+              <button onClick={() => { setInstallTargetRastreador(null); setInstallVeiculoId(''); }} className="text-gray-400 hover:text-white"><FaTimes/></button>
+            </div>
+            <div className="text-sm text-gray-300">
+              Rastreador: <span className="font-semibold text-white">{installTargetRastreador.serial}</span>
+              {installTargetRastreador.modelo && <span className="text-gray-500"> ({installTargetRastreador.modelo})</span>}
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Selecione o veículo</label>
+              <select value={installVeiculoId} onChange={e => setInstallVeiculoId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500">
+                <option value="">Selecione a placa...</option>
+                {veiculos.map(v => (
+                  <option key={v.id} value={v.id}>{v.placa} — {empresaNomeById[v.empresa_id] || 'sem empresa'}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button onClick={handleInstallRastreador} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">Confirmar Instalação</button>
+              <button onClick={() => { setInstallTargetRastreador(null); setInstallVeiculoId(''); }} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
+            </div>
           </div>
         </div>
       )}
