@@ -110,6 +110,10 @@ export default function AreaDoCliente() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
+
+  // Modal de confirmação genérico (substitui window.confirm em qualquer lugar)
+  const [confirmDialog, setConfirmDialog] = useState(null); // { message, onConfirm }
+  const askConfirm = (message, onConfirm) => setConfirmDialog({ message, onConfirm });
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
   // Filtros e Modais (Roadmap)
@@ -284,13 +288,13 @@ export default function AreaDoCliente() {
     const { error } = await supabase.auth.updateUser({ password: ownNewPassword });
 
     if (error) {
-      alert("Erro ao alterar senha.");
+      showToast("Erro ao alterar senha.", 'error');
       return;
     }
 
     setOwnNewPassword('');
     setIsProfileModalOpen(false);
-    alert('Senha alterada com sucesso!');
+    showToast('Senha alterada com sucesso!');
   };
 
   // ==========================================
@@ -327,7 +331,7 @@ export default function AreaDoCliente() {
     e.preventDefault();
 
     if (userFormRole !== 'admin' && !userFormEmpresaId) {
-      alert('Selecione a empresa vinculada a este usuário.');
+      showToast('Selecione a empresa vinculada a este usuário.', 'error');
       return;
     }
 
@@ -347,8 +351,9 @@ export default function AreaDoCliente() {
         }),
       });
       const result = await res.json();
-      if (!res.ok) { alert(result.error || 'Erro ao editar usuário.'); return; }
+      if (!res.ok) { showToast(result.error || 'Erro ao editar usuário.', 'error'); return; }
       setUsers(users.map(u => u.id === editingUser.id ? result.profile : u));
+      showToast('Usuário atualizado com sucesso!');
     } else {
       const res = await fetch('/api/create-user', {
         method: 'POST',
@@ -363,27 +368,31 @@ export default function AreaDoCliente() {
         }),
       });
       const result = await res.json();
-      if (!res.ok) { alert(result.error || 'Erro ao criar usuário.'); return; }
+      if (!res.ok) { showToast(result.error || 'Erro ao criar usuário.', 'error'); return; }
       setUsers([...users, result.profile]);
+      showToast('Usuário criado com sucesso!');
     }
 
     setEditingUser(null);
     setUserFormName(''); setUserFormEmail(''); setUserFormPassword(''); setUserFormTrackingUrl(''); setUserFormEmpresaId('');
   };
 
-  const handleDeleteUser = async (userId) => {
-    if (userId === currentUser.id) return alert('Você não pode excluir a si mesmo!');
-    if (confirm('Tem certeza que deseja excluir este usuário?')) {
-      const token = await getAuthToken();
-      const res = await fetch('/api/delete-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ userId }),
-      });
-      const result = await res.json();
-      if (!res.ok) { alert(result.error || 'Erro ao excluir usuário.'); return; }
-      setUsers(users.filter(u => u.id !== userId));
-    }
+  const executeDeleteUser = async (userId) => {
+    const token = await getAuthToken();
+    const res = await fetch('/api/delete-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ userId }),
+    });
+    const result = await res.json();
+    if (!res.ok) { showToast(result.error || 'Erro ao excluir usuário.', 'error'); return; }
+    setUsers(users.filter(u => u.id !== userId));
+    showToast('Usuário excluído com sucesso!');
+  };
+
+  const handleDeleteUser = (userId) => {
+    if (userId === currentUser.id) { showToast('Você não pode excluir a si mesmo!', 'error'); return; }
+    askConfirm('Tem certeza que deseja excluir este usuário?', () => executeDeleteUser(userId));
   };
 
   // ==========================================
@@ -397,13 +406,13 @@ export default function AreaDoCliente() {
       .select('*, empresas(nome), veiculos(placa, modelo)')
       .single();
 
-    if (error) { alert('Erro ao atualizar status da solicitação.'); return; }
+    if (error) { showToast('Erro ao atualizar status da solicitação.', 'error'); return; }
     setSolicitacoes(solicitacoes.map(s => s.id === id ? data : s));
   };
 
   // Admin propõe (ou re-propõe) data/hora e envia pra confirmação do cliente
   const handleSetSchedule = async (id, dataHoraLocal) => {
-    if (!dataHoraLocal) { alert('Escolha uma data e horário.'); return; }
+    if (!dataHoraLocal) { showToast('Escolha uma data e horário.', 'error'); return; }
     const { data, error } = await supabase
       .from('solicitacoes_servico')
       .update({
@@ -416,7 +425,7 @@ export default function AreaDoCliente() {
       .select('*, empresas(nome), veiculos(placa, modelo)')
       .single();
 
-    if (error) { alert('Erro ao enviar data ao cliente.'); return; }
+    if (error) { showToast('Erro ao enviar data ao cliente.', 'error'); return; }
     setSolicitacoes(solicitacoes.map(s => s.id === id ? data : s));
 
     // Notifica o cliente sobre a data proposta
@@ -448,8 +457,8 @@ export default function AreaDoCliente() {
     if (!editingSolicitacao) return;
 
     const isNovaInstalacao = editServiceTipo === 'nova_instalacao';
-    if (isNovaInstalacao && !editServicePlacaNova.trim()) { alert('Informe a placa a ser instalada.'); return; }
-    if (!isNovaInstalacao && !editServiceVeiculoId) { alert('Selecione a placa do veículo.'); return; }
+    if (isNovaInstalacao && !editServicePlacaNova.trim()) { showToast('Informe a placa a ser instalada.', 'error'); return; }
+    if (!isNovaInstalacao && !editServiceVeiculoId) { showToast('Selecione a placa do veículo.', 'error'); return; }
 
     setIsSavingServiceEdit(true);
     const { data, error } = await supabase
@@ -468,7 +477,7 @@ export default function AreaDoCliente() {
       .single();
     setIsSavingServiceEdit(false);
 
-    if (error) { alert('Erro ao salvar edição.'); return; }
+    if (error) { showToast('Erro ao salvar edição.', 'error'); return; }
     setSolicitacoes(solicitacoes.map(s => s.id === data.id ? data : s));
     setEditingSolicitacao(null);
     showToast('Solicitação atualizada com sucesso!');
@@ -478,7 +487,7 @@ export default function AreaDoCliente() {
 
   const handleDeleteSolicitacao = async (id) => {
     const { error } = await supabase.from('solicitacoes_servico').delete().eq('id', id);
-    if (error) { alert('Erro ao excluir solicitação.'); setDeletingSolicitacaoId(null); return; }
+    if (error) { showToast('Erro ao excluir solicitação.', 'error'); setDeletingSolicitacaoId(null); return; }
     setSolicitacoes(solicitacoes.filter(s => s.id !== id));
     setDeletingSolicitacaoId(null);
     showToast('Solicitação excluída com sucesso!');
@@ -489,10 +498,10 @@ export default function AreaDoCliente() {
 
     const isNovaInstalacao = newServiceTipo === 'nova_instalacao';
 
-    if (isNovaInstalacao && !newServicePlacaNova.trim()) { alert('Informe a placa a ser instalada.'); return; }
-    if (!isNovaInstalacao && !newServiceVeiculoId) { alert('Selecione a placa do veículo.'); return; }
-    if (!newServiceTelefone.trim()) { alert('Informe um telefone para contato.'); return; }
-    if (!currentUser?.empresa_id) { alert('Sua conta não está vinculada a uma empresa. Fale com o suporte.'); return; }
+    if (isNovaInstalacao && !newServicePlacaNova.trim()) { showToast('Informe a placa a ser instalada.', 'error'); return; }
+    if (!isNovaInstalacao && !newServiceVeiculoId) { showToast('Selecione a placa do veículo.', 'error'); return; }
+    if (!newServiceTelefone.trim()) { showToast('Informe um telefone para contato.', 'error'); return; }
+    if (!currentUser?.empresa_id) { showToast('Sua conta não está vinculada a uma empresa. Fale com o suporte.', 'error'); return; }
 
     setIsSubmittingService(true);
     const { data, error } = await supabase
@@ -510,7 +519,7 @@ export default function AreaDoCliente() {
       .single();
     setIsSubmittingService(false);
 
-    if (error) { alert('Erro ao enviar solicitação. Tente novamente.'); return; }
+    if (error) { showToast('Erro ao enviar solicitação. Tente novamente.', 'error'); return; }
 
     setSolicitacoes([data, ...solicitacoes]);
     setNewServiceVeiculoId('');
@@ -535,7 +544,7 @@ export default function AreaDoCliente() {
       .select('*, empresas(nome), veiculos(placa, modelo)')
       .single();
 
-    if (error) { alert('Erro ao responder a data proposta.'); return; }
+    if (error) { showToast('Erro ao responder a data proposta.', 'error'); return; }
     setSolicitacoes(solicitacoes.map(s => s.id === id ? data : s));
 
     // Notifica o admin sobre a resposta do cliente
@@ -660,16 +669,19 @@ export default function AreaDoCliente() {
     setIsStepModalOpen(false);
   };
 
-  const handleDeleteStep = async (stepId, e) => {
+  const handleDeleteStep = (stepId, e) => {
     e.stopPropagation();
-    if (confirm('Excluir esta etapa permanentemente?')) {
+    askConfirm('Excluir esta etapa permanentemente?', async () => {
       await supabase.from('comments').delete().eq('step_id', stepId);
       const { error } = await supabase.from('steps').delete().eq('id', stepId);
       if (!error) {
         setSteps(steps.filter((s) => s.id !== stepId));
         if (selectedStep?.id === stepId) setSelectedStep(null);
+        showToast('Etapa excluída com sucesso!');
+      } else {
+        showToast('Erro ao excluir etapa.', 'error');
       }
-    }
+    });
   };
 
   // ==========================================
@@ -1322,6 +1334,25 @@ export default function AreaDoCliente() {
                       <button type="button" onClick={() => setEditingSolicitacao(null)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
                     </div>
                   </form>
+                </div>
+              </div>
+            )}
+
+            {/* Modal de confirmação genérico (substitui window.confirm) */}
+            {confirmDialog && (
+              <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                <div className="bg-gray-900 border border-red-500/30 rounded-2xl max-w-sm w-full p-6 space-y-4">
+                  <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaExclamationCircle className="text-red-400" /> Confirmar Ação</h3>
+                  <p className="text-sm text-gray-400">{confirmDialog.message}</p>
+                  <div className="flex gap-3 pt-2">
+                    <button
+                      onClick={() => { const fn = confirmDialog.onConfirm; setConfirmDialog(null); fn(); }}
+                      className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold"
+                    >
+                      Confirmar
+                    </button>
+                    <button onClick={() => setConfirmDialog(null)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
+                  </div>
                 </div>
               </div>
             )}

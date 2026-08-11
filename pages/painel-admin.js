@@ -73,6 +73,15 @@ export default function PainelAdmin() {
 
   const [authChecked, setAuthChecked] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
+
+  // Toast (sucesso/erro) e modal de confirmação genérico — substituem alert()/confirm() nativos
+  const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+  const [confirmDialog, setConfirmDialog] = useState(null); // { message, onConfirm }
+  const askConfirm = (message, onConfirm) => setConfirmDialog({ message, onConfirm });
   const [isLoadingData, setIsLoadingData] = useState(true);
 
   const [empresas, setEmpresas] = useState([]);
@@ -356,8 +365,8 @@ export default function PainelAdmin() {
 
   const handleSaveVehicle = async (e) => {
     e.preventDefault();
-    if (!vFormPlaca.trim()) { alert('Informe a placa.'); return; }
-    if (!vFormEmpresaId) { alert('Selecione a empresa.'); return; }
+    if (!vFormPlaca.trim()) { showToast('Informe a placa.', 'error'); return; }
+    if (!vFormEmpresaId) { showToast('Selecione a empresa.', 'error'); return; }
 
     setIsSavingVehicle(true);
     const payload = {
@@ -382,7 +391,7 @@ export default function PainelAdmin() {
     }
     setIsSavingVehicle(false);
 
-    if (result.error) { alert('Erro ao salvar veículo: ' + result.error.message); return; }
+    if (result.error) { showToast('Erro ao salvar veículo: ' + result.error.message, 'error'); return; }
 
     if (editingVehicle) {
       setVeiculos(veiculos.map(v => v.id === result.data.id ? result.data : v));
@@ -394,11 +403,13 @@ export default function PainelAdmin() {
     resetVehicleForm();
   };
 
-  const handleDeleteVehicle = async (id) => {
-    if (!confirm('Tem certeza que deseja excluir esta placa? Essa ação não pode ser desfeita.')) return;
-    const { error } = await supabase.from('veiculos').delete().eq('id', id);
-    if (error) { alert('Erro ao excluir veículo: ' + error.message); return; }
-    setVeiculos(veiculos.filter(v => v.id !== id));
+  const handleDeleteVehicle = (id) => {
+    askConfirm('Tem certeza que deseja excluir esta placa? Essa ação não pode ser desfeita.', async () => {
+      const { error } = await supabase.from('veiculos').delete().eq('id', id);
+      if (error) { showToast('Erro ao excluir veículo: ' + error.message, 'error'); return; }
+      setVeiculos(veiculos.filter(v => v.id !== id));
+      showToast('Veículo excluído com sucesso!');
+    });
   };
 
   // ------------------------------------------
@@ -479,7 +490,7 @@ export default function PainelAdmin() {
 
   const handleSaveRastreador = async (e) => {
     e.preventDefault();
-    if (!rFormSerial.trim()) { alert('Informe o serial.'); return; }
+    if (!rFormSerial.trim()) { showToast('Informe o serial.', 'error'); return; }
 
     setIsSavingRastreador(true);
     const payload = {
@@ -504,7 +515,7 @@ export default function PainelAdmin() {
     }
     setIsSavingRastreador(false);
 
-    if (result.error) { alert('Erro ao salvar rastreador: ' + result.error.message); return; }
+    if (result.error) { showToast('Erro ao salvar rastreador: ' + result.error.message, 'error'); return; }
 
     if (editingRastreador) {
       setRastreadores(rastreadores.map(r => r.id === result.data.id ? result.data : r));
@@ -516,16 +527,18 @@ export default function PainelAdmin() {
     resetRastreadorForm();
   };
 
-  const handleDeleteRastreador = async (id) => {
-    if (!confirm('Tem certeza que deseja excluir este rastreador do estoque?')) return;
-    const { error } = await supabase.from('rastreadores').delete().eq('id', id);
-    if (error) { alert('Erro ao excluir rastreador: ' + error.message); return; }
-    setRastreadores(rastreadores.filter(r => r.id !== id));
+  const handleDeleteRastreador = (id) => {
+    askConfirm('Tem certeza que deseja excluir este rastreador do estoque?', async () => {
+      const { error } = await supabase.from('rastreadores').delete().eq('id', id);
+      if (error) { showToast('Erro ao excluir rastreador: ' + error.message, 'error'); return; }
+      setRastreadores(rastreadores.filter(r => r.id !== id));
+      showToast('Rastreador excluído com sucesso!');
+    });
   };
 
   // Instalar rastreador num veículo: atualiza os dois lados (rastreador + veiculo.id_instalado)
   const handleInstallRastreador = async () => {
-    if (!installTargetRastreador || !installVeiculoId) { alert('Selecione um veículo.'); return; }
+    if (!installTargetRastreador || !installVeiculoId) { showToast('Selecione um veículo.', 'error'); return; }
 
     const { data: updatedRastreador, error: errR } = await supabase
       .from('rastreadores')
@@ -533,13 +546,13 @@ export default function PainelAdmin() {
       .eq('id', installTargetRastreador.id)
       .select()
       .single();
-    if (errR) { alert('Erro ao instalar rastreador: ' + errR.message); return; }
+    if (errR) { showToast('Erro ao instalar rastreador: ' + errR.message, 'error'); return; }
 
     const { error: errV } = await supabase
       .from('veiculos')
       .update({ id_instalado: installTargetRastreador.serial })
       .eq('id', installVeiculoId);
-    if (errV) { alert('Rastreador vinculado, mas houve erro ao atualizar o veículo: ' + errV.message); }
+    if (errV) { showToast('Rastreador vinculado, mas houve erro ao atualizar o veículo: ' + errV.message, 'error'); }
 
     setRastreadores(rastreadores.map(r => r.id === updatedRastreador.id ? updatedRastreador : r));
     setVeiculos(veiculos.map(v => v.id === installVeiculoId ? { ...v, id_instalado: installTargetRastreador.serial } : v));
@@ -548,28 +561,30 @@ export default function PainelAdmin() {
   };
 
   // Retirar rastreador do veículo atual
-  const handleUninstallRastreador = async (r) => {
-    if (!confirm(`Retirar o rastreador ${r.serial} do veículo atual?`)) return;
-    const veiculoAnteriorId = r.veiculo_id;
+  const handleUninstallRastreador = (r) => {
+    askConfirm(`Retirar o rastreador ${r.serial} do veículo atual?`, async () => {
+      const veiculoAnteriorId = r.veiculo_id;
 
-    const { data: updatedRastreador, error: errR } = await supabase
-      .from('rastreadores')
-      .update({ veiculo_id: null, status: 'estoque_central', placa_atual: null })
-      .eq('id', r.id)
-      .select()
-      .single();
-    if (errR) { alert('Erro ao retirar rastreador: ' + errR.message); return; }
+      const { data: updatedRastreador, error: errR } = await supabase
+        .from('rastreadores')
+        .update({ veiculo_id: null, status: 'estoque_central', placa_atual: null })
+        .eq('id', r.id)
+        .select()
+        .single();
+      if (errR) { showToast('Erro ao retirar rastreador: ' + errR.message, 'error'); return; }
 
-    if (veiculoAnteriorId) {
-      const { error: errV } = await supabase
-        .from('veiculos')
-        .update({ id_instalado: null })
-        .eq('id', veiculoAnteriorId);
-      if (errV) { alert('Rastreador desvinculado, mas houve erro ao atualizar o veículo: ' + errV.message); }
-      setVeiculos(veiculos.map(v => v.id === veiculoAnteriorId ? { ...v, id_instalado: null } : v));
-    }
+      if (veiculoAnteriorId) {
+        const { error: errV } = await supabase
+          .from('veiculos')
+          .update({ id_instalado: null })
+          .eq('id', veiculoAnteriorId);
+        if (errV) { showToast('Rastreador desvinculado, mas houve erro ao atualizar o veículo: ' + errV.message, 'error'); }
+        setVeiculos(veiculos.map(v => v.id === veiculoAnteriorId ? { ...v, id_instalado: null } : v));
+      }
 
-    setRastreadores(rastreadores.map(rr => rr.id === updatedRastreador.id ? updatedRastreador : rr));
+      setRastreadores(rastreadores.map(rr => rr.id === updatedRastreador.id ? updatedRastreador : rr));
+      showToast('Rastreador retirado com sucesso!');
+    });
   };
 
   // ------------------------------------------
@@ -629,14 +644,14 @@ export default function PainelAdmin() {
 
   const handleSaveOs = async (e) => {
     e.preventDefault();
-    if (!osFormTecnicoNome.trim()) { alert('Informe o nome do técnico.'); return; }
-    if (osFormServicos.length === 0) { alert('Selecione ao menos um serviço realizado.'); return; }
-    if (!osFormEmpresaId) { alert('Selecione a empresa/cliente.'); return; }
-    if (osFormIsNovaPlaca ? !osFormPlacaTexto.trim() : !osFormVeiculoId) { alert('Informe a placa.'); return; }
+    if (!osFormTecnicoNome.trim()) { showToast('Informe o nome do técnico.', 'error'); return; }
+    if (osFormServicos.length === 0) { showToast('Selecione ao menos um serviço realizado.', 'error'); return; }
+    if (!osFormEmpresaId) { showToast('Selecione a empresa/cliente.', 'error'); return; }
+    if (osFormIsNovaPlaca ? !osFormPlacaTexto.trim() : !osFormVeiculoId) { showToast('Informe a placa.', 'error'); return; }
 
     const fotosFaltando = FOTO_TIPOS.filter(ft => !osFormFotos[ft.key]);
     if (fotosFaltando.length > 0) {
-      alert('Todas as 7 fotos são obrigatórias. Faltam:\n' + fotosFaltando.map(f => '• ' + f.label).join('\n'));
+      showToast('Todas as 7 fotos são obrigatórias. Faltam: ' + fotosFaltando.map(f => f.label).join(', '), 'error');
       return;
     }
 
@@ -674,7 +689,7 @@ export default function PainelAdmin() {
 
     if (errOs) {
       setIsSavingOs(false); setOsUploadProgress('');
-      alert('Erro ao salvar a Ordem de Serviço: ' + errOs.message);
+      showToast('Erro ao salvar a Ordem de Serviço: ' + errOs.message, 'error');
       return;
     }
 
@@ -693,7 +708,7 @@ export default function PainelAdmin() {
     setOsUploadProgress('');
 
     if (falhas.length > 0) {
-      alert('A Ordem de Serviço foi salva, mas estas fotos falharam ao enviar:\n' + falhas.join('\n') + '\n\nVocê pode abrir a OS depois e tentar novamente.');
+      showToast('OS salva, mas estas fotos falharam: ' + falhas.join(', ') + '. Você pode tentar reenviar depois.', 'error');
     }
 
     setOrdensServico([novaOs, ...ordensServico]);
@@ -701,17 +716,18 @@ export default function PainelAdmin() {
     resetOsForm();
   };
 
-  const handleDeleteOs = async (id) => {
-    if (!confirm('Excluir esta Ordem de Serviço e todas as fotos anexadas? Essa ação não pode ser desfeita.')) return;
+  const handleDeleteOs = (id) => {
+    askConfirm('Excluir esta Ordem de Serviço e todas as fotos anexadas? Essa ação não pode ser desfeita.', async () => {
+      const { data: fotos } = await supabase.from('ordens_servico_fotos').select('storage_path').eq('ordem_servico_id', id);
+      if (fotos && fotos.length > 0) {
+        await supabase.storage.from('os-fotos').remove(fotos.map(f => f.storage_path));
+      }
 
-    const { data: fotos } = await supabase.from('ordens_servico_fotos').select('storage_path').eq('ordem_servico_id', id);
-    if (fotos && fotos.length > 0) {
-      await supabase.storage.from('os-fotos').remove(fotos.map(f => f.storage_path));
-    }
-
-    const { error } = await supabase.from('ordens_servico').delete().eq('id', id);
-    if (error) { alert('Erro ao excluir a Ordem de Serviço: ' + error.message); return; }
-    setOrdensServico(ordensServico.filter(o => o.id !== id));
+      const { error } = await supabase.from('ordens_servico').delete().eq('id', id);
+      if (error) { showToast('Erro ao excluir a Ordem de Serviço: ' + error.message, 'error'); return; }
+      setOrdensServico(ordensServico.filter(o => o.id !== id));
+      showToast('Ordem de Serviço excluída com sucesso!');
+    });
   };
 
   const openViewOs = async (os) => {
@@ -739,6 +755,38 @@ export default function PainelAdmin() {
   return (
     <>
       <Head><title>Painel Administrativo | Full Vision</title></Head>
+
+      {/* Toast flutuante (sucesso/erro) */}
+      {toast && (
+        <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 px-5 py-3 rounded-xl shadow-2xl border text-sm font-semibold ${
+          toast.type === 'success'
+            ? 'bg-emerald-950 border-emerald-500/40 text-emerald-400'
+            : 'bg-red-950 border-red-500/40 text-red-400'
+        }`}>
+          {toast.type === 'success' ? <FaCheckCircle /> : <FaExclamationCircle />}
+          {toast.message}
+        </div>
+      )}
+
+      {/* Modal de confirmação genérico (substitui window.confirm) */}
+      {confirmDialog && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <div className="bg-gray-900 border border-red-500/30 rounded-2xl max-w-sm w-full p-6 space-y-4">
+            <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaExclamationCircle className="text-red-400" /> Confirmar Ação</h3>
+            <p className="text-sm text-gray-400">{confirmDialog.message}</p>
+            <div className="flex gap-3 pt-2">
+              <button
+                onClick={() => { const fn = confirmDialog.onConfirm; setConfirmDialog(null); fn(); }}
+                className="bg-red-600 hover:bg-red-500 text-white px-4 py-2 rounded-lg text-sm font-semibold"
+              >
+                Confirmar
+              </button>
+              <button onClick={() => setConfirmDialog(null)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="min-h-screen bg-black text-white pt-24 pb-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto space-y-8">
 
