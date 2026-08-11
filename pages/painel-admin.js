@@ -157,6 +157,7 @@ export default function PainelAdmin() {
   const [osFormPlacaTexto, setOsFormPlacaTexto] = useState('');
   const [osFormRastreadorInstaladoId, setOsFormRastreadorInstaladoId] = useState('');
   const [osFormRastreadorRetiradoId, setOsFormRastreadorRetiradoId] = useState('');
+  const [osFormRastreadorRetiradoDestino, setOsFormRastreadorRetiradoDestino] = useState('estoque_tecnico');
   const [osFormLocalInstalacao, setOsFormLocalInstalacao] = useState('');
   const [osFormKm, setOsFormKm] = useState('');
   const [osFormValorKm, setOsFormValorKm] = useState('');
@@ -594,10 +595,25 @@ export default function PainelAdmin() {
     () => rastreadores.filter(r => r.status === 'estoque_central' || r.status === 'estoque_tecnico'),
     [rastreadores]
   );
-  const rastreadoresInstalados = useMemo(
-    () => rastreadores.filter(r => r.status === 'instalado'),
-    [rastreadores]
-  );
+
+  // O rastreador que realmente está instalado na placa selecionada no formulário de OS
+  // (é o único que pode ser "retirado" nessa OS — evita escolher o serial de outro veículo por engano)
+  const rastreadorInstaladoNaPlacaSelecionada = useMemo(() => {
+    if (!osFormVeiculoId) return null;
+    return rastreadores.find(r => r.status === 'instalado' && r.veiculo_id === osFormVeiculoId) || null;
+  }, [rastreadores, osFormVeiculoId]);
+
+  // "Retirado" só faz sentido em Manutenção ou Troca de Equipamento
+  const osPrecisaRetirada = osFormServicos.includes('MANUTENÇÃO') || osFormServicos.includes('TROCA EQUIPAMENTO');
+
+  // Auto-seleciona o rastreador certo (ou limpa) sempre que a placa/serviço mudar
+  useEffect(() => {
+    if (osPrecisaRetirada && rastreadorInstaladoNaPlacaSelecionada) {
+      setOsFormRastreadorRetiradoId(rastreadorInstaladoNaPlacaSelecionada.id);
+    } else {
+      setOsFormRastreadorRetiradoId('');
+    }
+  }, [osPrecisaRetirada, rastreadorInstaladoNaPlacaSelecionada]);
 
   const filteredOrdens = useMemo(() => {
     return ordensServico.filter(o => {
@@ -628,7 +644,7 @@ export default function PainelAdmin() {
     setOsFormTecnicoNome(''); setOsFormTecnicoEmail('');
     setOsFormServicos([]); setOsFormEmpresaId('');
     setOsFormIsNovaPlaca(false); setOsFormVeiculoId(''); setOsFormPlacaTexto('');
-    setOsFormRastreadorInstaladoId(''); setOsFormRastreadorRetiradoId('');
+    setOsFormRastreadorInstaladoId(''); setOsFormRastreadorRetiradoId(''); setOsFormRastreadorRetiradoDestino('estoque_tecnico');
     setOsFormLocalInstalacao(''); setOsFormKm(''); setOsFormValorKm('');
     setOsFormObservacoes(''); setOsFormCustoTecnico(''); setOsFormFaturamentoCliente('');
     setOsFormFotos({});
@@ -691,6 +707,48 @@ export default function PainelAdmin() {
       setIsSavingOs(false); setOsUploadProgress('');
       showToast('Erro ao salvar a Ordem de Serviço: ' + errOs.message, 'error');
       return;
+    }
+
+    // Sincroniza o estoque de verdade com o que aconteceu nessa OS
+    // (evita a OS "dizer" uma coisa e o estoque continuar mostrando outra)
+    setOsUploadProgress('Atualizando estoque de rastreadores...');
+
+    if (osFormRastreadorRetiradoId) {
+      const { data: rAtualizado } = await supabase
+        .from('rastreadores')
+        .update({
+          veiculo_id: null,
+          placa_atual: null,
+          status: osFormRastreadorRetiradoDestino, // 'estoque_tecnico' ou 'aguardando_manutencao'
+          localizacao_atual: osFormTecnicoNome.trim(),
+        })
+        .eq('id', osFormRastreadorRetiradoId)
+        .select()
+        .single();
+      if (rAtualizado) setRastreadores(prev => prev.map(r => r.id === rAtualizado.id ? rAtualizado : r));
+    }
+
+    if (osFormRastreadorInstaladoId && !osFormIsNovaPlaca && osFormVeiculoId) {
+      const serialInstalado = rastreadores.find(r => r.id === osFormRastreadorInstaladoId)?.serial || null;
+      const { data: rAtualizado } = await supabase
+        .from('rastreadores')
+        .update({
+          veiculo_id: osFormVeiculoId,
+          placa_atual: veiculoPlacaById[osFormVeiculoId] || null,
+          status: 'instalado',
+          localizacao_atual: null,
+        })
+        .eq('id', osFormRastreadorInstaladoId)
+        .select()
+        .single();
+      if (rAtualizado) setRastreadores(prev => prev.map(r => r.id === rAtualizado.id ? rAtualizado : r));
+
+      await supabase.from('veiculos').update({ id_instalado: serialInstalado }).eq('id', osFormVeiculoId);
+      setVeiculos(prev => prev.map(v => v.id === osFormVeiculoId ? { ...v, id_instalado: serialInstalado } : v));
+    } else if (osFormRastreadorRetiradoId && !osFormIsNovaPlaca && osFormVeiculoId) {
+      // Só retirou, não instalou nada novo nessa OS: o veículo fica sem rastreador
+      await supabase.from('veiculos').update({ id_instalado: null }).eq('id', osFormVeiculoId);
+      setVeiculos(prev => prev.map(v => v.id === osFormVeiculoId ? { ...v, id_instalado: null } : v));
     }
 
     const falhas = [];
@@ -1498,14 +1556,32 @@ export default function PainelAdmin() {
                     {rastreadoresDisponiveis.map(r => <option key={r.id} value={r.id}>{r.serial} — {r.modelo}</option>)}
                   </select>
                 </div>
-                <div className="flex-1">
-                  <label className="block text-xs text-gray-400 mb-1">Rastreador Retirado (opcional)</label>
-                  <select value={osFormRastreadorRetiradoId} onChange={e => setOsFormRastreadorRetiradoId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500">
-                    <option value="">Nenhum</option>
-                    {rastreadoresInstalados.map(r => <option key={r.id} value={r.id}>{r.serial} — {r.modelo}</option>)}
-                  </select>
-                </div>
               </div>
+
+              {osPrecisaRetirada && (
+                <div className="bg-gray-950 border border-gray-800 rounded-xl p-4 space-y-3">
+                  <div className="text-xs font-bold text-gray-300 uppercase">Rastreador Retirado</div>
+                  {!osFormVeiculoId ? (
+                    <div className="text-xs text-gray-500">Selecione a placa acima pra ver o rastreador instalado nela.</div>
+                  ) : rastreadorInstaladoNaPlacaSelecionada ? (
+                    <>
+                      <div className="text-sm text-white bg-gray-900 border border-gray-700 rounded-lg px-3 py-2">
+                        {rastreadorInstaladoNaPlacaSelecionada.serial} — {rastreadorInstaladoNaPlacaSelecionada.modelo}
+                        <span className="text-[11px] text-gray-500 block mt-0.5">Serial vinculado a essa placa — selecionado automaticamente, sem risco de trocar o serial errado.</span>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Ao retirar, enviar para</label>
+                        <select value={osFormRastreadorRetiradoDestino} onChange={e => setOsFormRastreadorRetiradoDestino(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500">
+                          <option value="estoque_tecnico">Estoque com o Técnico</option>
+                          <option value="aguardando_manutencao">Aguardando Manutenção</option>
+                        </select>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="text-xs text-amber-400">Nenhum rastreador instalado encontrado nessa placa no sistema. A OS será salva sem vincular um retirado.</div>
+                  )}
+                </div>
+              )}
 
               <div className="flex gap-4">
                 <div className="flex-1">
