@@ -603,8 +603,10 @@ export default function PainelAdmin() {
     return rastreadores.find(r => r.status === 'instalado' && r.veiculo_id === osFormVeiculoId) || null;
   }, [rastreadores, osFormVeiculoId]);
 
-  // "Retirado" só faz sentido em Manutenção ou Troca de Equipamento
-  const osPrecisaRetirada = osFormServicos.includes('MANUTENÇÃO') || osFormServicos.includes('TROCA EQUIPAMENTO');
+  // "Retirado" faz sentido em Manutenção, Troca, Retirada do Localizador ou Extravio
+  const TAGS_QUE_RETIRAM = ['MANUTENÇÃO', 'TROCA EQUIPAMENTO', 'RETIRADA LOCALIZADOR', 'EXTRAVIO LOCALIZADOR'];
+  const osPrecisaRetirada = osFormServicos.some(tag => TAGS_QUE_RETIRAM.includes(tag));
+  const osEhExtravio = osFormServicos.includes('EXTRAVIO LOCALIZADOR');
 
   // Auto-seleciona o rastreador certo (ou limpa) sempre que a placa/serviço mudar
   useEffect(() => {
@@ -614,6 +616,12 @@ export default function PainelAdmin() {
       setOsFormRastreadorRetiradoId('');
     }
   }, [osPrecisaRetirada, rastreadorInstaladoNaPlacaSelecionada]);
+
+  // Extravio só pode terminar em "Baixado" — não existe estoque físico pra devolver
+  useEffect(() => {
+    if (osEhExtravio) setOsFormRastreadorRetiradoDestino('baixado');
+    else if (osFormRastreadorRetiradoDestino === 'baixado') setOsFormRastreadorRetiradoDestino('estoque_tecnico');
+  }, [osEhExtravio]);
 
   const filteredOrdens = useMemo(() => {
     return ordensServico.filter(o => {
@@ -1569,13 +1577,20 @@ export default function PainelAdmin() {
                         {rastreadorInstaladoNaPlacaSelecionada.serial} — {rastreadorInstaladoNaPlacaSelecionada.modelo}
                         <span className="text-[11px] text-gray-500 block mt-0.5">Serial vinculado a essa placa — selecionado automaticamente, sem risco de trocar o serial errado.</span>
                       </div>
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-1">Ao retirar, enviar para</label>
-                        <select value={osFormRastreadorRetiradoDestino} onChange={e => setOsFormRastreadorRetiradoDestino(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500">
-                          <option value="estoque_tecnico">Estoque com o Técnico</option>
-                          <option value="aguardando_manutencao">Aguardando Manutenção</option>
-                        </select>
-                      </div>
+                      {osEhExtravio ? (
+                        <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
+                          Marcado como <strong>Extraviado</strong> — esse rastreador será dado como <strong>Baixado</strong> no estoque (não retorna fisicamente).
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Ao retirar, enviar para</label>
+                          <select value={osFormRastreadorRetiradoDestino} onChange={e => setOsFormRastreadorRetiradoDestino(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500">
+                            <option value="estoque_tecnico">Estoque com o Técnico</option>
+                            <option value="estoque_central">Estoque Central</option>
+                            <option value="aguardando_manutencao">Aguardando Manutenção</option>
+                          </select>
+                        </div>
+                      )}
                     </>
                   ) : (
                     <div className="text-xs text-amber-400">Nenhum rastreador instalado encontrado nessa placa no sistema. A OS será salva sem vincular um retirado.</div>
