@@ -864,9 +864,14 @@ export default function PainelAdmin() {
               </h1>
               <p className="text-gray-400 text-sm mt-1">Visão geral da operação Full Vision</p>
             </div>
-            <a href="/area-cliente" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white border border-gray-800 rounded-xl px-4 py-2">
-              <FaArrowLeft /> Voltar pra Área do Cliente
-            </a>
+            <div className="flex items-center gap-3 flex-wrap">
+              <a href="/quests" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white border border-gray-800 rounded-xl px-4 py-2">
+                <FaClipboardList /> Quest Tracker
+              </a>
+              <a href="/area-cliente" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white border border-gray-800 rounded-xl px-4 py-2">
+                <FaArrowLeft /> Voltar pra Área do Cliente
+              </a>
+            </div>
           </div>
 
           {isLoadingData ? (

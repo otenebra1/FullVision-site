@@ -917,6 +917,7 @@ export default function AreaDoCliente() {
                       )}
                     </button>
                     <button onClick={() => setIsAdminUsersModalOpen(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg"><FaUsers /> Gerenciar Usuários</button>
+                    <a href="/quests" className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg"><FaClipboardList /> Quest Tracker</a>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -950,15 +951,17 @@ export default function AreaDoCliente() {
               </div>
             )}
 
-            {/* SEÇÃO RASTREAMENTO */}
-            <div className="bg-gradient-to-r from-blue-900/40 via-gray-900 to-gray-900 border border-blue-500/30 rounded-2xl p-6 md:p-8 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
-              <div className="space-y-2 max-w-xl">
-                <span className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 text-xs font-semibold px-3 py-1 rounded-full border border-blue-500/20"><FaTruck /> Plataforma de Rastreamento 24h</span>
-                <h2 className="text-2xl font-bold">Acessar Sistema de Monitoramento</h2>
-                <p className="text-gray-300 text-sm">Visualize sua frota em tempo real e relatórios de telemetria diretamente no portal oficial.</p>
+            {/* SEÇÃO RASTREAMENTO (só cliente — admin já tem o link "Tracker" nas Ferramentas Administrativas) */}
+            {!isAdmin && (
+              <div className="bg-gradient-to-r from-blue-900/40 via-gray-900 to-gray-900 border border-blue-500/30 rounded-2xl p-6 md:p-8 relative overflow-hidden flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl">
+                <div className="space-y-2 max-w-xl">
+                  <span className="inline-flex items-center gap-2 bg-blue-500/10 text-blue-400 text-xs font-semibold px-3 py-1 rounded-full border border-blue-500/20"><FaTruck /> Plataforma de Rastreamento 24h</span>
+                  <h2 className="text-2xl font-bold">Acessar Sistema de Monitoramento</h2>
+                  <p className="text-gray-300 text-sm">Visualize sua frota em tempo real e relatórios de telemetria diretamente no portal oficial.</p>
+                </div>
+                <a href={currentUser?.tracking_url || 'https://tracker.fullvision.one/v1/home'} target="_blank" rel="noopener noreferrer" className="w-full md:w-auto inline-flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-3.5 rounded-xl shadow-lg transition-all hover:scale-105">Abrir Plataforma <FaExternalLinkAlt className="text-sm" /></a>
               </div>
-              <a href={currentUser?.tracking_url || 'https://tracker.fullvision.one/v1/home'} target="_blank" rel="noopener noreferrer" className="w-full md:w-auto inline-flex items-center justify-center gap-3 bg-blue-600 hover:bg-blue-500 text-white font-semibold px-6 py-3.5 rounded-xl shadow-lg transition-all hover:scale-105">Abrir Plataforma <FaExternalLinkAlt className="text-sm" /></a>
-            </div>
+            )}
 
             {/* SEÇÃO SOLICITAÇÃO DE SERVIÇO (Cliente) */}
             {!isAdmin && (
