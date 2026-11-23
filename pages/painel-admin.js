@@ -3,70 +3,43 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import {
-  FaTruck, FaCheckCircle, FaTimesCircle, FaBuilding, FaMoneyBillWave,
-  FaTools, FaSpinner, FaArrowLeft, FaChartPie, FaLayerGroup, FaExclamationCircle,
-  FaDatabase, FaSearch, FaPlus, FaEdit, FaTrashAlt, FaTimes, FaChevronLeft, FaChevronRight,
-  FaSatelliteDish, FaLink, FaUnlink, FaBoxes, FaClipboardList, FaCamera, FaUserCog,
-  FaArrowUp, FaArrowDown, FaEquals, FaEye,
+  FaTruck, FaCheckCircle, FaSpinner, FaArrowLeft, FaExclamationCircle,
+  FaEdit, FaTrashAlt, FaTimes, FaSatelliteDish, FaLink, FaUnlink, FaClipboardList,
 } from 'react-icons/fa';
+import OsHistory from '../components/os/OsHistory';
+import OsWizard from '../components/os/OsWizard';
+import VeiculosAgrupados from '../components/admin/VeiculosAgrupados';
+import PrecosPanel from '../components/admin/PrecosPanel';
+import {
+  BRL,
+  norm,
+  mkOptions,
+  uniqueSorted,
+  sortBy,
+  nextSort,
+  summarizeSelection,
+  chipText,
+  tableWrap,
+  theadClass,
+  tbodyClass,
+  rowClass,
+  Dash,
+  StatStrip,
+  TabBar,
+  SectionCard,
+  PrimaryButton,
+  ActionButton,
+  StatusDot,
+  Th,
+  SearchInput,
+  FilterDropdown,
+  ToggleFilter,
+  FilterSummary,
+  Pagination,
+  ResumoRow,
+  SegmentedControl,
+} from '../components/admin/ui';
 
-// Tags de serviço usadas na Ordem de Serviço (mesmas da planilha original)
-const SERVICO_TAGS = [
-  'MANUTENÇÃO', 'TROCA EQUIPAMENTO', 'INSTALAÇÃO LOCALIZADOR', 'RETIRADA LOCALIZADOR',
-  'INSTALAÇÃO BLOQUEIO', 'INSTALAÇÃO SENSOR EXTERNO CABINE', 'INSTALAÇÃO SENSOR INTERNO CABINE',
-  'UPGRADE LOCALIZADOR', 'EXTRAVIO LOCALIZADOR', 'KM',
-];
-
-// As 7 fotos obrigatórias de toda Ordem de Serviço
-const FOTO_TIPOS = [
-  { key: 'equipamento_placa', label: 'Equipamento na frente da placa (com o ID visível)' },
-  { key: 'painel_ligado_antes', label: 'Painel com o motor ligado (antes)' },
-  { key: 'regiao_desmontada', label: 'Região que será desmontada' },
-  { key: 'fiacao', label: 'Fiação onde o equipamento será instalado' },
-  { key: 'acabamento', label: 'Acabamento da instalação/retirada' },
-  { key: 'painel_fechado', label: 'Painel fechado' },
-  { key: 'painel_ligado_depois', label: 'Painel com o motor ligado (depois do serviço)' },
-];
-
-// ==========================================
-// Card de estatística do topo do dashboard
-// ==========================================
-function StatCard({ icon, label, value, colorClass }) {
-  return (
-    <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-5 flex items-center gap-4">
-      <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl ${colorClass}`}>
-        {icon}
-      </div>
-      <div>
-        <div className="text-2xl font-bold text-white">{value}</div>
-        <div className="text-xs text-gray-400 uppercase font-semibold">{label}</div>
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// Linha de resumo (usada tanto pro grupo quanto pela unidade filha)
-// ==========================================
-function ResumoRow({ nome, isGrupo, total, ativos, inativos, mensalidade, custoTotal }) {
-  return (
-    <tr className={isGrupo ? 'bg-gray-800/60 font-semibold' : 'hover:bg-gray-800/40'}>
-      <td className={`p-3 text-white ${isGrupo ? '' : 'pl-8 text-gray-300 font-normal'}`}>
-        {isGrupo && <FaLayerGroup className="inline text-purple-400 mr-2" />}
-        {nome}
-      </td>
-      <td className="p-3 text-gray-300">{total}</td>
-      <td className="p-3 text-emerald-400">{ativos}</td>
-      <td className="p-3 text-red-400">{inativos}</td>
-      <td className="p-3 text-gray-300">
-        {mensalidade.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-      </td>
-      <td className="p-3 text-gray-300">
-        {custoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-      </td>
-    </tr>
-  );
-}
 
 export default function PainelAdmin() {
   const router = useRouter();
@@ -90,8 +63,12 @@ export default function PainelAdmin() {
 
   // Banco de Dados de Veículos
   const [searchPlaca, setSearchPlaca] = useState('');
-  const [filterEmpresaId, setFilterEmpresaId] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterEmpresas, setFilterEmpresas] = useState([]);
+  const [filterStatuses, setFilterStatuses] = useState([]);
+  const [filterOperacoes, setFilterOperacoes] = useState([]);
+  const [filterSemEquip, setFilterSemEquip] = useState(false);
+  const [vSort, setVSort] = useState({ key: 'placa', dir: 'asc' });
+  const [vGroupBy, setVGroupBy] = useState('empresa'); // 'empresa' | 'operacao' | 'lista'
   const [currentPage, setCurrentPage] = useState(1);
   const [activeSection, setActiveSection] = useState('resumo'); // 'resumo' | 'veiculos' | 'rastreadores' | 'ordens'
   const itemsPerPage = 20;
@@ -114,7 +91,10 @@ export default function PainelAdmin() {
   // Rastreadores (Estoque)
   const [rastreadores, setRastreadores] = useState([]);
   const [searchRastreador, setSearchRastreador] = useState('');
-  const [filterRastreadorStatus, setFilterRastreadorStatus] = useState('all');
+  const [filterRastreadorStatuses, setFilterRastreadorStatuses] = useState([]);
+  const [filterRastreadorOperadoras, setFilterRastreadorOperadoras] = useState([]);
+  const [filterRastreadorCategorias, setFilterRastreadorCategorias] = useState([]);
+  const [rSort, setRSort] = useState({ key: 'serial', dir: 'asc' });
   const [rastreadorPage, setRastreadorPage] = useState(1);
   const rastreadoresPerPage = 20;
 
@@ -138,37 +118,9 @@ export default function PainelAdmin() {
 
   // Ordens de Serviço
   const [ordensServico, setOrdensServico] = useState([]);
-  const [osSearch, setOsSearch] = useState('');
-  const [osFilterEmpresa, setOsFilterEmpresa] = useState('all');
-  const [osPage, setOsPage] = useState(1);
-  const osPerPage = 15;
 
   const [isOsModalOpen, setIsOsModalOpen] = useState(false);
-  const [isSavingOs, setIsSavingOs] = useState(false);
-  const [osUploadProgress, setOsUploadProgress] = useState('');
 
-  const [osFormData, setOsFormData] = useState(new Date().toISOString().slice(0, 10));
-  const [osFormTecnicoNome, setOsFormTecnicoNome] = useState('');
-  const [osFormTecnicoEmail, setOsFormTecnicoEmail] = useState('');
-  const [osFormServicos, setOsFormServicos] = useState([]);
-  const [osFormEmpresaId, setOsFormEmpresaId] = useState('');
-  const [osFormIsNovaPlaca, setOsFormIsNovaPlaca] = useState(false);
-  const [osFormVeiculoId, setOsFormVeiculoId] = useState('');
-  const [osFormPlacaTexto, setOsFormPlacaTexto] = useState('');
-  const [osFormRastreadorInstaladoId, setOsFormRastreadorInstaladoId] = useState('');
-  const [osFormRastreadorRetiradoId, setOsFormRastreadorRetiradoId] = useState('');
-  const [osFormRastreadorRetiradoDestino, setOsFormRastreadorRetiradoDestino] = useState('estoque_tecnico');
-  const [osFormLocalInstalacao, setOsFormLocalInstalacao] = useState('');
-  const [osFormKm, setOsFormKm] = useState('');
-  const [osFormValorKm, setOsFormValorKm] = useState('');
-  const [osFormObservacoes, setOsFormObservacoes] = useState('');
-  const [osFormCustoTecnico, setOsFormCustoTecnico] = useState('');
-  const [osFormFaturamentoCliente, setOsFormFaturamentoCliente] = useState('');
-  const [osFormFotos, setOsFormFotos] = useState({});
-
-  const [viewingOs, setViewingOs] = useState(null);
-  const [viewingOsFotos, setViewingOsFotos] = useState([]);
-  const [isLoadingOsFotos, setIsLoadingOsFotos] = useState(false);
 
   // ------------------------------------------
   // Guard de acesso: só admin passa
@@ -318,14 +270,75 @@ export default function PainelAdmin() {
     return map;
   }, [empresas]);
 
-  const filteredVeiculos = useMemo(() => {
-    return veiculos.filter(v => {
-      const placaOk = !searchPlaca || v.placa?.toUpperCase().includes(searchPlaca.toUpperCase());
-      const empresaOk = filterEmpresaId === 'all' || v.empresa_id === filterEmpresaId;
-      const statusOk = filterStatus === 'all' || v.status === filterStatus;
-      return placaOk && empresaOk && statusOk;
+  const empresaOptions = useMemo(() => {
+    const blocks = [];
+    hierarquia.gruposComFilhos.forEach(({ grupo, filhos }) => {
+      blocks.push({
+        sortName: grupo.nome,
+        items: [
+          { value: grupo.id, label: grupo.nome, hint: 'Grupo', values: [grupo.id, ...filhos.map(f => f.id)] },
+          ...filhos.map(f => ({ value: f.id, label: f.nome, indent: true, values: [f.id] })),
+        ],
+      });
     });
-  }, [veiculos, searchPlaca, filterEmpresaId, filterStatus]);
+    hierarquia.avulsos.forEach(e => {
+      blocks.push({ sortName: e.nome, items: [{ value: e.id, label: e.nome, values: [e.id] }] });
+    });
+    blocks.sort((a, b) => a.sortName.localeCompare(b.sortName, 'pt-BR'));
+    return blocks.flatMap(b => b.items);
+  }, [hierarquia]);
+
+  const statusOptions = useMemo(() => mkOptions(uniqueSorted(veiculos.map(v => v.status))), [veiculos]);
+  const operacaoOptions = useMemo(() => [
+    ...mkOptions(uniqueSorted(veiculos.map(v => v.operacao))),
+    { value: '__none__', label: 'Sem operação', values: ['__none__'] },
+  ], [veiculos]);
+
+  const filteredVeiculos = useMemo(() => {
+    const q = norm(searchPlaca.trim());
+    const list = veiculos.filter(v => {
+      if (q) {
+        const texto = norm([v.placa, v.id_instalado, v.modelo, v.operacao, empresaNomeById[v.empresa_id]].join(' '));
+        if (!texto.includes(q)) return false;
+      }
+      if (filterEmpresas.length && !filterEmpresas.includes(v.empresa_id)) return false;
+      if (filterStatuses.length && !filterStatuses.includes(v.status)) return false;
+      if (filterOperacoes.length && !filterOperacoes.includes(v.operacao || '__none__')) return false;
+      if (filterSemEquip && v.id_instalado) return false;
+      return true;
+    });
+    return sortBy(list, vSort, {
+      placa: v => v.placa || '',
+      empresa: v => empresaNomeById[v.empresa_id] || '',
+      status: v => v.status || '',
+      operacao: v => v.operacao || '',
+      modelo: v => v.modelo || '',
+      id_instalado: v => String(v.id_instalado || ''),
+      mensalidade: v => Number(v.mensalidade) || 0,
+    });
+  }, [veiculos, empresaNomeById, searchPlaca, filterEmpresas, filterStatuses, filterOperacoes, filterSemEquip, vSort]);
+
+  const vehicleSummary = useMemo(() => {
+    const ativos = filteredVeiculos.filter(v => v.status === 'Ativo');
+    return { mensalidadeAtiva: ativos.reduce((sum, v) => sum + (Number(v.mensalidade) || 0), 0) };
+  }, [filteredVeiculos]);
+
+  const clearVehicleFilters = () => {
+    setSearchPlaca(''); setFilterEmpresas([]); setFilterStatuses([]); setFilterOperacoes([]); setFilterSemEquip(false);
+  };
+
+  const vehicleChips = useMemo(() => {
+    const chips = [];
+    if (searchPlaca.trim()) chips.push({ key: 'q', label: `Busca: ${searchPlaca.trim()}`, onRemove: () => setSearchPlaca('') });
+    const emp = summarizeSelection(empresaOptions, filterEmpresas);
+    if (emp.length) chips.push({ key: 'emp', label: chipText('Empresa', emp, 'selecionadas'), onRemove: () => setFilterEmpresas([]) });
+    const sts = summarizeSelection(statusOptions, filterStatuses);
+    if (sts.length) chips.push({ key: 'st', label: chipText('Status', sts), onRemove: () => setFilterStatuses([]) });
+    const ops = summarizeSelection(operacaoOptions, filterOperacoes);
+    if (ops.length) chips.push({ key: 'op', label: chipText('Operação', ops, 'selecionadas'), onRemove: () => setFilterOperacoes([]) });
+    if (filterSemEquip) chips.push({ key: 'eq', label: 'Sem ID instalado', onRemove: () => setFilterSemEquip(false) });
+    return chips;
+  }, [searchPlaca, empresaOptions, statusOptions, operacaoOptions, filterEmpresas, filterStatuses, filterOperacoes, filterSemEquip]);
 
   const totalPages = Math.max(1, Math.ceil(filteredVeiculos.length / itemsPerPage));
   const paginatedVeiculos = useMemo(() => {
@@ -333,8 +346,8 @@ export default function PainelAdmin() {
     return filteredVeiculos.slice(start, start + itemsPerPage);
   }, [filteredVeiculos, currentPage]);
 
-  // Reseta pra página 1 sempre que o filtro muda
-  useEffect(() => { setCurrentPage(1); }, [searchPlaca, filterEmpresaId, filterStatus]);
+  // Volta pra página 1 sempre que o filtro ou a ordenação muda
+  useEffect(() => { setCurrentPage(1); }, [searchPlaca, filterEmpresas, filterStatuses, filterOperacoes, filterSemEquip, vSort]);
 
   const resetVehicleForm = () => {
     setVFormEmpresaId(''); setVFormPlaca(''); setVFormStatus('Ativo');
@@ -429,12 +442,12 @@ export default function PainelAdmin() {
     aguardando_manutencao: 'Aguardando Manutenção',
     baixado: 'Baixado',
   };
-  const rastreadorStatusColor = {
-    estoque_central: 'bg-blue-500/10 text-blue-400 border-blue-500/30',
-    estoque_tecnico: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30',
-    instalado: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30',
-    aguardando_manutencao: 'bg-amber-500/10 text-amber-400 border-amber-500/30',
-    baixado: 'bg-gray-500/10 text-gray-400 border-gray-500/30',
+  const rastreadorTone = {
+    estoque_central: 'info',
+    estoque_tecnico: 'info',
+    instalado: 'ok',
+    aguardando_manutencao: 'warn',
+    baixado: 'muted',
   };
 
   const rastreadorStats = useMemo(() => {
@@ -444,14 +457,41 @@ export default function PainelAdmin() {
     return { disponiveis, instalados, manutencao, total: rastreadores.length };
   }, [rastreadores]);
 
+  const rastreadorStatusOptions = Object.entries(rastreadorStatusLabel).map(([value, label]) => ({ value, label, values: [value] }));
+  const operadoraOptions = useMemo(() => mkOptions(uniqueSorted(rastreadores.map(r => r.operadora))), [rastreadores]);
+  const categoriaOptions = useMemo(() => mkOptions(uniqueSorted(rastreadores.map(r => r.categoria))), [rastreadores]);
+
   const filteredRastreadores = useMemo(() => {
-    return rastreadores.filter(r => {
-      const q = searchRastreador.toUpperCase();
-      const searchOk = !q || r.serial?.toUpperCase().includes(q) || r.modelo?.toUpperCase().includes(q);
-      const statusOk = filterRastreadorStatus === 'all' || r.status === filterRastreadorStatus;
-      return searchOk && statusOk;
+    const q = norm(searchRastreador.trim());
+    const list = rastreadores.filter(r => {
+      if (q && !norm([r.serial, r.modelo, r.categoria, r.sim_card].join(' ')).includes(q)) return false;
+      if (filterRastreadorStatuses.length && !filterRastreadorStatuses.includes(r.status)) return false;
+      if (filterRastreadorOperadoras.length && !filterRastreadorOperadoras.includes(r.operadora)) return false;
+      if (filterRastreadorCategorias.length && !filterRastreadorCategorias.includes(r.categoria)) return false;
+      return true;
     });
-  }, [rastreadores, searchRastreador, filterRastreadorStatus]);
+    return sortBy(list, rSort, {
+      serial: r => r.serial || '',
+      modelo: r => `${r.categoria || ''} ${r.modelo || ''}`,
+      status: r => rastreadorStatusLabel[r.status] || r.status || '',
+    });
+  }, [rastreadores, searchRastreador, filterRastreadorStatuses, filterRastreadorOperadoras, filterRastreadorCategorias, rSort]);
+
+  const clearRastreadorFilters = () => {
+    setSearchRastreador(''); setFilterRastreadorStatuses([]); setFilterRastreadorOperadoras([]); setFilterRastreadorCategorias([]);
+  };
+
+  const rastreadorChips = useMemo(() => {
+    const chips = [];
+    if (searchRastreador.trim()) chips.push({ key: 'q', label: `Busca: ${searchRastreador.trim()}`, onRemove: () => setSearchRastreador('') });
+    const sts = summarizeSelection(rastreadorStatusOptions, filterRastreadorStatuses);
+    if (sts.length) chips.push({ key: 'st', label: chipText('Status', sts), onRemove: () => setFilterRastreadorStatuses([]) });
+    const ops = summarizeSelection(operadoraOptions, filterRastreadorOperadoras);
+    if (ops.length) chips.push({ key: 'op', label: chipText('Operadora', ops, 'selecionadas'), onRemove: () => setFilterRastreadorOperadoras([]) });
+    const cats = summarizeSelection(categoriaOptions, filterRastreadorCategorias);
+    if (cats.length) chips.push({ key: 'cat', label: chipText('Categoria', cats, 'selecionadas'), onRemove: () => setFilterRastreadorCategorias([]) });
+    return chips;
+  }, [searchRastreador, operadoraOptions, categoriaOptions, filterRastreadorStatuses, filterRastreadorOperadoras, filterRastreadorCategorias]);
 
   const rastreadorTotalPages = Math.max(1, Math.ceil(filteredRastreadores.length / rastreadoresPerPage));
   const paginatedRastreadores = useMemo(() => {
@@ -459,7 +499,7 @@ export default function PainelAdmin() {
     return filteredRastreadores.slice(start, start + rastreadoresPerPage);
   }, [filteredRastreadores, rastreadorPage]);
 
-  useEffect(() => { setRastreadorPage(1); }, [searchRastreador, filterRastreadorStatus]);
+  useEffect(() => { setRastreadorPage(1); }, [searchRastreador, filterRastreadorStatuses, filterRastreadorOperadoras, filterRastreadorCategorias, rSort]);
 
   const resetRastreadorForm = () => {
     setRFormCategoria('LOCALIZADOR'); setRFormModelo(''); setRFormSerial('');
@@ -591,197 +631,6 @@ export default function PainelAdmin() {
   // ------------------------------------------
   // Ordens de Serviço: filtro, paginação, CRUD e fotos
   // ------------------------------------------
-  const rastreadoresDisponiveis = useMemo(
-    () => rastreadores.filter(r => r.status === 'estoque_central' || r.status === 'estoque_tecnico'),
-    [rastreadores]
-  );
-
-  // O rastreador que realmente está instalado na placa selecionada no formulário de OS
-  // (é o único que pode ser "retirado" nessa OS — evita escolher o serial de outro veículo por engano)
-  const rastreadorInstaladoNaPlacaSelecionada = useMemo(() => {
-    if (!osFormVeiculoId) return null;
-    return rastreadores.find(r => r.status === 'instalado' && r.veiculo_id === osFormVeiculoId) || null;
-  }, [rastreadores, osFormVeiculoId]);
-
-  // "Retirado" faz sentido em Manutenção, Troca, Retirada do Localizador ou Extravio
-  const TAGS_QUE_RETIRAM = ['MANUTENÇÃO', 'TROCA EQUIPAMENTO', 'RETIRADA LOCALIZADOR', 'EXTRAVIO LOCALIZADOR'];
-  const osPrecisaRetirada = osFormServicos.some(tag => TAGS_QUE_RETIRAM.includes(tag));
-  const osEhExtravio = osFormServicos.includes('EXTRAVIO LOCALIZADOR');
-
-  // Auto-seleciona o rastreador certo (ou limpa) sempre que a placa/serviço mudar
-  useEffect(() => {
-    if (osPrecisaRetirada && rastreadorInstaladoNaPlacaSelecionada) {
-      setOsFormRastreadorRetiradoId(rastreadorInstaladoNaPlacaSelecionada.id);
-    } else {
-      setOsFormRastreadorRetiradoId('');
-    }
-  }, [osPrecisaRetirada, rastreadorInstaladoNaPlacaSelecionada]);
-
-  // Extravio só pode terminar em "Baixado" — não existe estoque físico pra devolver
-  useEffect(() => {
-    if (osEhExtravio) setOsFormRastreadorRetiradoDestino('baixado');
-    else if (osFormRastreadorRetiradoDestino === 'baixado') setOsFormRastreadorRetiradoDestino('estoque_tecnico');
-  }, [osEhExtravio]);
-
-  const filteredOrdens = useMemo(() => {
-    return ordensServico.filter(o => {
-      const q = osSearch.toUpperCase();
-      const placa = o.veiculos?.placa || o.placa_texto || '';
-      const searchOk = !q || placa.toUpperCase().includes(q) || o.tecnico_nome?.toUpperCase().includes(q);
-      const empresaOk = osFilterEmpresa === 'all' || o.empresa_id === osFilterEmpresa;
-      return searchOk && empresaOk;
-    });
-  }, [ordensServico, osSearch, osFilterEmpresa]);
-
-  const osTotalPages = Math.max(1, Math.ceil(filteredOrdens.length / osPerPage));
-  const paginatedOrdens = useMemo(() => {
-    const start = (osPage - 1) * osPerPage;
-    return filteredOrdens.slice(start, start + osPerPage);
-  }, [filteredOrdens, osPage]);
-
-  useEffect(() => { setOsPage(1); }, [osSearch, osFilterEmpresa]);
-
-  const osStats = useMemo(() => {
-    const faturamentoTotal = filteredOrdens.reduce((sum, o) => sum + (Number(o.faturamento_cliente) || 0), 0);
-    const custoTotal = filteredOrdens.reduce((sum, o) => sum + (Number(o.custo_tecnico) || 0), 0);
-    return { faturamentoTotal, custoTotal, lucroTotal: faturamentoTotal - custoTotal };
-  }, [filteredOrdens]);
-
-  const resetOsForm = () => {
-    setOsFormData(new Date().toISOString().slice(0, 10));
-    setOsFormTecnicoNome(''); setOsFormTecnicoEmail('');
-    setOsFormServicos([]); setOsFormEmpresaId('');
-    setOsFormIsNovaPlaca(false); setOsFormVeiculoId(''); setOsFormPlacaTexto('');
-    setOsFormRastreadorInstaladoId(''); setOsFormRastreadorRetiradoId(''); setOsFormRastreadorRetiradoDestino('estoque_tecnico');
-    setOsFormLocalInstalacao(''); setOsFormKm(''); setOsFormValorKm('');
-    setOsFormObservacoes(''); setOsFormCustoTecnico(''); setOsFormFaturamentoCliente('');
-    setOsFormFotos({});
-  };
-
-  const toggleServicoTag = (tag) => {
-    setOsFormServicos(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]);
-  };
-
-  const handleFotoChange = (tipoKey, file) => {
-    setOsFormFotos(prev => ({ ...prev, [tipoKey]: file }));
-  };
-
-  const handleSaveOs = async (e) => {
-    e.preventDefault();
-    if (!osFormTecnicoNome.trim()) { showToast('Informe o nome do técnico.', 'error'); return; }
-    if (osFormServicos.length === 0) { showToast('Selecione ao menos um serviço realizado.', 'error'); return; }
-    if (!osFormEmpresaId) { showToast('Selecione a empresa/cliente.', 'error'); return; }
-    if (osFormIsNovaPlaca ? !osFormPlacaTexto.trim() : !osFormVeiculoId) { showToast('Informe a placa.', 'error'); return; }
-
-    const fotosFaltando = FOTO_TIPOS.filter(ft => !osFormFotos[ft.key]);
-    if (fotosFaltando.length > 0) {
-      showToast('Todas as 7 fotos são obrigatórias. Faltam: ' + fotosFaltando.map(f => f.label).join(', '), 'error');
-      return;
-    }
-
-    setIsSavingOs(true);
-    setOsUploadProgress('Salvando ordem de serviço...');
-
-    const temKm = osFormServicos.includes('KM');
-    const kmAdicional = temKm ? (Number(osFormKm) || 0) * (Number(osFormValorKm) || 0) : 0;
-    const custoTecnicoBase = osFormCustoTecnico === '' ? 0 : Number(osFormCustoTecnico);
-    const faturamentoClienteBase = osFormFaturamentoCliente === '' ? 0 : Number(osFormFaturamentoCliente);
-
-    const payload = {
-      data: osFormData,
-      tecnico_nome: osFormTecnicoNome.trim(),
-      tecnico_email: osFormTecnicoEmail || null,
-      servico_realizado: osFormServicos.join(', '),
-      empresa_id: osFormEmpresaId,
-      veiculo_id: osFormIsNovaPlaca ? null : osFormVeiculoId,
-      placa_texto: osFormIsNovaPlaca ? osFormPlacaTexto.trim().toUpperCase() : null,
-      rastreador_instalado_id: osFormRastreadorInstaladoId || null,
-      rastreador_retirado_id: osFormRastreadorRetiradoId || null,
-      local_instalacao: osFormLocalInstalacao || null,
-      km_percorrido: temKm && osFormKm !== '' ? Number(osFormKm) : null,
-      valor_km: temKm && osFormValorKm !== '' ? Number(osFormValorKm) : null,
-      observacoes: osFormObservacoes || null,
-      custo_tecnico: custoTecnicoBase + kmAdicional,
-      faturamento_cliente: faturamentoClienteBase + kmAdicional,
-    };
-
-    const { data: novaOs, error: errOs } = await supabase
-      .from('ordens_servico')
-      .insert([payload])
-      .select('*, empresas(nome), veiculos(placa)')
-      .single();
-
-    if (errOs) {
-      setIsSavingOs(false); setOsUploadProgress('');
-      showToast('Erro ao salvar a Ordem de Serviço: ' + errOs.message, 'error');
-      return;
-    }
-
-    // Sincroniza o estoque de verdade com o que aconteceu nessa OS
-    // (evita a OS "dizer" uma coisa e o estoque continuar mostrando outra)
-    setOsUploadProgress('Atualizando estoque de rastreadores...');
-
-    if (osFormRastreadorRetiradoId) {
-      const { data: rAtualizado } = await supabase
-        .from('rastreadores')
-        .update({
-          veiculo_id: null,
-          placa_atual: null,
-          status: osFormRastreadorRetiradoDestino, // 'estoque_tecnico' ou 'aguardando_manutencao'
-          localizacao_atual: osFormTecnicoNome.trim(),
-        })
-        .eq('id', osFormRastreadorRetiradoId)
-        .select()
-        .single();
-      if (rAtualizado) setRastreadores(prev => prev.map(r => r.id === rAtualizado.id ? rAtualizado : r));
-    }
-
-    if (osFormRastreadorInstaladoId && !osFormIsNovaPlaca && osFormVeiculoId) {
-      const serialInstalado = rastreadores.find(r => r.id === osFormRastreadorInstaladoId)?.serial || null;
-      const { data: rAtualizado } = await supabase
-        .from('rastreadores')
-        .update({
-          veiculo_id: osFormVeiculoId,
-          placa_atual: veiculoPlacaById[osFormVeiculoId] || null,
-          status: 'instalado',
-          localizacao_atual: null,
-        })
-        .eq('id', osFormRastreadorInstaladoId)
-        .select()
-        .single();
-      if (rAtualizado) setRastreadores(prev => prev.map(r => r.id === rAtualizado.id ? rAtualizado : r));
-
-      await supabase.from('veiculos').update({ id_instalado: serialInstalado }).eq('id', osFormVeiculoId);
-      setVeiculos(prev => prev.map(v => v.id === osFormVeiculoId ? { ...v, id_instalado: serialInstalado } : v));
-    } else if (osFormRastreadorRetiradoId && !osFormIsNovaPlaca && osFormVeiculoId) {
-      // Só retirou, não instalou nada novo nessa OS: o veículo fica sem rastreador
-      await supabase.from('veiculos').update({ id_instalado: null }).eq('id', osFormVeiculoId);
-      setVeiculos(prev => prev.map(v => v.id === osFormVeiculoId ? { ...v, id_instalado: null } : v));
-    }
-
-    const falhas = [];
-    for (const ft of FOTO_TIPOS) {
-      const file = osFormFotos[ft.key];
-      setOsUploadProgress(`Enviando foto: ${ft.label}...`);
-      const ext = file.name.split('.').pop();
-      const path = `${novaOs.id}/${ft.key}-${Date.now()}.${ext}`;
-      const { error: errUpload } = await supabase.storage.from('os-fotos').upload(path, file);
-      if (errUpload) { falhas.push(ft.label); continue; }
-      await supabase.from('ordens_servico_fotos').insert([{ ordem_servico_id: novaOs.id, tipo: ft.key, storage_path: path }]);
-    }
-
-    setIsSavingOs(false);
-    setOsUploadProgress('');
-
-    if (falhas.length > 0) {
-      showToast('OS salva, mas estas fotos falharam: ' + falhas.join(', ') + '. Você pode tentar reenviar depois.', 'error');
-    }
-
-    setOrdensServico([novaOs, ...ordensServico]);
-    setIsOsModalOpen(false);
-    resetOsForm();
-  };
-
   const handleDeleteOs = (id) => {
     askConfirm('Excluir esta Ordem de Serviço e todas as fotos anexadas? Essa ação não pode ser desfeita.', async () => {
       const { data: fotos } = await supabase.from('ordens_servico_fotos').select('storage_path').eq('ordem_servico_id', id);
@@ -794,18 +643,6 @@ export default function PainelAdmin() {
       setOrdensServico(ordensServico.filter(o => o.id !== id));
       showToast('Ordem de Serviço excluída com sucesso!');
     });
-  };
-
-  const openViewOs = async (os) => {
-    setViewingOs(os);
-    setIsLoadingOsFotos(true);
-    const { data: fotos } = await supabase.from('ordens_servico_fotos').select('*').eq('ordem_servico_id', os.id);
-    const fotosComUrl = (fotos || []).map(f => ({
-      ...f,
-      url: supabase.storage.from('os-fotos').getPublicUrl(f.storage_path).data.publicUrl,
-    }));
-    setViewingOsFotos(fotosComUrl);
-    setIsLoadingOsFotos(false);
   };
 
   if (!authChecked) {
@@ -857,19 +694,17 @@ export default function PainelAdmin() {
         <div className="max-w-7xl mx-auto space-y-8">
 
           {/* Cabeçalho */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
-                <FaChartPie className="text-purple-400" /> Painel Administrativo
-              </h1>
+              <h1 className="text-2xl md:text-3xl font-bold">Painel administrativo</h1>
               <p className="text-gray-400 text-sm mt-1">Visão geral da operação Full Vision</p>
             </div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <a href="/quests" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white border border-gray-800 rounded-xl px-4 py-2">
-                <FaClipboardList /> Quest Tracker
+            <div className="flex items-center gap-2 flex-wrap">
+              <a href="/quests" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
+                <FaClipboardList size={13} /> Quest Tracker
               </a>
-              <a href="/area-cliente" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white border border-gray-800 rounded-xl px-4 py-2">
-                <FaArrowLeft /> Voltar pra Área do Cliente
+              <a href="/area-cliente" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
+                <FaArrowLeft size={12} /> Voltar para a área do cliente
               </a>
             </div>
           </div>
@@ -880,399 +715,261 @@ export default function PainelAdmin() {
             </div>
           ) : (
             <>
-              {/* Cards de resumo */}
-              <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-                <StatCard icon={<FaTruck />} label="Veículos Ativos" value={stats.ativos} colorClass="bg-emerald-500/10 text-emerald-400" />
-                <StatCard icon={<FaTimesCircle />} label="Veículos Inativos" value={stats.inativos} colorClass="bg-red-500/10 text-red-400" />
-                <StatCard icon={<FaBuilding />} label="Clientes Ativos" value={clientesAtivos} colorClass="bg-blue-500/10 text-blue-400" />
-                <StatCard
-                  icon={<FaMoneyBillWave />}
-                  label="Mensalidade Ativa (Total)"
-                  value={stats.mensalidadeAtivaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })}
-                  colorClass="bg-amber-500/10 text-amber-400"
-                />
-                <a href="/area-cliente" className="block">
-                  <StatCard icon={<FaTools />} label="Solicitações Pendentes" value={pendingRequestsCount} colorClass="bg-cyan-500/10 text-cyan-400" />
-                </a>
-              </div>
+              {/* Números gerais */}
+              <StatStrip
+                colsClass="grid-cols-2 lg:grid-cols-5"
+                spanLast
+                items={[
+                  { label: 'Veículos ativos', value: stats.ativos },
+                  { label: 'Veículos inativos', value: stats.inativos },
+                  { label: 'Clientes ativos', value: clientesAtivos },
+                  { label: 'Mensalidade ativa', value: stats.mensalidadeAtivaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) },
+                  { label: 'Solicitações pendentes', value: pendingRequestsCount, href: '/area-cliente', valueClass: pendingRequestsCount > 0 ? 'text-amber-400' : 'text-white' },
+                ]}
+              />
 
               {/* Abas: mostra só uma seção por vez */}
-              <div className="flex flex-wrap gap-2 border-b border-gray-800 pb-1">
-                {[
-                  { key: 'resumo', label: 'Resumo por Cliente', icon: <FaBuilding /> },
-                  { key: 'veiculos', label: 'Banco de Veículos', icon: <FaDatabase /> },
-                  { key: 'rastreadores', label: 'Rastreadores', icon: <FaSatelliteDish /> },
-                  { key: 'ordens', label: 'Ordens de Serviço', icon: <FaClipboardList /> },
-                ].map(tab => (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveSection(tab.key)}
-                    className={`flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-t-xl transition-all ${
-                      activeSection === tab.key
-                        ? 'bg-gray-900/70 text-white border border-gray-800 border-b-0'
-                        : 'text-gray-500 hover:text-gray-300'
-                    }`}
-                  >
-                    {tab.icon} {tab.label}
-                  </button>
-                ))}
-              </div>
+              <TabBar
+                active={activeSection}
+                onChange={setActiveSection}
+                tabs={[
+                  { key: 'resumo', label: 'Resumo por cliente' },
+                  { key: 'veiculos', label: 'Banco de veículos', count: veiculos.length },
+                  { key: 'rastreadores', label: 'Rastreadores', count: rastreadores.length },
+                  { key: 'ordens', label: 'Ordens de serviço', count: ordensServico.length },
+                  { key: 'precos', label: 'Preços' },
+                ]}
+              />
 
               {/* Resumo por cliente/grupo */}
               {activeSection === 'resumo' && (
-              <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 space-y-4">
-                <h2 className="text-lg font-bold flex items-center gap-2"><FaBuilding className="text-blue-400" /> Resumo por Cliente</h2>
-                <div className="border border-gray-800 rounded-xl overflow-x-auto">
-                  <table className="w-full min-w-[700px] text-left text-sm">
-                    <thead className="bg-gray-950 text-gray-400 text-xs uppercase">
-                      <tr>
-                        <th className="p-3">Cliente</th>
-                        <th className="p-3">Total</th>
-                        <th className="p-3">Ativos</th>
-                        <th className="p-3">Inativos</th>
-                        <th className="p-3">Mensalidade Ativa</th>
-                        <th className="p-3">Custo Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800">
-                      {hierarquia.gruposComFilhos.map(({ grupo, resumo, filhos }) => (
-                        <React.Fragment key={grupo.id}>
-                          <ResumoRow nome={grupo.nome} isGrupo {...resumo} />
-                          {filhos.map(f => (
-                            <ResumoRow key={f.id} nome={f.nome} isGrupo={false} {...(resumoPorEmpresa[f.id] || { total: 0, ativos: 0, inativos: 0, mensalidade: 0, custoTotal: 0 })} />
-                          ))}
-                        </React.Fragment>
-                      ))}
-                      {hierarquia.avulsos.map(e => (
-                        <ResumoRow key={e.id} nome={e.nome} isGrupo={false} {...(resumoPorEmpresa[e.id] || { total: 0, ativos: 0, inativos: 0, mensalidade: 0, custoTotal: 0 })} />
-                      ))}
-                      {empresas.length === 0 && (
-                        <tr><td colSpan={6} className="p-6 text-center text-gray-500">Nenhuma empresa cadastrada.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+                <SectionCard title="Resumo por cliente">
+                  <div className={tableWrap}>
+                    <table className="w-full min-w-[720px] text-sm">
+                      <thead className={theadClass}>
+                        <tr>
+                          <Th>Cliente</Th>
+                          <Th align="right">Total</Th>
+                          <Th align="right">Ativos</Th>
+                          <Th align="right">Inativos</Th>
+                          <Th align="right">Mensalidade ativa</Th>
+                          <Th align="right">Custo total</Th>
+                        </tr>
+                      </thead>
+                      <tbody className={tbodyClass}>
+                        {hierarquia.gruposComFilhos.map(({ grupo, resumo, filhos }) => (
+                          <React.Fragment key={grupo.id}>
+                            <ResumoRow nome={grupo.nome} isGrupo {...resumo} />
+                            {filhos.map(f => (
+                              <ResumoRow key={f.id} nome={f.nome} isGrupo={false} {...(resumoPorEmpresa[f.id] || { total: 0, ativos: 0, inativos: 0, mensalidade: 0, custoTotal: 0 })} />
+                            ))}
+                          </React.Fragment>
+                        ))}
+                        {hierarquia.avulsos.map(e => (
+                          <ResumoRow key={e.id} nome={e.nome} isGrupo={false} {...(resumoPorEmpresa[e.id] || { total: 0, ativos: 0, inativos: 0, mensalidade: 0, custoTotal: 0 })} />
+                        ))}
+                        {empresas.length === 0 && (
+                          <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-500">Nenhuma empresa cadastrada.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </SectionCard>
               )}
 
-              {/* Banco de Dados de Veículos */}
+              {/* Banco de veículos */}
               {activeSection === 'veiculos' && (
-              <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 space-y-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <h2 className="text-lg font-bold flex items-center gap-2"><FaDatabase className="text-emerald-400" /> Banco de Dados de Veículos</h2>
-                  <button onClick={() => openVehicleForm(null)} className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg self-start md:self-auto">
-                    <FaPlus /> Nova Placa
-                  </button>
-                </div>
-
-                {/* Filtros */}
-                <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1 relative">
-                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
-                    <input
-                      type="text"
-                      placeholder="Buscar por placa..."
-                      value={searchPlaca}
-                      onChange={e => setSearchPlaca(e.target.value)}
-                      className="w-full bg-gray-950 border border-gray-700 rounded-lg pl-9 pr-3 py-2 text-sm text-white outline-none focus:border-emerald-500"
-                    />
+                <SectionCard title="Banco de veículos" action={<PrimaryButton onClick={() => openVehicleForm(null)}>Nova placa</PrimaryButton>}>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <SearchInput value={searchPlaca} onChange={setSearchPlaca} placeholder="Buscar por placa, ID, modelo ou empresa" />
+                    <FilterDropdown label="Empresa" options={empresaOptions} selected={filterEmpresas} onChange={setFilterEmpresas} searchable />
+                    <FilterDropdown label="Status" options={statusOptions} selected={filterStatuses} onChange={setFilterStatuses} />
+                    <FilterDropdown label="Operação" options={operacaoOptions} selected={filterOperacoes} onChange={setFilterOperacoes} searchable />
+                    <ToggleFilter label="Sem ID instalado" active={filterSemEquip} onClick={() => setFilterSemEquip(v => !v)} />
                   </div>
-                  <select value={filterEmpresaId} onChange={e => setFilterEmpresaId(e.target.value)} className="w-full md:w-56 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500">
-                    <option value="all">Todas as empresas</option>
-                    {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
-                  </select>
-                  <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="w-full md:w-40 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500">
-                    <option value="all">Todos os status</option>
-                    <option value="Ativo">Ativo</option>
-                    <option value="Inativo">Inativo</option>
-                  </select>
-                </div>
 
-                <div className="text-xs text-gray-500">{filteredVeiculos.length} veículo(s) encontrado(s)</div>
+                  <FilterSummary
+                    total={filteredVeiculos.length}
+                    noun={filteredVeiculos.length === 1 ? 'veículo' : 'veículos'}
+                    chips={vehicleChips}
+                    onClearAll={clearVehicleFilters}
+                    extra={<>Mensalidade ativa nesta lista: <span className="text-white font-medium tabular-nums">{BRL(vehicleSummary.mensalidadeAtiva)}</span></>}
+                  />
 
-                <div className="border border-gray-800 rounded-xl overflow-x-auto">
-                  <table className="w-full min-w-[900px] text-left text-sm">
-                    <thead className="bg-gray-950 text-gray-400 text-xs uppercase">
-                      <tr>
-                        <th className="p-3">Placa</th>
-                        <th className="p-3">Empresa</th>
-                        <th className="p-3">Status</th>
-                        <th className="p-3">Operação</th>
-                        <th className="p-3">Modelo</th>
-                        <th className="p-3">ID Instalado</th>
-                        <th className="p-3">Mensalidade</th>
-                        <th className="p-3 text-right">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800">
-                      {paginatedVeiculos.length === 0 ? (
-                        <tr><td colSpan={8} className="p-6 text-center text-gray-500 text-sm">Nenhum veículo encontrado.</td></tr>
-                      ) : (
-                        paginatedVeiculos.map(v => (
-                          <tr key={v.id} className="hover:bg-gray-800/50">
-                            <td className="p-3 text-white font-semibold">{v.placa}</td>
-                            <td className="p-3 text-gray-300 text-xs">{empresaNomeById[v.empresa_id] || '—'}</td>
-                            <td className="p-3">
-                              <span className={`text-xs font-bold px-2 py-1 rounded border ${v.status === 'Ativo' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30' : 'bg-red-500/10 text-red-400 border-red-500/30'}`}>
-                                {v.status || '—'}
-                              </span>
-                            </td>
-                            <td className="p-3 text-gray-400 text-xs">{v.operacao || '—'}</td>
-                            <td className="p-3 text-gray-400 text-xs">{v.modelo || '—'}</td>
-                            <td className="p-3 text-gray-400 text-xs">{v.id_instalado || '—'}</td>
-                            <td className="p-3 text-gray-300 text-xs">{v.mensalidade != null ? Number(v.mensalidade).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '—'}</td>
-                            <td className="p-3 text-right whitespace-nowrap">
-                              <button onClick={() => openVehicleForm(v)} title="Editar" className="text-gray-400 hover:text-blue-400 p-1.5"><FaEdit size={14} /></button>
-                              <button onClick={() => handleDeleteVehicle(v.id)} title="Excluir" className="text-gray-400 hover:text-red-400 p-1.5"><FaTrashAlt size={14} /></button>
-                            </td>
-                          </tr>
-                        ))
+                  <SegmentedControl
+                    label="Agrupar por"
+                    value={vGroupBy}
+                    onChange={setVGroupBy}
+                    options={[{ key: 'empresa', label: 'Cliente' }, { key: 'operacao', label: 'Operação' }, { key: 'lista', label: 'Lista' }]}
+                  />
+
+                  {vGroupBy === 'lista' ? (
+                    <>
+                      <div className={tableWrap}>
+                        <table className="w-full min-w-[900px] text-sm">
+                          <thead className={theadClass}>
+                            <tr>
+                              <Th sortKey="placa" sort={vSort} onSort={k => setVSort(s => nextSort(s, k))}>Placa</Th>
+                              <Th sortKey="empresa" sort={vSort} onSort={k => setVSort(s => nextSort(s, k))}>Empresa</Th>
+                              <Th sortKey="status" sort={vSort} onSort={k => setVSort(s => nextSort(s, k))}>Status</Th>
+                              <Th sortKey="operacao" sort={vSort} onSort={k => setVSort(s => nextSort(s, k))}>Operação</Th>
+                              <Th sortKey="modelo" sort={vSort} onSort={k => setVSort(s => nextSort(s, k))}>Modelo</Th>
+                              <Th sortKey="id_instalado" sort={vSort} onSort={k => setVSort(s => nextSort(s, k))}>ID instalado</Th>
+                              <Th sortKey="mensalidade" sort={vSort} onSort={k => setVSort(s => nextSort(s, k))} align="right">Mensalidade</Th>
+                              <Th align="right">Ações</Th>
+                            </tr>
+                          </thead>
+                          <tbody className={tbodyClass}>
+                            {paginatedVeiculos.length === 0 ? (
+                              <tr>
+                                <td colSpan={8} className="px-4 py-12 text-center text-gray-500">
+                                  Nenhum veículo encontrado{vehicleChips.length > 0 ? ' com esses filtros.' : '.'}
+                                  {vehicleChips.length > 0 && (
+                                    <button type="button" onClick={clearVehicleFilters} className="block mx-auto mt-2 text-sm text-blue-400 hover:text-blue-300">Limpar filtros</button>
+                                  )}
+                                </td>
+                              </tr>
+                            ) : (
+                              paginatedVeiculos.map(v => (
+                                <tr key={v.id} className={rowClass}>
+                                  <td className="px-4 py-3 text-white font-semibold tracking-wide whitespace-nowrap">{v.placa}</td>
+                                  <td className="px-4 py-3 text-gray-300">{empresaNomeById[v.empresa_id] || <Dash />}</td>
+                                  <td className="px-4 py-3 text-gray-300"><StatusDot tone={v.status === 'Ativo' ? 'ok' : 'bad'}>{v.status || '—'}</StatusDot></td>
+                                  <td className="px-4 py-3 text-gray-300">{v.operacao || <Dash />}</td>
+                                  <td className="px-4 py-3 text-gray-400">{v.modelo || <Dash />}</td>
+                                  <td className="px-4 py-3 text-gray-400 tabular-nums">{v.id_instalado || <Dash />}</td>
+                                  <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap text-gray-200">{v.mensalidade != null ? BRL(v.mensalidade) : <Dash />}</td>
+                                  <td className="px-3 py-1.5 text-right whitespace-nowrap">
+                                    <ActionButton title="Editar" hover="hover:text-blue-400" onClick={() => openVehicleForm(v)}><FaEdit size={14} /></ActionButton>
+                                    <ActionButton title="Excluir" hover="hover:text-red-400" onClick={() => handleDeleteVehicle(v.id)}><FaTrashAlt size={14} /></ActionButton>
+                                  </td>
+                                </tr>
+                              ))
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      <Pagination page={currentPage} totalPages={totalPages} total={filteredVeiculos.length} perPage={itemsPerPage} onPage={setCurrentPage} />
+                    </>
+                  ) : filteredVeiculos.length === 0 ? (
+                    <div className="rounded-xl border border-gray-800 px-4 py-12 text-center text-gray-500">
+                      Nenhum veículo encontrado{vehicleChips.length > 0 ? ' com esses filtros.' : '.'}
+                      {vehicleChips.length > 0 && (
+                        <button type="button" onClick={clearVehicleFilters} className="block mx-auto mt-2 text-sm text-blue-400 hover:text-blue-300">Limpar filtros</button>
                       )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Paginação */}
-                {totalPages > 1 && (
-                  <div className="flex items-center justify-between text-sm text-gray-400">
-                    <button
-                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                      disabled={currentPage === 1}
-                      className="flex items-center gap-1 disabled:opacity-40 hover:text-white px-3 py-1.5"
-                    >
-                      <FaChevronLeft size={12} /> Anterior
-                    </button>
-                    <span>Página {currentPage} de {totalPages}</span>
-                    <button
-                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                      disabled={currentPage === totalPages}
-                      className="flex items-center gap-1 disabled:opacity-40 hover:text-white px-3 py-1.5"
-                    >
-                      Próxima <FaChevronRight size={12} />
-                    </button>
-                  </div>
-                )}
-              </div>
+                    </div>
+                  ) : (
+                    <VeiculosAgrupados
+                      veiculos={filteredVeiculos}
+                      empresaNomeById={empresaNomeById}
+                      groupBy={vGroupBy}
+                      sort={vSort}
+                      onSort={k => setVSort(cur => nextSort(cur, k))}
+                      onEdit={openVehicleForm}
+                      onDelete={handleDeleteVehicle}
+                    />
+                  )}
+                </SectionCard>
               )}
 
-              {/* Rastreadores (Estoque) */}
+              {/* Rastreadores (estoque) */}
               {activeSection === 'rastreadores' && (
-              <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 space-y-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <h2 className="text-lg font-bold flex items-center gap-2"><FaSatelliteDish className="text-cyan-400" /> Rastreadores (Estoque)</h2>
-                  <button onClick={() => openRastreadorForm(null)} className="inline-flex items-center gap-2 bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg self-start md:self-auto">
-                    <FaPlus /> Novo Rastreador
-                  </button>
-                </div>
+                <SectionCard title="Rastreadores" action={<PrimaryButton onClick={() => openRastreadorForm(null)}>Novo rastreador</PrimaryButton>}>
+                  <StatStrip
+                    colsClass="grid-cols-1 sm:grid-cols-3"
+                    items={[
+                      { label: 'Disponíveis', value: rastreadorStats.disponiveis },
+                      { label: 'Instalados', value: rastreadorStats.instalados },
+                      { label: 'Aguardando manutenção', value: rastreadorStats.manutencao, valueClass: rastreadorStats.manutencao > 0 ? 'text-amber-400' : 'text-white' },
+                    ]}
+                  />
 
-                {/* Mini-cards de status */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-gray-950 border border-gray-800 rounded-xl p-3 text-center">
-                    <div className="text-xl font-bold text-blue-400">{rastreadorStats.disponiveis}</div>
-                    <div className="text-[11px] text-gray-500 uppercase font-semibold">Disponíveis</div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <SearchInput value={searchRastreador} onChange={setSearchRastreador} placeholder="Buscar por serial, modelo ou SIM" />
+                    <FilterDropdown label="Status" options={rastreadorStatusOptions} selected={filterRastreadorStatuses} onChange={setFilterRastreadorStatuses} />
+                    <FilterDropdown label="Operadora" options={operadoraOptions} selected={filterRastreadorOperadoras} onChange={setFilterRastreadorOperadoras} />
+                    <FilterDropdown label="Categoria" options={categoriaOptions} selected={filterRastreadorCategorias} onChange={setFilterRastreadorCategorias} />
                   </div>
-                  <div className="bg-gray-950 border border-gray-800 rounded-xl p-3 text-center">
-                    <div className="text-xl font-bold text-emerald-400">{rastreadorStats.instalados}</div>
-                    <div className="text-[11px] text-gray-500 uppercase font-semibold">Instalados</div>
-                  </div>
-                  <div className="bg-gray-950 border border-gray-800 rounded-xl p-3 text-center">
-                    <div className="text-xl font-bold text-amber-400">{rastreadorStats.manutencao}</div>
-                    <div className="text-[11px] text-gray-500 uppercase font-semibold">Aguard. Manutenção</div>
-                  </div>
-                </div>
 
-                {/* Filtros */}
-                <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1 relative">
-                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
-                    <input
-                      type="text"
-                      placeholder="Buscar por serial ou modelo..."
-                      value={searchRastreador}
-                      onChange={e => setSearchRastreador(e.target.value)}
-                      className="w-full bg-gray-950 border border-gray-700 rounded-lg pl-9 pr-3 py-2 text-sm text-white outline-none focus:border-cyan-500"
-                    />
-                  </div>
-                  <select value={filterRastreadorStatus} onChange={e => setFilterRastreadorStatus(e.target.value)} className="w-full md:w-56 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500">
-                    <option value="all">Todos os status</option>
-                    <option value="estoque_central">Estoque Central</option>
-                    <option value="estoque_tecnico">Estoque c/ Técnico</option>
-                    <option value="instalado">Instalado</option>
-                    <option value="aguardando_manutencao">Aguardando Manutenção</option>
-                    <option value="baixado">Baixado</option>
-                  </select>
-                </div>
+                  <FilterSummary
+                    total={filteredRastreadores.length}
+                    noun={filteredRastreadores.length === 1 ? 'rastreador' : 'rastreadores'}
+                    chips={rastreadorChips}
+                    onClearAll={clearRastreadorFilters}
+                  />
 
-                <div className="text-xs text-gray-500">{filteredRastreadores.length} rastreador(es) encontrado(s)</div>
-
-                <div className="border border-gray-800 rounded-xl overflow-x-auto">
-                  <table className="w-full min-w-[900px] text-left text-sm">
-                    <thead className="bg-gray-950 text-gray-400 text-xs uppercase">
-                      <tr>
-                        <th className="p-3">Serial</th>
-                        <th className="p-3">Modelo</th>
-                        <th className="p-3">SIM / Operadora</th>
-                        <th className="p-3">Status</th>
-                        <th className="p-3">Veículo / Local</th>
-                        <th className="p-3 text-right">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800">
-                      {paginatedRastreadores.length === 0 ? (
-                        <tr><td colSpan={6} className="p-6 text-center text-gray-500 text-sm">Nenhum rastreador encontrado.</td></tr>
-                      ) : (
-                        paginatedRastreadores.map(r => (
-                          <tr key={r.id} className="hover:bg-gray-800/50">
-                            <td className="p-3 text-white font-semibold">{r.serial}</td>
-                            <td className="p-3 text-gray-400 text-xs">{r.categoria} {r.modelo ? `— ${r.modelo}` : ''}</td>
-                            <td className="p-3 text-gray-400 text-xs">{r.sim_card || '—'} {r.operadora ? `(${r.operadora})` : ''}</td>
-                            <td className="p-3">
-                              <span className={`text-xs font-bold px-2 py-1 rounded border whitespace-nowrap ${rastreadorStatusColor[r.status]}`}>{rastreadorStatusLabel[r.status] || r.status}</span>
-                            </td>
-                            <td className="p-3 text-gray-400 text-xs">
-                              {r.status === 'instalado'
-                                ? (veiculoPlacaById[r.veiculo_id] || r.placa_atual || '—')
-                                : (r.localizacao_atual || '—')}
-                            </td>
-                            <td className="p-3 text-right whitespace-nowrap">
-                              {r.status === 'instalado' ? (
-                                <button onClick={() => handleUninstallRastreador(r)} title="Retirar do veículo" className="text-gray-400 hover:text-amber-400 p-1.5"><FaUnlink size={14} /></button>
-                              ) : (
-                                <button onClick={() => { setInstallTargetRastreador(r); setInstallVeiculoId(''); }} title="Instalar em um veículo" className="text-gray-400 hover:text-emerald-400 p-1.5"><FaLink size={14} /></button>
+                  <div className={tableWrap}>
+                    <table className="w-full min-w-[900px] text-sm">
+                      <thead className={theadClass}>
+                        <tr>
+                          <Th sortKey="serial" sort={rSort} onSort={k => setRSort(s => nextSort(s, k))}>Serial</Th>
+                          <Th sortKey="modelo" sort={rSort} onSort={k => setRSort(s => nextSort(s, k))}>Modelo</Th>
+                          <Th>SIM / operadora</Th>
+                          <Th sortKey="status" sort={rSort} onSort={k => setRSort(s => nextSort(s, k))}>Status</Th>
+                          <Th>Veículo / local</Th>
+                          <Th align="right">Ações</Th>
+                        </tr>
+                      </thead>
+                      <tbody className={tbodyClass}>
+                        {paginatedRastreadores.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-12 text-center text-gray-500">
+                              Nenhum rastreador encontrado{rastreadorChips.length > 0 ? ' com esses filtros.' : '.'}
+                              {rastreadorChips.length > 0 && (
+                                <button type="button" onClick={clearRastreadorFilters} className="block mx-auto mt-2 text-sm text-blue-400 hover:text-blue-300">Limpar filtros</button>
                               )}
-                              <button onClick={() => openRastreadorForm(r)} title="Editar" className="text-gray-400 hover:text-blue-400 p-1.5"><FaEdit size={14} /></button>
-                              <button onClick={() => handleDeleteRastreador(r.id)} title="Excluir" className="text-gray-400 hover:text-red-400 p-1.5"><FaTrashAlt size={14} /></button>
                             </td>
                           </tr>
-                        ))
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {rastreadorTotalPages > 1 && (
-                  <div className="flex items-center justify-between text-sm text-gray-400">
-                    <button
-                      onClick={() => setRastreadorPage(p => Math.max(1, p - 1))}
-                      disabled={rastreadorPage === 1}
-                      className="flex items-center gap-1 disabled:opacity-40 hover:text-white px-3 py-1.5"
-                    >
-                      <FaChevronLeft size={12} /> Anterior
-                    </button>
-                    <span>Página {rastreadorPage} de {rastreadorTotalPages}</span>
-                    <button
-                      onClick={() => setRastreadorPage(p => Math.min(rastreadorTotalPages, p + 1))}
-                      disabled={rastreadorPage === rastreadorTotalPages}
-                      className="flex items-center gap-1 disabled:opacity-40 hover:text-white px-3 py-1.5"
-                    >
-                      Próxima <FaChevronRight size={12} />
-                    </button>
-                  </div>
-                )}
-              </div>
-              )}
-
-              {/* Ordens de Serviço */}
-              {activeSection === 'ordens' && (
-              <div className="bg-gray-900/70 border border-gray-800 rounded-2xl p-6 space-y-4">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <h2 className="text-lg font-bold flex items-center gap-2"><FaClipboardList className="text-orange-400" /> Ordens de Serviço</h2>
-                  <button onClick={() => { resetOsForm(); setIsOsModalOpen(true); }} className="inline-flex items-center gap-2 bg-orange-600 hover:bg-orange-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg self-start md:self-auto">
-                    <FaPlus /> Nova OS
-                  </button>
-                </div>
-
-                {/* Mini-cards financeiros */}
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-gray-950 border border-gray-800 rounded-xl p-3 text-center">
-                    <div className="text-lg font-bold text-emerald-400">{osStats.faturamentoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
-                    <div className="text-[11px] text-gray-500 uppercase font-semibold">Faturado do Cliente</div>
-                  </div>
-                  <div className="bg-gray-950 border border-gray-800 rounded-xl p-3 text-center">
-                    <div className="text-lg font-bold text-red-400">{osStats.custoTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
-                    <div className="text-[11px] text-gray-500 uppercase font-semibold">Pago ao Técnico</div>
-                  </div>
-                  <div className="bg-gray-950 border border-gray-800 rounded-xl p-3 text-center">
-                    <div className={`text-lg font-bold ${osStats.lucroTotal >= 0 ? 'text-cyan-400' : 'text-red-400'}`}>{osStats.lucroTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
-                    <div className="text-[11px] text-gray-500 uppercase font-semibold">Lucro (filtro atual)</div>
-                  </div>
-                </div>
-
-                {/* Filtros */}
-                <div className="flex flex-col md:flex-row gap-4">
-                  <div className="flex-1 relative">
-                    <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
-                    <input
-                      type="text"
-                      placeholder="Buscar por placa ou técnico..."
-                      value={osSearch}
-                      onChange={e => setOsSearch(e.target.value)}
-                      className="w-full bg-gray-950 border border-gray-700 rounded-lg pl-9 pr-3 py-2 text-sm text-white outline-none focus:border-orange-500"
-                    />
-                  </div>
-                  <select value={osFilterEmpresa} onChange={e => setOsFilterEmpresa(e.target.value)} className="w-full md:w-56 bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500">
-                    <option value="all">Todas as empresas</option>
-                    {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
-                  </select>
-                </div>
-
-                <div className="text-xs text-gray-500">{filteredOrdens.length} ordem(ns) de serviço encontrada(s)</div>
-
-                <div className="border border-gray-800 rounded-xl overflow-x-auto">
-                  <table className="w-full min-w-[900px] text-left text-sm">
-                    <thead className="bg-gray-950 text-gray-400 text-xs uppercase">
-                      <tr>
-                        <th className="p-3">Data</th>
-                        <th className="p-3">Técnico</th>
-                        <th className="p-3">Empresa</th>
-                        <th className="p-3">Placa</th>
-                        <th className="p-3">Serviço</th>
-                        <th className="p-3">Faturado</th>
-                        <th className="p-3">Pago Técnico</th>
-                        <th className="p-3">Lucro</th>
-                        <th className="p-3 text-right">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-800">
-                      {paginatedOrdens.length === 0 ? (
-                        <tr><td colSpan={9} className="p-6 text-center text-gray-500 text-sm">Nenhuma ordem de serviço encontrada.</td></tr>
-                      ) : (
-                        paginatedOrdens.map(o => {
-                          const lucro = (Number(o.faturamento_cliente) || 0) - (Number(o.custo_tecnico) || 0);
-                          return (
-                            <tr key={o.id} className="hover:bg-gray-800/50">
-                              <td className="p-3 text-gray-300 text-xs whitespace-nowrap">{new Date(o.data + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
-                              <td className="p-3 text-gray-300 text-xs">{o.tecnico_nome}</td>
-                              <td className="p-3 text-gray-300 text-xs">{o.empresas?.nome || '—'}</td>
-                              <td className="p-3 text-white font-semibold text-xs">{o.veiculos?.placa || o.placa_texto || '—'}</td>
-                              <td className="p-3 text-gray-400 text-xs max-w-[160px] truncate" title={o.servico_realizado}>{o.servico_realizado}</td>
-                              <td className="p-3 text-emerald-400 text-xs whitespace-nowrap">{Number(o.faturamento_cliente || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                              <td className="p-3 text-red-400 text-xs whitespace-nowrap">{Number(o.custo_tecnico || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                              <td className={`p-3 text-xs font-semibold whitespace-nowrap ${lucro >= 0 ? 'text-cyan-400' : 'text-red-400'}`}>{lucro.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
-                              <td className="p-3 text-right whitespace-nowrap">
-                                <button onClick={() => openViewOs(o)} title="Ver detalhes e fotos" className="text-gray-400 hover:text-blue-400 p-1.5"><FaEye size={14} /></button>
-                                <button onClick={() => handleDeleteOs(o.id)} title="Excluir" className="text-gray-400 hover:text-red-400 p-1.5"><FaTrashAlt size={14} /></button>
+                        ) : (
+                          paginatedRastreadores.map(r => (
+                            <tr key={r.id} className={rowClass}>
+                              <td className="px-4 py-3 text-white font-semibold tabular-nums whitespace-nowrap">{r.serial}</td>
+                              <td className="px-4 py-3 text-gray-300">{r.categoria}{r.modelo ? ` — ${r.modelo}` : ''}</td>
+                              <td className="px-4 py-3 text-gray-400">
+                                {r.sim_card || <Dash />}
+                                {r.operadora && <span className="text-gray-500"> ({r.operadora})</span>}
+                              </td>
+                              <td className="px-4 py-3 text-gray-300">
+                                <StatusDot tone={rastreadorTone[r.status] || 'muted'}>{rastreadorStatusLabel[r.status] || r.status}</StatusDot>
+                              </td>
+                              <td className="px-4 py-3 text-gray-300">
+                                {r.status === 'instalado'
+                                  ? (veiculoPlacaById[r.veiculo_id] || r.placa_atual || <Dash />)
+                                  : (r.localizacao_atual || <Dash />)}
+                              </td>
+                              <td className="px-3 py-1.5 text-right whitespace-nowrap">
+                                {r.status === 'instalado' ? (
+                                  <ActionButton title="Retirar do veículo" hover="hover:text-amber-400" onClick={() => handleUninstallRastreador(r)}><FaUnlink size={14} /></ActionButton>
+                                ) : (
+                                  <ActionButton title="Instalar em um veículo" hover="hover:text-emerald-400" onClick={() => { setInstallTargetRastreador(r); setInstallVeiculoId(''); }}><FaLink size={14} /></ActionButton>
+                                )}
+                                <ActionButton title="Editar" hover="hover:text-blue-400" onClick={() => openRastreadorForm(r)}><FaEdit size={14} /></ActionButton>
+                                <ActionButton title="Excluir" hover="hover:text-red-400" onClick={() => handleDeleteRastreador(r.id)}><FaTrashAlt size={14} /></ActionButton>
                               </td>
                             </tr>
-                          );
-                        })
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-
-                {osTotalPages > 1 && (
-                  <div className="flex items-center justify-between text-sm text-gray-400">
-                    <button onClick={() => setOsPage(p => Math.max(1, p - 1))} disabled={osPage === 1} className="flex items-center gap-1 disabled:opacity-40 hover:text-white px-3 py-1.5">
-                      <FaChevronLeft size={12} /> Anterior
-                    </button>
-                    <span>Página {osPage} de {osTotalPages}</span>
-                    <button onClick={() => setOsPage(p => Math.min(osTotalPages, p + 1))} disabled={osPage === osTotalPages} className="flex items-center gap-1 disabled:opacity-40 hover:text-white px-3 py-1.5">
-                      Próxima <FaChevronRight size={12} />
-                    </button>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
                   </div>
-                )}
-              </div>
+
+                  <Pagination page={rastreadorPage} totalPages={rastreadorTotalPages} total={filteredRastreadores.length} perPage={rastreadoresPerPage} onPage={setRastreadorPage} />
+                </SectionCard>
+              )}
+
+              {/* Preços (técnicos, clientes e regras do financeiro automático) */}
+              {activeSection === 'precos' && <PrecosPanel empresas={empresas} showToast={showToast} />}
+
+              {/* Ordens de serviço */}
+              {activeSection === 'ordens' && (
+                <OsHistory
+                  ordens={ordensServico}
+                  empresaOptions={empresaOptions}
+                  rastreadores={rastreadores}
+                  onNew={() => setIsOsModalOpen(true)}
+                  onDelete={handleDeleteOs}
+                />
               )}
             </>
           )}
@@ -1282,7 +979,7 @@ export default function PainelAdmin() {
       {/* Modal Criar/Editar Veículo */}
       {isVehicleModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-gray-900 border border-emerald-500/30 rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-gray-800 pb-4">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <FaTruck className="text-emerald-400" /> {editingVehicle ? 'Editar Veículo' : 'Nova Placa'}
@@ -1294,11 +991,11 @@ export default function PainelAdmin() {
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Placa</label>
-                  <input type="text" required value={vFormPlaca} onChange={e => setVFormPlaca(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500 uppercase" />
+                  <input type="text" required value={vFormPlaca} onChange={e => setVFormPlaca(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500 uppercase" />
                 </div>
                 <div className="w-36">
                   <label className="block text-xs text-gray-400 mb-1">Status</label>
-                  <select value={vFormStatus} onChange={e => setVFormStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500">
+                  <select value={vFormStatus} onChange={e => setVFormStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
                     <option value="Ativo">Ativo</option>
                     <option value="Inativo">Inativo</option>
                   </select>
@@ -1307,7 +1004,7 @@ export default function PainelAdmin() {
 
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Empresa</label>
-                <select required value={vFormEmpresaId} onChange={e => setVFormEmpresaId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500">
+                <select required value={vFormEmpresaId} onChange={e => setVFormEmpresaId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
                   <option value="">Selecione a empresa...</option>
                   {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
                 </select>
@@ -1316,47 +1013,47 @@ export default function PainelAdmin() {
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Operação</label>
-                  <input type="text" value={vFormOperacao} onChange={e => setVFormOperacao(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+                  <input type="text" value={vFormOperacao} onChange={e => setVFormOperacao(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Modelo</label>
-                  <input type="text" value={vFormModelo} onChange={e => setVFormModelo(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+                  <input type="text" value={vFormModelo} onChange={e => setVFormModelo(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs text-gray-400 mb-1">ID Instalado (serial do rastreador)</label>
-                <input type="text" value={vFormIdInstalado} onChange={e => setVFormIdInstalado(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+                <input type="text" value={vFormIdInstalado} onChange={e => setVFormIdInstalado(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
               </div>
 
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Data Instalação</label>
-                  <input type="date" value={vFormDataInst} onChange={e => setVFormDataInst(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+                  <input type="date" value={vFormDataInst} onChange={e => setVFormDataInst(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Data Desinstalação</label>
-                  <input type="date" value={vFormDataDesinst} onChange={e => setVFormDataDesinst(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+                  <input type="date" value={vFormDataDesinst} onChange={e => setVFormDataDesinst(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
               </div>
 
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Mensalidade (R$)</label>
-                  <input type="number" step="0.01" value={vFormMensalidade} onChange={e => setVFormMensalidade(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+                  <input type="number" step="0.01" value={vFormMensalidade} onChange={e => setVFormMensalidade(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Custo Total (R$)</label>
-                  <input type="number" step="0.01" value={vFormCustoTotal} onChange={e => setVFormCustoTotal(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+                  <input type="number" step="0.01" value={vFormCustoTotal} onChange={e => setVFormCustoTotal(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">DRE Placa (R$)</label>
-                  <input type="number" step="0.01" value={vFormDrePlaca} onChange={e => setVFormDrePlaca(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
+                  <input type="number" step="0.01" value={vFormDrePlaca} onChange={e => setVFormDrePlaca(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button type="submit" disabled={isSavingVehicle} className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+                <button type="submit" disabled={isSavingVehicle} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-semibold">
                   {isSavingVehicle ? 'Salvando...' : (editingVehicle ? 'Salvar Alterações' : 'Criar Placa')}
                 </button>
                 <button type="button" onClick={() => setIsVehicleModalOpen(false)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
@@ -1369,7 +1066,7 @@ export default function PainelAdmin() {
       {/* Modal Criar/Editar Rastreador */}
       {isRastreadorModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-gray-900 border border-cyan-500/30 rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-gray-800 pb-4">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
                 <FaSatelliteDish className="text-cyan-400" /> {editingRastreador ? 'Editar Rastreador' : 'Novo Rastreador'}
@@ -1381,38 +1078,38 @@ export default function PainelAdmin() {
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Categoria</label>
-                  <input type="text" value={rFormCategoria} onChange={e => setRFormCategoria(e.target.value)} placeholder="LOCALIZADOR" className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                  <input type="text" value={rFormCategoria} onChange={e => setRFormCategoria(e.target.value)} placeholder="LOCALIZADOR" className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Modelo</label>
-                  <input type="text" value={rFormModelo} onChange={e => setRFormModelo(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                  <input type="text" value={rFormModelo} onChange={e => setRFormModelo(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Serial</label>
-                <input type="text" required value={rFormSerial} onChange={e => setRFormSerial(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                <input type="text" required value={rFormSerial} onChange={e => setRFormSerial(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
               </div>
 
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">SIM Card</label>
-                  <input type="text" value={rFormSimCard} onChange={e => setRFormSimCard(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                  <input type="text" value={rFormSimCard} onChange={e => setRFormSimCard(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
                 <div className="w-32">
                   <label className="block text-xs text-gray-400 mb-1">Operadora</label>
-                  <input type="text" value={rFormOperadora} onChange={e => setRFormOperadora(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                  <input type="text" value={rFormOperadora} onChange={e => setRFormOperadora(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
               </div>
 
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Data de Entrada</label>
-                  <input type="date" value={rFormDataEntrada} onChange={e => setRFormDataEntrada(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                  <input type="date" value={rFormDataEntrada} onChange={e => setRFormDataEntrada(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Status</label>
-                  <select value={rFormStatus} onChange={e => setRFormStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500">
+                  <select value={rFormStatus} onChange={e => setRFormStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
                     <option value="estoque_central">Estoque Central</option>
                     <option value="estoque_tecnico">Estoque c/ Técnico</option>
                     <option value="aguardando_manutencao">Aguardando Manutenção</option>
@@ -1424,26 +1121,26 @@ export default function PainelAdmin() {
 
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Localização atual (técnico responsável, se aplicável)</label>
-                <input type="text" value={rFormLocalizacao} onChange={e => setRFormLocalizacao(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                <input type="text" value={rFormLocalizacao} onChange={e => setRFormLocalizacao(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
               </div>
 
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Custo Aquisição (R$)</label>
-                  <input type="number" step="0.01" value={rFormCustoAquisicao} onChange={e => setRFormCustoAquisicao(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                  <input type="number" step="0.01" value={rFormCustoAquisicao} onChange={e => setRFormCustoAquisicao(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Custo Mensal (R$)</label>
-                  <input type="number" step="0.01" value={rFormCustoMensal} onChange={e => setRFormCustoMensal(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                  <input type="number" step="0.01" value={rFormCustoMensal} onChange={e => setRFormCustoMensal(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Valor Mensalidade (R$)</label>
-                  <input type="number" step="0.01" value={rFormValorMensalidade} onChange={e => setRFormValorMensalidade(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500" />
+                  <input type="number" step="0.01" value={rFormValorMensalidade} onChange={e => setRFormValorMensalidade(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
               </div>
 
               <div className="flex gap-3 pt-2">
-                <button type="submit" disabled={isSavingRastreador} className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+                <button type="submit" disabled={isSavingRastreador} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-semibold">
                   {isSavingRastreador ? 'Salvando...' : (editingRastreador ? 'Salvar Alterações' : 'Cadastrar Rastreador')}
                 </button>
                 <button type="button" onClick={() => setIsRastreadorModalOpen(false)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
@@ -1456,9 +1153,9 @@ export default function PainelAdmin() {
       {/* Modal Instalar Rastreador em Veículo */}
       {installTargetRastreador && (
         <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-gray-900 border border-emerald-500/30 rounded-2xl max-w-md w-full p-6 space-y-4">
+          <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-gray-800 pb-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaLink className="text-emerald-400" /> Instalar Rastreador</h3>
+              <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaLink className="text-blue-400" /> Instalar Rastreador</h3>
               <button onClick={() => { setInstallTargetRastreador(null); setInstallVeiculoId(''); }} className="text-gray-400 hover:text-white"><FaTimes/></button>
             </div>
             <div className="text-sm text-gray-300">
@@ -1467,7 +1164,7 @@ export default function PainelAdmin() {
             </div>
             <div>
               <label className="block text-xs text-gray-400 mb-1">Selecione o veículo</label>
-              <select value={installVeiculoId} onChange={e => setInstallVeiculoId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500">
+              <select value={installVeiculoId} onChange={e => setInstallVeiculoId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
                 <option value="">Selecione a placa...</option>
                 {veiculos.map(v => (
                   <option key={v.id} value={v.id}>{v.placa} — {empresaNomeById[v.empresa_id] || 'sem empresa'}</option>
@@ -1475,279 +1172,30 @@ export default function PainelAdmin() {
               </select>
             </div>
             <div className="flex gap-3 pt-2">
-              <button onClick={handleInstallRastreador} className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">Confirmar Instalação</button>
+              <button onClick={handleInstallRastreador} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">Confirmar Instalação</button>
               <button onClick={() => { setInstallTargetRastreador(null); setInstallVeiculoId(''); }} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal Nova Ordem de Serviço */}
+      {/* Nova OS em etapas */}
       {isOsModalOpen && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-gray-900 border border-orange-500/30 rounded-2xl max-w-2xl w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b border-gray-800 pb-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaClipboardList className="text-orange-400" /> Nova Ordem de Serviço</h3>
-              <button onClick={() => setIsOsModalOpen(false)} className="text-gray-400 hover:text-white"><FaTimes/></button>
-            </div>
-
-            <form onSubmit={handleSaveOs} className="space-y-5">
-              {/* Técnico e data */}
-              <div className="flex gap-4">
-                <div className="w-40">
-                  <label className="block text-xs text-gray-400 mb-1">Data</label>
-                  <input type="date" required value={osFormData} onChange={e => setOsFormData(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500" />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-xs text-gray-400 mb-1">Nome do Técnico</label>
-                  <input type="text" required value={osFormTecnicoNome} onChange={e => setOsFormTecnicoNome(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">E-mail do Técnico (opcional)</label>
-                <input type="email" value={osFormTecnicoEmail} onChange={e => setOsFormTecnicoEmail(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500" />
-              </div>
-
-              {/* Serviços realizados */}
-              <div>
-                <label className="block text-xs text-gray-400 mb-2">Serviço(s) Realizado(s)</label>
-                <div className="flex flex-wrap gap-2">
-                  {SERVICO_TAGS.map(tag => (
-                    <button
-                      key={tag}
-                      type="button"
-                      onClick={() => toggleServicoTag(tag)}
-                      className={`text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
-                        osFormServicos.includes(tag)
-                          ? 'bg-orange-600 border-orange-500 text-white'
-                          : 'bg-gray-950 border-gray-700 text-gray-400 hover:border-gray-500'
-                      }`}
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Empresa e placa */}
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Empresa / Cliente</label>
-                <select required value={osFormEmpresaId} onChange={e => setOsFormEmpresaId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500">
-                  <option value="">Selecione a empresa...</option>
-                  {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
-                </select>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="osNovaPlaca" checked={osFormIsNovaPlaca} onChange={e => setOsFormIsNovaPlaca(e.target.checked)} className="accent-orange-500" />
-                <label htmlFor="osNovaPlaca" className="text-xs text-gray-400">Essa OS é de uma placa nova (ainda não cadastrada no sistema)</label>
-              </div>
-
-              {osFormIsNovaPlaca ? (
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Placa nova</label>
-                  <input type="text" required value={osFormPlacaTexto} onChange={e => setOsFormPlacaTexto(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500 uppercase" />
-                </div>
-              ) : (
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Placa</label>
-                  <select required value={osFormVeiculoId} onChange={e => setOsFormVeiculoId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500">
-                    <option value="">Selecione a placa...</option>
-                    {veiculos.filter(v => !osFormEmpresaId || v.empresa_id === osFormEmpresaId).map(v => (
-                      <option key={v.id} value={v.id}>{v.placa}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Rastreadores */}
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-xs text-gray-400 mb-1">Rastreador Instalado (opcional)</label>
-                  <select value={osFormRastreadorInstaladoId} onChange={e => setOsFormRastreadorInstaladoId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500">
-                    <option value="">Nenhum</option>
-                    {rastreadoresDisponiveis.map(r => <option key={r.id} value={r.id}>{r.serial} — {r.modelo}</option>)}
-                  </select>
-                </div>
-              </div>
-
-              {osPrecisaRetirada && (
-                <div className="bg-gray-950 border border-gray-800 rounded-xl p-4 space-y-3">
-                  <div className="text-xs font-bold text-gray-300 uppercase">Rastreador Retirado</div>
-                  {!osFormVeiculoId ? (
-                    <div className="text-xs text-gray-500">Selecione a placa acima pra ver o rastreador instalado nela.</div>
-                  ) : rastreadorInstaladoNaPlacaSelecionada ? (
-                    <>
-                      <div className="text-sm text-white bg-gray-900 border border-gray-700 rounded-lg px-3 py-2">
-                        {rastreadorInstaladoNaPlacaSelecionada.serial} — {rastreadorInstaladoNaPlacaSelecionada.modelo}
-                        <span className="text-[11px] text-gray-500 block mt-0.5">Serial vinculado a essa placa — selecionado automaticamente, sem risco de trocar o serial errado.</span>
-                      </div>
-                      {osEhExtravio ? (
-                        <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg px-3 py-2">
-                          Marcado como <strong>Extraviado</strong> — esse rastreador será dado como <strong>Baixado</strong> no estoque (não retorna fisicamente).
-                        </div>
-                      ) : (
-                        <div>
-                          <label className="block text-xs text-gray-400 mb-1">Ao retirar, enviar para</label>
-                          <select value={osFormRastreadorRetiradoDestino} onChange={e => setOsFormRastreadorRetiradoDestino(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500">
-                            <option value="estoque_tecnico">Estoque com o Técnico</option>
-                            <option value="estoque_central">Estoque Central</option>
-                            <option value="aguardando_manutencao">Aguardando Manutenção</option>
-                          </select>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="text-xs text-amber-400">Nenhum rastreador instalado encontrado nessa placa no sistema. A OS será salva sem vincular um retirado.</div>
-                  )}
-                </div>
-              )}
-
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-xs text-gray-400 mb-1">Local da Instalação</label>
-                  <input type="text" value={osFormLocalInstalacao} onChange={e => setOsFormLocalInstalacao(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500" />
-                </div>
-              </div>
-
-              {osFormServicos.includes('KM') && (
-                <div className="bg-gray-950 border border-gray-800 rounded-xl p-4 space-y-3">
-                  <div className="text-xs font-bold text-gray-300 uppercase">Cálculo por KM</div>
-                  <div className="flex gap-4">
-                    <div className="flex-1">
-                      <label className="block text-xs text-gray-400 mb-1">KM Percorrido</label>
-                      <input type="number" step="0.1" value={osFormKm} onChange={e => setOsFormKm(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500" />
-                    </div>
-                    <div className="flex-1">
-                      <label className="block text-xs text-gray-400 mb-1">Valor do KM (R$)</label>
-                      <input type="number" step="0.01" value={osFormValorKm} onChange={e => setOsFormValorKm(e.target.value)} placeholder="0,00" className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500" />
-                    </div>
-                  </div>
-                  {(osFormKm !== '' && osFormValorKm !== '') && (
-                    <div className="text-xs text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 rounded-lg px-3 py-2">
-                      Adicional calculado: {((Number(osFormKm) || 0) * (Number(osFormValorKm) || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} — será somado automaticamente ao faturamento do cliente e ao custo do técnico, abaixo.
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div>
-                <label className="block text-xs text-gray-400 mb-1">Observações</label>
-                <textarea value={osFormObservacoes} onChange={e => setOsFormObservacoes(e.target.value)} rows={2} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-orange-500 resize-none" />
-              </div>
-
-              {/* Financeiro */}
-              <div className="bg-gray-950 border border-gray-800 rounded-xl p-4 space-y-3">
-                <div className="text-xs font-bold text-gray-300 uppercase flex items-center gap-2"><FaMoneyBillWave className="text-amber-400" /> Financeiro dessa OS</div>
-                <div className="flex gap-4">
-                  <div className="flex-1">
-                    <label className="block text-xs text-gray-400 mb-1">Faturamento do Cliente (R$){osFormServicos.includes('KM') ? ' — base' : ''}</label>
-                    <input type="number" step="0.01" value={osFormFaturamentoCliente} onChange={e => setOsFormFaturamentoCliente(e.target.value)} placeholder="0,00" className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500" />
-                    <span className="text-[11px] text-gray-500">O que você vai cobrar do cliente{osFormServicos.includes('KM') ? ' (sem contar o KM, que é somado à parte)' : ''}</span>
-                  </div>
-                  <div className="flex-1">
-                    <label className="block text-xs text-gray-400 mb-1">Custo do Técnico (R$){osFormServicos.includes('KM') ? ' — base' : ''}</label>
-                    <input type="number" step="0.01" value={osFormCustoTecnico} onChange={e => setOsFormCustoTecnico(e.target.value)} placeholder="0,00" className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-red-500" />
-                    <span className="text-[11px] text-gray-500">O que você vai pagar ao técnico{osFormServicos.includes('KM') ? ' (sem contar o KM, que é somado à parte)' : ''}</span>
-                  </div>
-                </div>
-                {osFormServicos.includes('KM') && (osFormKm !== '' && osFormValorKm !== '') && (
-                  <div className="flex gap-4 pt-2 border-t border-gray-800 text-xs">
-                    <div className="flex-1 text-emerald-400">Total faturamento: {((Number(osFormFaturamentoCliente) || 0) + (Number(osFormKm) || 0) * (Number(osFormValorKm) || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
-                    <div className="flex-1 text-red-400">Total custo técnico: {((Number(osFormCustoTecnico) || 0) + (Number(osFormKm) || 0) * (Number(osFormValorKm) || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</div>
-                  </div>
-                )}
-              </div>
-
-              {/* Fotos obrigatórias */}
-              <div className="space-y-3">
-                <div className="text-xs font-bold text-gray-300 uppercase flex items-center gap-2"><FaCamera className="text-cyan-400" /> Fotos obrigatórias (7)</div>
-                {FOTO_TIPOS.map(ft => (
-                  <div key={ft.key} className="flex items-center gap-3">
-                    <label className="flex-1 text-xs text-gray-400">{ft.label}</label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      required
-                      onChange={e => handleFotoChange(ft.key, e.target.files[0])}
-                      className="text-xs text-gray-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-cyan-600 file:text-white file:text-xs file:font-semibold file:cursor-pointer w-56"
-                    />
-                    {osFormFotos[ft.key] && <FaCheckCircle className="text-emerald-400 shrink-0" />}
-                  </div>
-                ))}
-              </div>
-
-              {osUploadProgress && (
-                <div className="flex items-center gap-2 text-xs text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 rounded-lg px-3 py-2">
-                  <FaSpinner className="animate-spin" /> {osUploadProgress}
-                </div>
-              )}
-
-              <div className="flex gap-3 pt-2 border-t border-gray-800">
-                <button type="submit" disabled={isSavingOs} className="bg-orange-600 hover:bg-orange-500 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-semibold mt-4">
-                  {isSavingOs ? 'Salvando...' : 'Criar Ordem de Serviço'}
-                </button>
-                <button type="button" onClick={() => setIsOsModalOpen(false)} className="text-gray-400 hover:text-white text-sm px-2 mt-4">Cancelar</button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <OsWizard
+          mode="escritorio"
+          empresas={empresas}
+          veiculos={veiculos}
+          rastreadores={rastreadores}
+          showToast={showToast}
+          onClose={() => setIsOsModalOpen(false)}
+          onSaved={({ os, rastreadores: rAtualizados, veiculos: vAtualizados }) => {
+            setOrdensServico(prev => [os, ...prev]);
+            if (rAtualizados.length) setRastreadores(prev => prev.map(r => rAtualizados.find(x => x.id === r.id) || r));
+            if (vAtualizados.length) setVeiculos(prev => prev.map(v => { const u = vAtualizados.find(x => x.id === v.id); return u ? { ...v, id_instalado: u.id_instalado } : v; }));
+          }}
+        />
       )}
 
-      {/* Modal Visualizar OS (detalhes + fotos) */}
-      {viewingOs && (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="bg-gray-900 border border-blue-500/30 rounded-2xl max-w-3xl w-full p-6 space-y-5 max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center border-b border-gray-800 pb-4">
-              <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaClipboardList className="text-blue-400" /> Ordem de Serviço</h3>
-              <button onClick={() => { setViewingOs(null); setViewingOsFotos([]); }} className="text-gray-400 hover:text-white"><FaTimes/></button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div><span className="text-gray-500 text-xs block">Data</span><span className="text-white">{new Date(viewingOs.data + 'T00:00:00').toLocaleDateString('pt-BR')}</span></div>
-              <div><span className="text-gray-500 text-xs block">Técnico</span><span className="text-white">{viewingOs.tecnico_nome}</span></div>
-              <div><span className="text-gray-500 text-xs block">Empresa</span><span className="text-white">{viewingOs.empresas?.nome || '—'}</span></div>
-              <div><span className="text-gray-500 text-xs block">Placa</span><span className="text-white">{viewingOs.veiculos?.placa || viewingOs.placa_texto || '—'}</span></div>
-              <div className="col-span-2"><span className="text-gray-500 text-xs block">Serviço(s)</span><span className="text-white">{viewingOs.servico_realizado}</span></div>
-              {viewingOs.local_instalacao && <div><span className="text-gray-500 text-xs block">Local</span><span className="text-white">{viewingOs.local_instalacao}</span></div>}
-              {viewingOs.km_percorrido != null && <div><span className="text-gray-500 text-xs block">KM Percorrido</span><span className="text-white">{viewingOs.km_percorrido}</span></div>}
-              {viewingOs.valor_km != null && <div><span className="text-gray-500 text-xs block">Valor do KM</span><span className="text-white">{Number(viewingOs.valor_km).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>}
-              {viewingOs.observacoes && <div className="col-span-2"><span className="text-gray-500 text-xs block">Observações</span><span className="text-white">{viewingOs.observacoes}</span></div>}
-            </div>
-
-            <div className="bg-gray-950 border border-gray-800 rounded-xl p-4 flex gap-6">
-              <div><span className="text-gray-500 text-xs block">Faturado do Cliente</span><span className="text-emerald-400 font-bold">{Number(viewingOs.faturamento_cliente || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
-              <div><span className="text-gray-500 text-xs block">Pago ao Técnico</span><span className="text-red-400 font-bold">{Number(viewingOs.custo_tecnico || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
-              <div><span className="text-gray-500 text-xs block">Lucro</span><span className="text-cyan-400 font-bold">{(Number(viewingOs.faturamento_cliente || 0) - Number(viewingOs.custo_tecnico || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span></div>
-            </div>
-
-            <div>
-              <div className="text-xs font-bold text-gray-300 uppercase mb-2 flex items-center gap-2"><FaCamera className="text-cyan-400" /> Fotos</div>
-              {isLoadingOsFotos ? (
-                <div className="flex items-center gap-2 text-gray-500 text-sm"><FaSpinner className="animate-spin" /> Carregando fotos...</div>
-              ) : viewingOsFotos.length === 0 ? (
-                viewingOs.fotos_legado_nota ? (
-                  <div className="text-xs text-gray-500 bg-gray-950 border border-gray-800 rounded-lg p-3">
-                    <span className="text-amber-400 font-semibold block mb-1">OS migrada do sistema antigo — fotos originais não disponíveis aqui.</span>
-                    Arquivos referenciados na planilha original: {viewingOs.fotos_legado_nota}
-                  </div>
-                ) : (
-                  <div className="text-gray-500 text-sm">Nenhuma foto encontrada pra essa OS.</div>
-                )
-              ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {viewingOsFotos.map(f => (
-                    <a key={f.id} href={f.url} target="_blank" rel="noopener noreferrer" className="block group">
-                      <img src={f.url} alt={f.tipo} className="w-full h-28 object-cover rounded-lg border border-gray-800 group-hover:border-blue-500 transition-all" />
-                      <div className="text-[10px] text-gray-500 mt-1 truncate">{FOTO_TIPOS.find(ft => ft.key === f.tipo)?.label || f.tipo}</div>
-                    </a>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 }

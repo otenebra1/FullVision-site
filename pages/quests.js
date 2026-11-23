@@ -6,7 +6,7 @@ import {
   FaTasks, FaPlus, FaEdit, FaTrashAlt, FaSpinner, FaArrowLeft, FaChartPie,
   FaExclamationCircle, FaCheckCircle, FaTimes, FaCommentDots, FaPaperPlane,
   FaUserCircle, FaCalendarAlt, FaFlag, FaSearch, FaChevronLeft, FaChevronRight,
-  FaUser,
+  FaUser, FaHandshake,
 } from 'react-icons/fa';
 
 // ==========================================
@@ -382,6 +382,7 @@ export default function Quests() {
               <p className="text-gray-400 text-sm mt-1">Quadro de tarefas internas da equipe Full Vision</p>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
+              <a href="/quests/clientes" className="inline-flex items-center gap-2 text-sm text-purple-300 hover:text-white border border-purple-500/40 hover:border-purple-400 rounded-xl px-4 py-2"><FaHandshake /> Novos clientes</a>
               <a href="/painel-admin" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white border border-gray-800 rounded-xl px-4 py-2"><FaChartPie /> Painel Admin</a>
               <a href="/area-cliente" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white border border-gray-800 rounded-xl px-4 py-2"><FaArrowLeft /> Área do Cliente</a>
             </div>
