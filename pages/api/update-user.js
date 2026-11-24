@@ -1,5 +1,6 @@
 // pages/api/update-user.js
 import { supabaseAdmin } from '../../lib/supabaseAdmin';
+import { PERFIS, perfilTemEmpresa } from '../../lib/perfis';
 
 async function getRequestingAdmin(req) {
   const token = req.headers.authorization?.replace('Bearer ', '');
@@ -26,8 +27,9 @@ export default async function handler(req, res) {
   const { userId, username, role, trackingUrl, empresaId, newPassword } = req.body;
   if (!userId) return res.status(400).json({ error: 'userId é obrigatório.' });
 
-  // Empresa é obrigatória para qualquer usuário que não seja admin
-  if (role && role !== 'admin' && !empresaId) {
+  // Empresa é obrigatória só para cliente (ADM, funcionário e técnico são da equipe)
+  if (role && !PERFIS.some(p => p.value === role)) return res.status(400).json({ error: 'Perfil inválido.' });
+  if (role && perfilTemEmpresa(role) && !empresaId) {
     return res.status(400).json({ error: 'Selecione a empresa vinculada a este usuário.' });
   }
 
@@ -38,7 +40,7 @@ export default async function handler(req, res) {
       ...(username && { username }),
       ...(role && { role }),
       ...(trackingUrl !== undefined && { tracking_url: trackingUrl }),
-      ...(role !== undefined && { empresa_id: role === 'admin' ? null : empresaId }),
+      ...(role !== undefined && { empresa_id: perfilTemEmpresa(role) ? empresaId : null }),
     })
     .eq('id', userId)
     .select()
@@ -55,4 +57,4 @@ export default async function handler(req, res) {
   }
 
   return res.status(200).json({ profile });
-}
+}

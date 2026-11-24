@@ -190,7 +190,7 @@ export default function NovosClientes() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user) { router.replace('/area-cliente'); return; }
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
-      if (profile?.role !== 'admin') { router.replace('/area-cliente'); return; }
+      if (profile?.role !== 'admin' && profile?.role !== 'funcionario') { router.replace('/area-cliente'); return; }
       setCurrentUser(profile);
       setIsAuthorized(true);
       setAuthChecked(true);
@@ -203,7 +203,7 @@ export default function NovosClientes() {
     const { data, error } = await supabase.from('prospects').select(PROSPECT_SELECT).order('created_at', { ascending: false });
     if (!error && data) setProspects(data);
     else if (error) showToast('Erro ao carregar clientes: ' + error.message, 'error');
-    const { data: adminsData } = await supabase.from('profiles').select('id, username').eq('role', 'admin').order('username');
+    const { data: adminsData } = await supabase.from('profiles').select('id, username').in('role', ['admin', 'funcionario']).order('username');
     if (adminsData) setAdmins(adminsData);
     setIsLoading(false);
   };
@@ -684,4 +684,4 @@ export default function NovosClientes() {
       </div>
     </>
   );
-}
+}

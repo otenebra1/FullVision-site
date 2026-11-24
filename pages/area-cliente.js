@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import Head from 'next/head';
+import { useRouter } from 'next/router';
+import CriarLoginsTecnicos from '../components/admin/CriarLoginsTecnicos';
+import { PERFIS, rotuloPerfil, ehAdmin, ehEquipe, perfilTemEmpresa } from '../lib/perfis';
 import { supabase } from '../lib/supabase';
 import { 
   FaTruck, FaCodeBranch, FaCheckCircle, FaSpinner, FaClock, 
@@ -102,6 +105,7 @@ function AdminServiceRow({ s, onUpdateStatus, onSetSchedule, onEdit, onDelete, o
 }
 
 export default function AreaDoCliente() {
+  const router = useRouter();
   // ==========================================
   // ESTADOS DO SISTEMA
   // ==========================================
@@ -262,6 +266,8 @@ export default function AreaDoCliente() {
   // Busca o perfil (username, role, tracking_url) do usuário autenticado
   const loadCurrentUserProfile = async (userId) => {
     const { data: profile, error } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    // Técnico usa só o app de OS
+    if (!error && profile?.role === 'tecnico') { router.replace('/tecnico'); return; }
     if (!error && profile) {
       setCurrentUser(profile);
       setIsLoggedIn(true);
@@ -350,7 +356,7 @@ export default function AreaDoCliente() {
   const handleSaveUser = async (e) => {
     e.preventDefault();
 
-    if (userFormRole !== 'admin' && !userFormEmpresaId) {
+    if (perfilTemEmpresa(userFormRole) && !userFormEmpresaId) {
       showToast('Selecione a empresa vinculada a este usuário.', 'error');
       return;
     }
@@ -366,7 +372,7 @@ export default function AreaDoCliente() {
           username: userFormName,
           role: userFormRole,
           trackingUrl: userFormTrackingUrl,
-          empresaId: userFormRole === 'admin' ? null : userFormEmpresaId,
+          empresaId: perfilTemEmpresa(userFormRole) ? userFormEmpresaId : null,
           newPassword: userFormPassword || undefined, // só reseta se preenchido
         }),
       });
@@ -384,7 +390,7 @@ export default function AreaDoCliente() {
           username: userFormName,
           role: userFormRole,
           trackingUrl: userFormTrackingUrl,
-          empresaId: userFormRole === 'admin' ? null : userFormEmpresaId,
+          empresaId: perfilTemEmpresa(userFormRole) ? userFormEmpresaId : null,
         }),
       });
       const result = await res.json();
@@ -791,7 +797,9 @@ export default function AreaDoCliente() {
   // ==========================================
   // OTIMIZAÇÃO: FILTROS E CÁLCULOS (useMemo)
   // ==========================================
-  const isAdmin = currentUser?.role === 'admin';
+  // isAdmin = equipe interna (ADM e funcionário veem as telas de gestão); isSuperAdmin = só ADM
+  const isAdmin = ehEquipe(currentUser?.role);
+  const isSuperAdmin = ehAdmin(currentUser?.role);
   const clientUsers = useMemo(() => users.filter(u => u.role === 'cliente'), [users]);
 
   // Descobre automaticamente o username de quem é admin, em vez de assumir o texto fixo 'admin'
@@ -916,7 +924,7 @@ export default function AreaDoCliente() {
                   <h1 className="text-2xl font-bold text-white flex items-center gap-2">
                     <FaUserCircle className="text-blue-500" /> Olá, {currentUser.username === 'adoro_frango' ? "Ad'oro Frango" : currentUser.username === 'adoro_racao' ? "Ad'oro Ração" : currentUser.username}!
                   </h1>
-                  {isAdmin ? (<span className="bg-purple-500/10 text-purple-400 text-xs px-2 py-0.5 rounded border border-purple-500/30">ADMIN</span>) : (<span className="bg-blue-500/10 text-blue-400 text-xs px-2 py-0.5 rounded border border-blue-500/30">CLIENTE</span>)}
+                  {isAdmin ? (<span className="bg-purple-500/10 text-purple-400 text-xs px-2 py-0.5 rounded border border-purple-500/30 uppercase">{rotuloPerfil(currentUser.role)}</span>) : (<span className="bg-blue-500/10 text-blue-400 text-xs px-2 py-0.5 rounded border border-blue-500/30">CLIENTE</span>)}
                 </div>
               </div>
               
@@ -976,7 +984,7 @@ export default function AreaDoCliente() {
                         <span className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 rounded-full text-[10px] flex items-center justify-center font-bold text-white shadow-lg">{pendingServiceCount}</span>
                       )}
                     </button>
-                    <button onClick={() => setIsAdminUsersModalOpen(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg"><FaUsers /> Gerenciar Usuários</button>
+                    {isSuperAdmin && <button onClick={() => setIsAdminUsersModalOpen(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg"><FaUsers /> Gerenciar Usuários</button>}
                     <a href="/quests" className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg"><FaClipboardList /> Quest Tracker</a>
                   </div>
                 </div>
@@ -1188,7 +1196,7 @@ export default function AreaDoCliente() {
                           <td className="p-4 align-middle text-right">
                             <div className="flex justify-end gap-2 opacity-50 group-hover:opacity-100">
                               <button onClick={(e) => openEditStepModal(step, e)} className="p-2 bg-gray-900 border border-gray-700 hover:border-blue-500 hover:text-blue-400 rounded text-gray-400"><FaEdit size={12} /></button>
-                              <button onClick={(e) => handleDeleteStep(step.id, e)} className="p-2 bg-gray-900 border border-gray-700 hover:border-red-500 hover:text-red-400 rounded text-gray-400"><FaTrashAlt size={12} /></button>
+                              {isSuperAdmin && <button onClick={(e) => handleDeleteStep(step.id, e)} className="p-2 bg-gray-900 border border-gray-700 hover:border-red-500 hover:text-red-400 rounded text-gray-400"><FaTrashAlt size={12} /></button>}
                             </div>
                           </td>
                         )}
@@ -1220,22 +1228,29 @@ export default function AreaDoCliente() {
             )}
 
             {/* 2. Modal Gerenciar Usuários */}
-            {isAdminUsersModalOpen && isAdmin && (
+            {isAdminUsersModalOpen && isSuperAdmin && (
               <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
                 <div className="bg-gray-900 border border-purple-500/30 rounded-2xl max-w-3xl w-full p-6 space-y-6 max-h-[90vh] overflow-y-auto">
                   <div className="flex justify-between items-center border-b border-gray-800 pb-4">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaUsers className="text-purple-400"/> Gerenciamento de Usuários</h3>
                     <button onClick={() => setIsAdminUsersModalOpen(false)} className="text-gray-400 hover:text-white"><FaTimes/></button>
                   </div>
+                  <CriarLoginsTecnicos showToast={showToast} onCriados={fetchInitialData} />
                   <form onSubmit={handleSaveUser} className="bg-gray-950 p-4 rounded-xl border border-gray-800 space-y-4">
                     <div className="flex flex-col md:flex-row gap-4">
                       <div className="flex-1 w-full"><label className="block text-xs text-gray-400 mb-1">Usuário (nome de exibição)</label><input type="text" required value={userFormName} onChange={e => setUserFormName(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500" /></div>
-                      <div className="w-full md:w-32"><label className="block text-xs text-gray-400 mb-1">Cargo</label><Select value={userFormRole} onChange={e => setUserFormRole(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500"><option value="cliente">Cliente</option><option value="admin">Admin</option></Select></div>
+                      <div className="w-full md:w-40"><label className="block text-xs text-gray-400 mb-1">Perfil</label><Select value={userFormRole} onChange={e => setUserFormRole(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500">{PERFIS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}</Select></div>
                     </div>
                     {!editingUser && (
                       <div className="flex-1 w-full"><label className="block text-xs text-gray-400 mb-1">Email de acesso</label><input type="email" required value={userFormEmail} onChange={e => setUserFormEmail(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500" /></div>
                     )}
-                    {userFormRole !== 'admin' && (
+                    {userFormRole === 'tecnico' && (
+                      <p className="text-xs text-amber-300/90">O e-mail de acesso do técnico precisa ser o mesmo do cadastro dele em Técnicos (Painel &gt; Tabela de preço técnico). É assim que o app sabe quais OS são dele.</p>
+                    )}
+                    {userFormRole === 'funcionario' && (
+                      <p className="text-xs text-gray-400">Funcionário vê todas as telas, sem preços, valores em R$, gestão de usuários e exclusões.</p>
+                    )}
+                    {perfilTemEmpresa(userFormRole) && (
                       <div className="flex-1 w-full">
                         <label className="block text-xs text-gray-400 mb-1">Empresa</label>
                         <Select required value={userFormEmpresaId} onChange={e => setUserFormEmpresaId(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500">
@@ -1258,7 +1273,7 @@ export default function AreaDoCliente() {
                       <thead className="bg-gray-950 text-gray-400 text-xs uppercase"><tr><th className="p-3">Usuário</th><th className="p-3">Cargo</th><th className="p-3">Empresa</th><th className="p-3">Link de Rastreio</th><th className="p-3 text-right">Ações</th></tr></thead>
                       <tbody className="divide-y divide-gray-800">
                         {users.map(u => (
-                          <tr key={u.id} className="hover:bg-gray-800/50"><td className="p-3 text-white font-medium"><FaUser className="inline text-gray-500 mr-2"/>{u.username}</td><td className="p-3">{u.role === 'admin' ? <span className="text-purple-400 text-xs font-bold bg-purple-500/10 px-2 py-1 rounded">ADMIN</span> : <span className="text-blue-400 text-xs font-bold bg-blue-500/10 px-2 py-1 rounded">CLIENTE</span>}</td><td className="p-3 text-gray-400 text-xs">{empresas.find(emp => emp.id === u.empresa_id)?.nome || '—'}</td><td className="p-3 text-gray-400 text-xs truncate max-w-[160px]">{u.tracking_url || '—'}</td><td className="p-3 text-right"><button onClick={() => openUserForm(u)} className="text-gray-400 hover:text-blue-400 p-2"><FaEdit /></button><button onClick={() => handleDeleteUser(u.id)} className="text-gray-400 hover:text-red-400 p-2"><FaTrashAlt /></button></td></tr>
+                          <tr key={u.id} className="hover:bg-gray-800/50"><td className="p-3 text-white font-medium"><FaUser className="inline text-gray-500 mr-2"/>{u.username}</td><td className="p-3"><span className={`text-xs font-bold px-2 py-1 rounded uppercase ${u.role === 'admin' ? 'text-purple-400 bg-purple-500/10' : u.role === 'funcionario' ? 'text-emerald-400 bg-emerald-500/10' : u.role === 'tecnico' ? 'text-amber-400 bg-amber-500/10' : 'text-blue-400 bg-blue-500/10'}`}>{rotuloPerfil(u.role)}</span></td><td className="p-3 text-gray-400 text-xs">{empresas.find(emp => emp.id === u.empresa_id)?.nome || '—'}</td><td className="p-3 text-gray-400 text-xs truncate max-w-[160px]">{u.tracking_url || '—'}</td><td className="p-3 text-right"><button onClick={() => openUserForm(u)} className="text-gray-400 hover:text-blue-400 p-2"><FaEdit /></button><button onClick={() => handleDeleteUser(u.id)} className="text-gray-400 hover:text-red-400 p-2"><FaTrashAlt /></button></td></tr>
                         ))}
                       </tbody>
                     </table>
@@ -1590,7 +1605,7 @@ export default function AreaDoCliente() {
                       {selectedStep.comments && selectedStep.comments.map((c) => (
                         <div key={c.id} className="bg-gray-950 border border-gray-800 rounded-xl p-3 text-sm flex justify-between items-start">
                           <div><span className="font-semibold text-blue-400 text-xs block">@{c.author === 'adoro_frango' ? "Ad'oro Frango" : c.author === 'adoro_racao' ? "Ad'oro Ração" : c.author}</span><p className="text-gray-300 text-xs mt-1">{c.text}</p></div>
-                          {isAdmin && <button onClick={() => setDeletingCommentId(c.id)} className="text-gray-500 hover:text-red-400 p-1"><FaTrashAlt size={12} /></button>}
+                          {isSuperAdmin && <button onClick={() => setDeletingCommentId(c.id)} className="text-gray-500 hover:text-red-400 p-1"><FaTrashAlt size={12} /></button>}
                         </div>
                       ))}
                     </div>
@@ -1644,4 +1659,4 @@ export default function AreaDoCliente() {
       </div>
     </div>
   );
-}
+}

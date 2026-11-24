@@ -74,9 +74,15 @@ function ValorMini({ valor, placeholder, onChange, ariaLabel }) {
 }
 
 // Nova OS em etapas. mode: 'escritorio' (você lança o que o técnico mandou) ou 'tecnico' (celular, no local do serviço)
-export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rastreadores, onClose, onSaved, showToast = () => {}, osAberta = null }) {
+// App do técnico: tabelasProntas (catálogo sem preços, vindo do servidor) e salvar (grava pela API, que calcula os valores).
+// mostrarValores=false esconde os R$ (perfil funcionário).
+export default function OsWizard({
+  mode = 'escritorio', empresas, veiculos, rastreadores, onClose, onSaved, showToast = () => {}, osAberta = null,
+  tabelasProntas = null, salvar = null, mostrarValores = true,
+}) {
   const exigeEvidencias = mode === 'tecnico';
-  const mostraFinanceiro = mode === 'escritorio';
+  const mostraFinanceiro = mode === 'escritorio' && mostrarValores;
+  const travaOsAberta = exigeEvidencias && Boolean(osAberta); // técnico e cliente já vêm da OS
 
   const [tabelas, setTabelas] = useState(null);
   const [tabelasCarregadas, setTabelasCarregadas] = useState(false);
@@ -115,6 +121,7 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
 
   // Tabelas de preço (se a migração ainda não rodou, a OS funciona com valores digitados)
   useEffect(() => {
+    if (tabelasProntas) { setTabelas(tabelasProntas); setTabelasCarregadas(true); return undefined; }
     let cancelado = false;
     carregarTabelas(supabase)
       .then(t => { if (!cancelado) { setTabelas(t); setTabelasCarregadas(true); } })
@@ -153,7 +160,7 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
   const servicosSel = nomesSel.map(nome => ({ servicoId: f.servicos[nome].servicoId, nome, quantidade: f.servicos[nome].quantidade }));
 
   const tecnico = tabelas
-    ? (tecnicosAtivos.find(t => t.id === f.tecnicoId) || null)
+    ? (tecnicosAtivos.find(t => String(t.id) === String(f.tecnicoId)) || null)
     : (f.tecnicoNome.trim() ? { id: null, nome: f.tecnicoNome.trim(), email: f.tecnicoEmail } : null);
 
   const veiculosDoCliente = useMemo(() => veiculos.filter(v => String(v.empresa_id) === String(f.empresaId)), [veiculos, f.empresaId]);
@@ -272,7 +279,7 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
     if (erroAtual) return;
     setSalvando(true);
     try {
-      const res = await salvarOS(supabase, {
+      const dados = {
         data: f.data,
         tecnico: { id: tecnico.id, nome: tecnico.nome, email: tecnico.email },
         empresaId: f.empresaId,
@@ -299,7 +306,8 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
         assinanteNome: f.assinanteNome.trim(),
         geo,
         osExistenteId: osAberta?.id || null,
-      }, setProgresso);
+      };
+      const res = salvar ? await salvar(dados, setProgresso) : await salvarOS(supabase, dados, setProgresso);
       onSaved(res);
       if (res.falhas.length) showToast(`OS salva, mas não consegui enviar: ${res.falhas.join(', ')}. Tente reenviar depois.`, 'error');
       else showToast('Ordem de serviço salva!');
@@ -325,7 +333,7 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
       <div className="bg-gray-900 border border-gray-800 sm:rounded-2xl w-full max-w-xl h-[100dvh] sm:h-[min(90vh,720px)] flex flex-col overflow-hidden relative">
         {/* Topo */}
         <div className="flex items-center justify-between px-6 pt-5">
-          <h2 className="text-lg font-semibold text-white">Nova OS</h2>
+          <h2 className="text-lg font-semibold text-white">{travaOsAberta ? 'Finalizar OS' : 'Nova OS'}</h2>
           <button type="button" onClick={pedirSaida} aria-label="Fechar" className="text-gray-500 hover:text-white p-2 -mr-2 rounded-md hover:bg-gray-800"><FaTimes /></button>
         </div>
         <Stepper step={step} onGo={(i) => { if (!salvando) setStep(i); }} />
@@ -343,7 +351,7 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
                 <div>
                   <Rotulo>Técnico</Rotulo>
                   {tabelas ? (
-                    <Select value={f.tecnicoId} onChange={e => set('tecnicoId', e.target.value)} aria-label="Técnico" className={campo}>
+                    <Select value={f.tecnicoId} onChange={e => set('tecnicoId', e.target.value)} disabled={travaOsAberta} aria-label="Técnico" className={campo}>
                       <option value="">Escolha...</option>
                       {tecnicosAtivos.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
                     </Select>
@@ -354,7 +362,7 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
               </div>
               <div>
                 <Rotulo>Cliente</Rotulo>
-                <Select value={f.empresaId} onChange={e => set('empresaId', e.target.value)} aria-label="Cliente" className={campo}>
+                <Select value={f.empresaId} onChange={e => set('empresaId', e.target.value)} disabled={travaOsAberta} aria-label="Cliente" className={campo}>
                   <option value="">Escolha...</option>
                   {empresasOrdenadas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
                 </Select>
@@ -420,7 +428,7 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
                   <p className="mt-2 text-xs text-blue-300">Upgrade: o rastreador que está hoje na placa já entra como retirado na etapa do veículo.</p>
                 )}
               </div>
-              {tabelasCarregadas && !tabelas && (
+              {tabelasCarregadas && !tabelas && mostraFinanceiro && (
                 <p className="text-xs text-amber-400">As tabelas de preço ainda não estão no banco: os valores serão digitados na revisão. Rode o migration_os_v2.sql para automatizar.</p>
               )}
             </Passo>

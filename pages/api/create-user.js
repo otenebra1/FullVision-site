@@ -1,5 +1,6 @@
 // pages/api/create-user.js
 import { supabaseAdmin } from '../../lib/supabaseAdmin';
+import { PERFIS, perfilTemEmpresa } from '../../lib/perfis';
 
 // Confere se quem está chamando a API é realmente um admin logado
 async function getRequestingAdmin(req) {
@@ -30,9 +31,10 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'email, password e username são obrigatórios.' });
   }
 
-  // Empresa é obrigatória para qualquer usuário que não seja admin
+  // Empresa é obrigatória só para cliente (ADM, funcionário e técnico são da equipe)
   const finalRole = role || 'cliente';
-  if (finalRole !== 'admin' && !empresaId) {
+  if (!PERFIS.some(p => p.value === finalRole)) return res.status(400).json({ error: 'Perfil inválido.' });
+  if (perfilTemEmpresa(finalRole) && !empresaId) {
     return res.status(400).json({ error: 'Selecione a empresa vinculada a este usuário.' });
   }
 
@@ -55,7 +57,7 @@ export default async function handler(req, res) {
       username,
       role: finalRole,
       tracking_url: trackingUrl || null,
-      empresa_id: finalRole === 'admin' ? null : empresaId,
+      empresa_id: perfilTemEmpresa(finalRole) ? empresaId : null,
     }])
     .select()
     .single();
@@ -67,4 +69,4 @@ export default async function handler(req, res) {
   }
 
   return res.status(200).json({ profile: { ...profile, email } });
-}
+}

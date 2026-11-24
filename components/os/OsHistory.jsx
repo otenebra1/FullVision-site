@@ -82,7 +82,7 @@ function OsRow({ os, status, count, showTecnico, onOpen, onDelete }) {
         </div>
       </button>
       <div className="pr-2">
-        <ActionButton title={`Excluir ${osCodigo(os.id)}`} hover="hover:text-red-400" onClick={() => onDelete(os.id)}><FaTrashAlt size={13} /></ActionButton>
+        {onDelete && <ActionButton title={`Excluir ${osCodigo(os.id)}`} hover="hover:text-red-400" onClick={() => onDelete(os.id)}><FaTrashAlt size={13} /></ActionButton>}
       </div>
     </div>
   );
@@ -345,7 +345,7 @@ export default function OsHistory({ ordens, empresaOptions, rastreadores, onNew,
           os={detalhe}
           rastreadores={rastreadores}
           onClose={() => setDetalhe(null)}
-          onDelete={(id) => { setDetalhe(null); onDelete(id); }}
+          onDelete={onDelete ? (id) => { setDetalhe(null); onDelete(id); } : undefined}
           onFinalizar={onFinalizar ? (os) => { setDetalhe(null); onFinalizar(os); } : null}
           onUpdated={onUpdated}
         />

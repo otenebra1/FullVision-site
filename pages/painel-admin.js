@@ -14,9 +14,10 @@ import ClientesPanel from '../components/admin/ClientesPanel';
 import EstoqueCatalogo from '../components/admin/EstoqueCatalogo';
 import VeiculoDetalhe from '../components/admin/VeiculoDetalhe';
 import { reduzirImagem } from '../lib/osSalvar';
+import { ehAdmin, ehEquipe } from '../lib/perfis';
 import { SERVICOS_VEICULO, calcularDrePlaca, ordensPorVeiculo, rastreadorPorVeiculo } from '../lib/veiculos';
 import {
-  BRL,
+  BRL, setOcultarValores,
   norm,
   mkOptions,
   uniqueSorted,
@@ -57,6 +58,8 @@ export default function PainelAdmin() {
 
   const [authChecked, setAuthChecked] = useState(false);
   const [isAuthorized, setIsAuthorized] = useState(false);
+  // ADM vê tudo; funcionário vê o painel sem preços, valores em R$ e exclusões
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
 
   // Toast (sucesso/erro) e modal de confirmação genérico — substituem alert()/confirm() nativos
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
@@ -150,7 +153,7 @@ export default function PainelAdmin() {
 
 
   // ------------------------------------------
-  // Guard de acesso: só admin passa
+  // Guard de acesso: ADM e funcionário passam; técnico vai para o app dele
   // ------------------------------------------
   useEffect(() => {
     const checkAccess = async () => {
@@ -166,11 +169,18 @@ export default function PainelAdmin() {
         .eq('id', session.user.id)
         .single();
 
-      if (profile?.role !== 'admin') {
+      if (profile?.role === 'tecnico') {
+        router.replace('/tecnico');
+        return;
+      }
+      if (!ehEquipe(profile?.role)) {
         router.replace('/area-cliente');
         return;
       }
 
+      const adm = ehAdmin(profile.role);
+      setOcultarValores(!adm);
+      setIsSuperAdmin(adm);
       setIsAuthorized(true);
       setAuthChecked(true);
     };
@@ -492,6 +502,8 @@ export default function PainelAdmin() {
       foto_placa_url: fotoUrl,
     };
     payload.dre_placa = vFormDre.dre; // guarda a última foto do DRE calculado
+    // Funcionário não vê nem altera valores em R$
+    if (!isSuperAdmin) ['mensalidade', 'custo_total', 'custo_acessorios', 'dre_placa'].forEach(k => { delete payload[k]; });
 
     let result;
     if (editingVehicle) {
@@ -514,6 +526,7 @@ export default function PainelAdmin() {
   };
 
   const handleDeleteVehicle = (id) => {
+    if (!isSuperAdmin) { showToast('Só o ADM pode excluir.', 'error'); return; }
     askConfirm('Tem certeza que deseja excluir esta placa? Essa ação não pode ser desfeita.', async () => {
       const { error } = await supabase.from('veiculos').delete().eq('id', id);
       if (error) { showToast('Erro ao excluir veículo: ' + error.message, 'error'); return; }
@@ -706,6 +719,7 @@ export default function PainelAdmin() {
       status: rFormStatus,
       localizacao_atual: rFormLocalizacao || null,
     };
+    if (!isSuperAdmin) ['custo_aquisicao', 'custo_mensal', 'valor_mensalidade'].forEach(k => { delete payload[k]; });
 
     let result;
     if (editingRastreador) {
@@ -728,6 +742,7 @@ export default function PainelAdmin() {
   };
 
   const handleDeleteRastreador = (id) => {
+    if (!isSuperAdmin) { showToast('Só o ADM pode excluir.', 'error'); return; }
     askConfirm('Tem certeza que deseja excluir este rastreador do estoque?', async () => {
       const { error } = await supabase.from('rastreadores').delete().eq('id', id);
       if (error) { showToast('Erro ao excluir rastreador: ' + error.message, 'error'); return; }
@@ -791,6 +806,7 @@ export default function PainelAdmin() {
   // Ordens de Serviço: filtro, paginação, CRUD e fotos
   // ------------------------------------------
   const handleDeleteOs = (id) => {
+    if (!isSuperAdmin) { showToast('Só o ADM pode excluir.', 'error'); return; }
     askConfirm('Excluir esta Ordem de Serviço e todas as fotos anexadas? Essa ação não pode ser desfeita.', async () => {
       const { data: fotos } = await supabase.from('ordens_servico_fotos').select('storage_path').eq('ordem_servico_id', id);
       if (fotos && fotos.length > 0) {
@@ -882,7 +898,7 @@ export default function PainelAdmin() {
                   { label: 'Veículos ativos', value: stats.ativos },
                   { label: 'Veículos inativos', value: stats.inativos },
                   { label: 'Clientes ativos', value: clientesAtivos },
-                  { label: 'Mensalidade ativa', value: stats.mensalidadeAtivaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) },
+                  { label: 'Mensalidade ativa', value: isSuperAdmin ? stats.mensalidadeAtivaTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }) : BRL(0) },
                   { label: 'Solicitações pendentes', value: pendingRequestsCount, href: '/area-cliente', valueClass: pendingRequestsCount > 0 ? 'text-amber-400' : 'text-white' },
                 ]}
               />
@@ -896,8 +912,10 @@ export default function PainelAdmin() {
                   { key: 'veiculos', label: 'Banco de veículos', count: veiculos.length },
                   { key: 'rastreadores', label: 'Estoque', count: rastreadores.length },
                   { key: 'ordens', label: 'Ordens de serviço', count: ordensServico.length },
-                  { key: 'precos-cliente', label: 'Tabela de preço cliente' },
-                  { key: 'precos-tecnico', label: 'Tabela de preço técnico' },
+                  ...(isSuperAdmin ? [
+                    { key: 'precos-cliente', label: 'Tabela de preço cliente' },
+                    { key: 'precos-tecnico', label: 'Tabela de preço técnico' },
+                  ] : []),
                 ]}
               />
 
@@ -1093,7 +1111,7 @@ export default function PainelAdmin() {
                                   <ActionButton title="Instalar em um veículo" hover="hover:text-emerald-400" onClick={() => { setInstallTargetRastreador(r); setInstallVeiculoId(''); }}><FaLink size={14} /></ActionButton>
                                 )}
                                 <ActionButton title="Editar" hover="hover:text-blue-400" onClick={() => openRastreadorForm(r)}><FaEdit size={14} /></ActionButton>
-                                <ActionButton title="Excluir" hover="hover:text-red-400" onClick={() => handleDeleteRastreador(r.id)}><FaTrashAlt size={14} /></ActionButton>
+                                {isSuperAdmin && <ActionButton title="Excluir" hover="hover:text-red-400" onClick={() => handleDeleteRastreador(r.id)}><FaTrashAlt size={14} /></ActionButton>}
                               </td>
                             </tr>
                           ))
@@ -1107,8 +1125,8 @@ export default function PainelAdmin() {
               )}
 
               {/* Preços (técnicos, clientes e regras do financeiro automático) */}
-              {activeSection === 'precos-cliente' && <PrecosPanel modo="cliente" empresas={empresas} showToast={showToast} />}
-              {activeSection === 'precos-tecnico' && <PrecosPanel modo="tecnico" empresas={empresas} showToast={showToast} />}
+              {isSuperAdmin && activeSection === 'precos-cliente' && <PrecosPanel modo="cliente" empresas={empresas} showToast={showToast} />}
+              {isSuperAdmin && activeSection === 'precos-tecnico' && <PrecosPanel modo="tecnico" empresas={empresas} showToast={showToast} />}
 
               {/* Ordens de serviço */}
               {activeSection === 'ordens' && (
@@ -1119,7 +1137,7 @@ export default function PainelAdmin() {
                   onNew={() => { setOsAberta(null); setIsOsModalOpen(true); }}
                   onFinalizar={(os) => { setOsAberta(os); setIsOsModalOpen(true); }}
                   onUpdated={(os) => setOrdensServico(prev => prev.map(o => (o.id === os.id ? os : o)))}
-                  onDelete={handleDeleteOs}
+                  onDelete={isSuperAdmin ? handleDeleteOs : undefined}
                 />
               )}
             </>
@@ -1136,7 +1154,7 @@ export default function PainelAdmin() {
           dre={drePorVeiculo[viewingVehicle.id]}
           onClose={() => setViewingVehicle(null)}
           onEdit={openVehicleForm}
-          onDelete={handleDeleteVehicle}
+          onDelete={isSuperAdmin ? handleDeleteVehicle : undefined}
         />
       )}
 
@@ -1256,6 +1274,7 @@ export default function PainelAdmin() {
                 </div>
               </div>
 
+              {isSuperAdmin && (<>
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Mensalidade (R$)</label>
@@ -1287,6 +1306,7 @@ export default function PainelAdmin() {
               <p className="text-xs text-gray-500 -mt-2">
                 DRE = faturado {BRL(vFormDre.faturado)} ({vFormDre.meses} {vFormDre.meses === 1 ? 'mês' : 'meses'}{vFormDre.faturadoOs ? ' + OS' : ''}) − serviços {BRL(vFormDre.servicos)} − equipamento e acessórios {BRL(vFormDre.equipamento)}
               </p>
+              </>)}
 
               <div>
                 <label className="block text-xs text-gray-400 mb-2">Serviços</label>
@@ -1437,6 +1457,7 @@ export default function PainelAdmin() {
                 <input type="text" value={rFormLocalizacao} onChange={e => setRFormLocalizacao(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
               </div>
 
+              {isSuperAdmin && (
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Custo Aquisição (R$)</label>
@@ -1451,6 +1472,7 @@ export default function PainelAdmin() {
                   <input type="number" step="0.01" value={rFormValorMensalidade} onChange={e => setRFormValorMensalidade(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
               </div>
+              )}
 
               <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={isSavingRastreador} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-semibold">
@@ -1496,6 +1518,7 @@ export default function PainelAdmin() {
       {isOsModalOpen && (
         <OsWizard
           mode="escritorio"
+          mostrarValores={isSuperAdmin}
           empresas={empresas}
           veiculos={veiculos}
           rastreadores={rastreadores}
@@ -1512,4 +1535,4 @@ export default function PainelAdmin() {
 
     </>
   );
-}
+}

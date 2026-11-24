@@ -93,9 +93,11 @@ export default function VeiculoDetalhe({ veiculo: v, empresaNome, clienteNome, d
         </div>
 
         <div className="flex justify-end gap-2 border-t border-gray-800 px-6 py-4">
-          <button type="button" onClick={() => onDelete(v.id)} className="inline-flex items-center gap-2 text-sm text-red-400 hover:text-red-300 border border-gray-800 hover:border-red-500/40 rounded-lg px-3.5 py-2 transition-colors">
-            <FaTrashAlt size={12} /> Excluir
-          </button>
+          {onDelete && (
+            <button type="button" onClick={() => onDelete(v.id)} className="inline-flex items-center gap-2 text-sm text-red-400 hover:text-red-300 border border-gray-800 hover:border-red-500/40 rounded-lg px-3.5 py-2 transition-colors">
+              <FaTrashAlt size={12} /> Excluir
+            </button>
+          )}
           <button type="button" onClick={() => onEdit(v)} className="inline-flex items-center gap-2 text-sm text-white bg-blue-600 hover:bg-blue-500 rounded-lg px-4 py-2 font-semibold transition-colors">
             <FaEdit size={12} /> Editar
           </button>

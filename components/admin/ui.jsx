@@ -8,7 +8,10 @@ import { DateInput } from '../ui/FormControls';
 // Utilitários e componentes do padrão visual do painel
 // (todas as abas usam os mesmos: busca, filtros combináveis, tabela e paginação)
 // ==========================================
-export const BRL = (n) => Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+// Perfil funcionário: todos os valores em R$ aparecem mascarados (ligado pelo painel ao carregar o perfil)
+let ocultarValores = false;
+export const setOcultarValores = (v) => { ocultarValores = Boolean(v); };
+export const BRL = (n) => (ocultarValores ? 'R$ •••' : Number(n || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }));
 
 // Normaliza texto pra busca: ignora acento e maiúsculas ("racao" acha "RAÇÃO")
 export const norm = (s) => (s ?? '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
