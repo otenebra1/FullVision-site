@@ -11,3 +11,27 @@ html {
   background-image: url('../public/images/Banner.jpg');
   background-position: center;
 }
+/* Barra de rolagem escura e fina (painel, modais e páginas) */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #374151 transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background-color: #374151;
+  border-radius: 9999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background-color: #4b5563;
+}
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}

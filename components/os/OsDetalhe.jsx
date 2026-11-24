@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { FaTimes, FaCamera, FaSpinner, FaTrashAlt } from 'react-icons/fa';
+import { FaTimes, FaCamera, FaSpinner, FaTrashAlt, FaUserCircle, FaMapMarkerAlt } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
 import { BRL, formatDateBR, StatusDot } from '../admin/ui';
+import { Select } from '../ui/FormControls';
+import { carregarTecnicos, atribuirTecnico } from '../../lib/solicitacoes';
 import { FOTO_TIPOS, FOTO_GRUPOS, CHECKLIST_ITENS, CHECKLIST_RESPOSTAS, REGIOES, osCodigo, splitServicos } from '../../lib/osConstants';
 
 function Campo({ label, children, className = '' }) {
@@ -14,7 +16,22 @@ function Campo({ label, children, className = '' }) {
 }
 
 // Detalhe de uma OS já feita: dados, equipamento, fotos por etapa (prova do estado do veículo) e financeiro
-export default function OsDetalhe({ os, rastreadores = [], onClose, onDelete }) {
+export default function OsDetalhe({ os: osProp, rastreadores = [], onClose, onDelete, onFinalizar, onUpdated }) {
+  const [os, setOs] = useState(osProp);
+  useEffect(() => { setOs(osProp); }, [osProp]);
+  const [tecnicos, setTecnicos] = useState([]);
+  const [salvandoTecnico, setSalvandoTecnico] = useState(false);
+  useEffect(() => { if (osProp.status === 'aberta') carregarTecnicos(supabase).then(setTecnicos); }, [osProp.status]);
+  const trocarTecnico = async (id) => {
+    const t = tecnicos.find(x => String(x.id) === String(id)) || null;
+    setSalvandoTecnico(true);
+    try {
+      const atualizada = await atribuirTecnico(supabase, os.id, t);
+      setOs(atualizada);
+      onUpdated?.(atualizada);
+    } catch (e) { /* mantém o anterior */ }
+    setSalvandoTecnico(false);
+  };
   const [fotos, setFotos] = useState([]);
   const [itens, setItens] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +76,11 @@ export default function OsDetalhe({ os, rastreadores = [], onClose, onDelete }) 
   const serialRetirado = serialDe(os.rastreador_retirado_id);
   const faturado = Number(os.faturamento_cliente) || 0;
   const custo = Number(os.custo_tecnico) || 0;
-  const lucro = faturado - custo;
+  const horario = (() => {
+    const ts = os.status === 'aberta' ? (os.horario_previsto || null) : (os.finalizada_em || os.created_at);
+    return ts ? new Date(ts).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : null;
+  })();
+  const mapaUrl = os.geo_lat != null && os.geo_lng != null ? `https://www.google.com/maps?q=${os.geo_lat},${os.geo_lng}` : null;
 
   const porTipo = (key) => fotos.find(f => f.tipo === key);
   const tiposConhecidos = FOTO_TIPOS.map(t => t.key);
@@ -81,19 +102,55 @@ export default function OsDetalhe({ os, rastreadores = [], onClose, onDelete }) 
           <div>
             <div className="text-xs text-gray-500 tabular-nums">{osCodigo(os.id)}</div>
             <h3 className="text-xl font-semibold text-white mt-0.5">{placa}</h3>
-            <div className="text-sm text-gray-400 mt-1">{os.empresas?.nome || 'Sem empresa'} · {formatDateBR(os.data)}</div>
+            <div className="text-sm text-gray-400 mt-1">
+              {os.empresas?.nome || 'Sem empresa'} · {formatDateBR(os.data)}{horario && <> · <span className="tabular-nums">{horario}</span></>}
+            </div>
+            <div className="mt-2 flex flex-col gap-1 text-sm">
+              {os.status === 'aberta' ? (
+                <span className="flex items-center gap-2 text-gray-300">
+                  <FaUserCircle className="text-gray-500 shrink-0" size={13} /> Técnico
+                  <Select value={os.tecnico_id ? String(os.tecnico_id) : ''} disabled={salvandoTecnico} onChange={e => trocarTecnico(e.target.value)} className="min-w-[180px] bg-gray-950 border border-gray-700 rounded-lg px-2.5 py-1 text-sm text-white">
+                    <option value="">Sem técnico</option>
+                    {tecnicos.map(t => <option key={t.id} value={String(t.id)}>{t.nome}</option>)}
+                    {os.tecnico_id && !tecnicos.some(t => String(t.id) === String(os.tecnico_id)) && <option value={String(os.tecnico_id)}>{os.tecnico_nome || 'Técnico'}</option>}
+                  </Select>
+                </span>
+              ) : (
+                <span className="flex items-center gap-2 text-gray-300"><FaUserCircle className="text-gray-500 shrink-0" size={13} /> Feita por <span className="text-white font-medium">{os.tecnico_nome || '—'}</span></span>
+              )}
+              <span className="flex items-start gap-2 text-gray-300">
+                <FaMapMarkerAlt className="text-gray-500 shrink-0 mt-0.5" size={13} />
+                <span>
+                  {os.local_instalacao || 'Endereço não informado'}
+                  {mapaUrl && <a href={mapaUrl} target="_blank" rel="noreferrer" className="ml-2 text-blue-400 hover:text-blue-300 whitespace-nowrap">ver no mapa</a>}
+                </span>
+              </span>
+            </div>
           </div>
           <button type="button" onClick={onClose} aria-label="Fechar" className="text-gray-500 hover:text-white p-2 rounded-md hover:bg-gray-800">
             <FaTimes />
           </button>
         </div>
 
+        {os.status === 'aberta' && (
+          <div className="mx-5 sm:mx-6 mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3">
+            <div className="text-sm">
+              <div className="text-amber-300 font-semibold">OS aberta, ainda não executada</div>
+              <div className="text-gray-300 mt-0.5">
+                {os.horario_previsto ? `Agendada para ${new Date(os.horario_previsto).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}` : 'Sem horário agendado'}
+                {os.telefone_contato && <> · Contato: <a href={`tel:${os.telefone_contato}`} className="text-cyan-400 hover:underline">{os.telefone_contato}</a></>}
+              </div>
+            </div>
+            {onFinalizar && (
+              <button type="button" onClick={() => onFinalizar(os)} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">Finalizar OS</button>
+            )}
+          </div>
+        )}
+
         <div className="p-5 sm:p-6 space-y-7">
           {/* Dados do serviço */}
           <section className="space-y-4">
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-4">
-              <Campo label="Técnico">{os.tecnico_nome || '—'}</Campo>
-              <Campo label="Local da instalação">{os.local_instalacao || '—'}</Campo>
               {os.km_percorrido != null && <Campo label="KM percorrido"><span className="tabular-nums">{os.km_percorrido} km</span></Campo>}
               {serialInstalado && <Campo label="Rastreador instalado"><span className="tabular-nums">{serialInstalado}</span></Campo>}
               {serialRetirado && <Campo label="Rastreador retirado"><span className="tabular-nums">{serialRetirado}</span></Campo>}
@@ -262,10 +319,9 @@ export default function OsDetalhe({ os, rastreadores = [], onClose, onDelete }) 
                 )}
               </div>
             )}
-            <div className="grid grid-cols-3 gap-px bg-gray-800 border border-gray-800 rounded-xl overflow-hidden">
+            <div className="grid grid-cols-2 gap-px bg-gray-800 border border-gray-800 rounded-xl overflow-hidden">
               <div className="bg-gray-900 px-4 py-3"><div className="text-xs text-gray-500">Cobrado do cliente</div><div className="mt-1 text-lg font-semibold tabular-nums text-emerald-400">{BRL(faturado)}</div></div>
               <div className="bg-gray-900 px-4 py-3"><div className="text-xs text-gray-500">Pago ao técnico</div><div className="mt-1 text-lg font-semibold tabular-nums text-amber-400">{BRL(custo)}</div></div>
-              <div className="bg-gray-900 px-4 py-3"><div className="text-xs text-gray-500">Lucro</div><div className={`mt-1 text-lg font-semibold tabular-nums ${lucro >= 0 ? 'text-white' : 'text-red-400'}`}>{BRL(lucro)}</div></div>
             </div>
           </section>
         </div>

@@ -5,6 +5,7 @@ import { carregarTabelas } from '../../lib/precos';
 import {
   BRL, SectionCard, SegmentedControl, inputBase, tableWrap, theadClass, tbodyClass, rowClass, Th, Dash,
 } from './ui';
+import { Select } from '../ui/FormControls';
 
 const fmt = (n) => (n == null ? '' : Number(n).toFixed(2).replace('.', ','));
 const parseValor = (txt) => {
@@ -107,10 +108,12 @@ function PriceGrid({ servicos, valores, referencia, referenciaLabel, onCommit })
 
 const mapa = (rows, filtro, chave = 'servico_id') => new Map((rows || []).filter(filtro).map(r => [r[chave], Number(r.valor)]));
 
-export default function PrecosPanel({ empresas = [], showToast = () => {} }) {
+export default function PrecosPanel({ empresas = [], showToast = () => {}, modo = 'tecnico' }) {
+  const titulo = modo === 'cliente' ? 'Tabela de preço cliente' : 'Tabela de preço técnico';
   const [tabelas, setTabelas] = useState(null);
   const [erro, setErro] = useState(null);
-  const [secao, setSecao] = useState('faixas');
+  const [secao, setSecao] = useState(modo === 'cliente' ? 'cliente' : 'faixas');
+  useEffect(() => { setSecao(modo === 'cliente' ? 'cliente' : 'faixas'); }, [modo]);
   const [faixaId, setFaixaId] = useState(null);
   const [tecnicoPrecosId, setTecnicoPrecosId] = useState(null);
   const [clienteEscopo, setClienteEscopo] = useState('padrao');
@@ -140,7 +143,7 @@ export default function PrecosPanel({ empresas = [], showToast = () => {} }) {
 
   if (erro) {
     return (
-      <SectionCard title="Preços">
+      <SectionCard title={titulo}>
         <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 text-sm text-red-300">
           Não consegui carregar as tabelas de preço: {erro}. Se as tabelas ainda não existem, rode o arquivo <span className="font-mono">migration_os_v2.sql</span> no SQL Editor do Supabase.
         </div>
@@ -220,14 +223,16 @@ export default function PrecosPanel({ empresas = [], showToast = () => {} }) {
   };
 
   return (
-    <SectionCard title="Preços">
+    <SectionCard title={titulo}>
       <SegmentedControl
         value={secao}
         onChange={setSecao}
-        options={[
+        options={modo === 'cliente' ? [
+          { key: 'cliente', label: 'Preços do cliente' },
+          { key: 'regras', label: 'Regras e serviços' },
+        ] : [
           { key: 'faixas', label: 'Faixas dos técnicos' },
           { key: 'tecnicos', label: 'Técnicos' },
-          { key: 'cliente', label: 'Preços do cliente' },
           { key: 'regras', label: 'Regras e serviços' },
         ]}
       />
@@ -287,7 +292,7 @@ export default function PrecosPanel({ empresas = [], showToast = () => {} }) {
                       <td className="px-4 py-2 text-white font-medium">{t.nome}</td>
                       <td className="px-4 py-2 text-gray-400">{t.email || <Dash />}</td>
                       <td className="px-4 py-2">
-                        <select
+                        <Select
                           aria-label={`Faixa de ${t.nome}`}
                           value={t.faixa_id || ''}
                           onChange={e => atualizaTecnico(t.id, { faixa_id: e.target.value || null })}
@@ -295,7 +300,7 @@ export default function PrecosPanel({ empresas = [], showToast = () => {} }) {
                         >
                           <option value="">Sem faixa</option>
                           {tabelas.faixas.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
-                        </select>
+                        </Select>
                       </td>
                       <td className="px-4 py-2">
                         <div className="flex justify-end">
@@ -353,10 +358,10 @@ export default function PrecosPanel({ empresas = [], showToast = () => {} }) {
         <div className="space-y-5">
           <p className="text-sm text-gray-400">A tabela padrão vale para todos os clientes. Para um cliente com preço diferente, escolha-o abaixo e preencha só o que muda.</p>
           <label className="block text-xs text-gray-400">Tabela
-            <select value={clienteEscopo} onChange={e => setClienteEscopo(e.target.value)} aria-label="Tabela de preços do cliente" className={`mt-1 block w-80 max-w-full px-3 py-2 ${inputBase}`}>
+            <Select value={clienteEscopo} onChange={e => setClienteEscopo(e.target.value)} aria-label="Tabela de preços do cliente" className={`mt-1 block w-80 max-w-full px-3 py-2 ${inputBase}`}>
               <option value="padrao">Padrão (todos os clientes)</option>
               {empresasOrdenadas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
-            </select>
+            </Select>
           </label>
           <PriceGrid
             servicos={servicos}

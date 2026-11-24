@@ -8,6 +8,7 @@ import {
   FaUserCircle, FaCalendarAlt, FaFlag, FaSearch, FaChevronLeft, FaChevronRight,
   FaUser, FaHandshake,
 } from 'react-icons/fa';
+import { Select, DateInput } from '../components/ui/FormControls';
 
 // ==========================================
 // Configuração das colunas do board
@@ -395,14 +396,14 @@ export default function Quests() {
                 <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
                 <input type="text" placeholder="Pesquisar tarefas..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-purple-500" />
               </div>
-              <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} className="bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-purple-500">
+              <Select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} className="bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-purple-500">
                 <option value="all">Todas as prioridades</option>
                 {Object.entries(PRIORITY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-              <select value={filterAssigned} onChange={(e) => setFilterAssigned(e.target.value)} className="bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-purple-500">
+              </Select>
+              <Select value={filterAssigned} onChange={(e) => setFilterAssigned(e.target.value)} className="bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-purple-500">
                 <option value="all">Todos os responsáveis</option>
                 {admins.map(a => <option key={a.id} value={a.id}>{a.username}</option>)}
-              </select>
+              </Select>
             </div>
             <button onClick={openNewQuestModal} className="inline-flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold px-4 py-2.5 rounded-xl text-xs shadow-lg transition-all whitespace-nowrap"><FaPlus /> Nova Tarefa</button>
           </div>
@@ -455,21 +456,21 @@ export default function Quests() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">Prioridade</label>
-                      <select value={formPriority} onChange={(e) => setFormPriority(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-purple-500">
+                      <Select value={formPriority} onChange={(e) => setFormPriority(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-purple-500">
                         {Object.entries(PRIORITY_LABEL).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                      </select>
+                      </Select>
                     </div>
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">Prazo</label>
-                      <input type="date" value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-purple-500" />
+                      <DateInput value={formDueDate} onChange={(e) => setFormDueDate(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-purple-500" />
                     </div>
                   </div>
                   <div>
                     <label className="block text-xs text-gray-400 mb-1">Responsável</label>
-                    <select value={formAssignedTo} onChange={(e) => setFormAssignedTo(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-purple-500">
+                    <Select value={formAssignedTo} onChange={(e) => setFormAssignedTo(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2.5 text-sm text-white outline-none focus:border-purple-500">
                       <option value="">Sem responsável</option>
                       {admins.map(a => <option key={a.id} value={a.id}>{a.username}</option>)}
-                    </select>
+                    </Select>
                   </div>
                   <button type="submit" disabled={isSavingQuest} className="w-full flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-500 disabled:opacity-60 text-white font-semibold py-3 rounded-lg transition-all">
                     {isSavingQuest ? <><FaSpinner className="animate-spin" /> Salvando...</> : (editingQuest ? 'Salvar Alterações' : 'Criar Tarefa')}
@@ -503,13 +504,13 @@ export default function Quests() {
 
                 <div className="flex flex-wrap items-center gap-3">
                   <label className="text-xs text-gray-400">Status:</label>
-                  <select
+                  <Select
                     value={viewingQuest.status}
                     onChange={(e) => handleMoveQuest(viewingQuest, e.target.value)}
                     className="bg-gray-950 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-purple-500"
                   >
                     {COLUMNS.map(col => <option key={col.key} value={col.key}>{col.label}</option>)}
-                  </select>
+                  </Select>
                   <button onClick={() => { openEditQuestModal(viewingQuest); }} className="ml-auto inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-blue-400 border border-gray-800 rounded-lg px-3 py-1.5"><FaEdit /> Editar</button>
                   <button onClick={() => handleDeleteQuest(viewingQuest.id)} className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-400 border border-gray-800 rounded-lg px-3 py-1.5"><FaTrashAlt /> Excluir</button>
                 </div>

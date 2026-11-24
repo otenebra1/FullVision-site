@@ -75,7 +75,9 @@ function OsRow({ os, status, count, showTecnico, onOpen, onDelete }) {
           {extra > 0 && <span className="text-xs text-gray-500">+{extra}</span>}
         </div>
         <div className="flex items-center gap-4 justify-end">
-          <FotosBadge status={status} count={count} />
+          {os.status === 'aberta'
+            ? <span className="text-xs font-semibold text-amber-400 bg-amber-500/10 border border-amber-500/30 rounded-md px-2 py-0.5">Aberta</span>
+            : <FotosBadge status={status} count={count} />}
           <span className="text-sm text-gray-400 tabular-nums w-[84px] text-right">{formatDateBR(os.data)}</span>
         </div>
       </button>
@@ -87,7 +89,7 @@ function OsRow({ os, status, count, showTecnico, onOpen, onDelete }) {
 }
 
 // Histórico de OS: agrupado por cliente (ou técnico/mês), com filtros combináveis e detalhe com fotos
-export default function OsHistory({ ordens, empresaOptions, rastreadores, onNew, onDelete }) {
+export default function OsHistory({ ordens, empresaOptions, rastreadores, onNew, onDelete, onFinalizar, onUpdated }) {
   const [search, setSearch] = useState('');
   const [empresas, setEmpresas] = useState([]);
   const [servicos, setServicos] = useState([]);
@@ -344,6 +346,8 @@ export default function OsHistory({ ordens, empresaOptions, rastreadores, onNew,
           rastreadores={rastreadores}
           onClose={() => setDetalhe(null)}
           onDelete={(id) => { setDetalhe(null); onDelete(id); }}
+          onFinalizar={onFinalizar ? (os) => { setDetalhe(null); onFinalizar(os); } : null}
+          onUpdated={onUpdated}
         />
       )}
     </SectionCard>

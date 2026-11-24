@@ -8,6 +8,7 @@ import {
   FaExclamationCircle, FaCheckCircle, FaTimes, FaCalendarAlt, FaSearch, FaChevronLeft,
   FaChevronRight, FaUserCircle, FaWhatsapp, FaEnvelope, FaPaperPlane, FaClock, FaLongArrowAltRight,
 } from 'react-icons/fa';
+import { Select, DateInput, Combobox } from '../../components/ui/FormControls';
 
 // ==========================================
 // Etapas do funil (a ordem aqui é a ordem das colunas)
@@ -513,10 +514,10 @@ export default function NovosClientes() {
                     <FaSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm" />
                     <input type="text" placeholder="Pesquisar clientes..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg pl-9 pr-4 py-2 text-xs text-white focus:outline-none focus:border-purple-500" />
                   </div>
-                  <select value={filterResp} onChange={(e) => setFilterResp(e.target.value)} aria-label="Responsável" className="bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-purple-500">
+                  <Select value={filterResp} onChange={(e) => setFilterResp(e.target.value)} aria-label="Responsável" className="bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-xs text-white outline-none focus:border-purple-500">
                     <option value="all">Todos os responsáveis</option>
                     {admins.map(a => <option key={a.id} value={a.id}>{a.username}</option>)}
-                  </select>
+                  </Select>
                   <button type="button" onClick={() => setOnlyAttention(v => !v)} aria-pressed={onlyAttention} className={`px-3 py-2 rounded-lg border text-xs transition-colors ${onlyAttention ? 'border-amber-500/60 bg-amber-500/10 text-amber-300' : 'border-gray-700 bg-gray-950 text-gray-300 hover:border-gray-600'}`}>Precisam de atenção</button>
                   <button type="button" onClick={() => setShowClosed(v => !v)} aria-pressed={showClosed} className={`px-3 py-2 rounded-lg border text-xs transition-colors ${showClosed ? 'border-purple-500/60 bg-purple-500/10 text-purple-200' : 'border-gray-700 bg-gray-950 text-gray-300 hover:border-gray-600'}`}>Mostrar fechados e perdidos</button>
                 </div>
@@ -581,18 +582,18 @@ export default function NovosClientes() {
                     <div><label className="block text-xs text-gray-400 mb-1">Contato</label><input type="text" value={form.contato} onChange={(e) => setField('contato', e.target.value)} className={inputCls} /></div>
                     <div><label className="block text-xs text-gray-400 mb-1">Telefone / WhatsApp</label><input type="text" value={form.telefone} onChange={(e) => setField('telefone', e.target.value)} placeholder="(16) 99999-9999" className={inputCls} /></div>
                     <div><label className="block text-xs text-gray-400 mb-1">E-mail</label><input type="email" value={form.email} onChange={(e) => setField('email', e.target.value)} className={inputCls} /></div>
-                    <div><label className="block text-xs text-gray-400 mb-1">Como chegou até nós</label><input type="text" list="origens-prospect" value={form.origem} onChange={(e) => setField('origem', e.target.value)} className={inputCls} /><datalist id="origens-prospect">{ORIGENS.map(o => <option key={o} value={o} />)}</datalist></div>
+                    <div><label className="block text-xs text-gray-400 mb-1">Como chegou até nós</label><Combobox value={form.origem} onChange={(e) => setField('origem', e.target.value)} options={ORIGENS} className={inputCls} /></div>
                     <div><label className="block text-xs text-gray-400 mb-1">Etapa</label>
-                      <select value={form.etapa} onChange={(e) => setField('etapa', e.target.value)} className={inputCls}>{STAGES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}</select>
+                      <Select value={form.etapa} onChange={(e) => setField('etapa', e.target.value)} className={inputCls}>{STAGES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}</Select>
                     </div>
                     <div><label className="block text-xs text-gray-400 mb-1">Responsável</label>
-                      <select value={form.responsavel_id} onChange={(e) => setField('responsavel_id', e.target.value)} className={inputCls}><option value="">Sem responsável</option>{admins.map(a => <option key={a.id} value={a.id}>{a.username}</option>)}</select>
+                      <Select value={form.responsavel_id} onChange={(e) => setField('responsavel_id', e.target.value)} className={inputCls}><option value="">Sem responsável</option>{admins.map(a => <option key={a.id} value={a.id}>{a.username}</option>)}</Select>
                     </div>
-                    <div><label className="block text-xs text-gray-400 mb-1">Próxima reunião (data e hora)</label><input type="datetime-local" value={form.reuniao_em} onChange={(e) => setField('reuniao_em', e.target.value)} className={inputCls} /></div>
+                    <div><label className="block text-xs text-gray-400 mb-1">Próxima reunião (data e hora)</label><DateInput withTime value={form.reuniao_em} onChange={(e) => setField('reuniao_em', e.target.value)} className={inputCls} /></div>
                     <div><label className="block text-xs text-gray-400 mb-1">Tamanho da frota (veículos)</label><input type="number" min="0" value={form.frota_estimada} onChange={(e) => setField('frota_estimada', e.target.value)} className={inputCls} /></div>
                     <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
                       <div className="sm:col-span-2"><label className="block text-xs text-gray-400 mb-1">Próximo passo</label><input type="text" value={form.proxima_acao} onChange={(e) => setField('proxima_acao', e.target.value)} placeholder="Ex.: enviar proposta" className={inputCls} /></div>
-                      <div><label className="block text-xs text-gray-400 mb-1">Até quando</label><input type="date" value={form.proxima_acao_data} onChange={(e) => setField('proxima_acao_data', e.target.value)} className={inputCls} /></div>
+                      <div><label className="block text-xs text-gray-400 mb-1">Até quando</label><DateInput value={form.proxima_acao_data} onChange={(e) => setField('proxima_acao_data', e.target.value)} className={inputCls} /></div>
                     </div>
                     <div><label className="block text-xs text-gray-400 mb-1">Mensalidade estimada (R$)</label><input type="text" inputMode="decimal" value={form.mensalidade_estimada} onChange={(e) => setField('mensalidade_estimada', e.target.value)} placeholder="0,00" className={inputCls} /></div>
                     {form.etapa === 'perdido' && (
@@ -622,9 +623,9 @@ export default function NovosClientes() {
 
                 <div className="flex flex-wrap items-center gap-3">
                   <label className="text-xs text-gray-400" htmlFor="etapa-detalhe">Etapa:</label>
-                  <select id="etapa-detalhe" value={viewing.etapa} onChange={(e) => moveTo(viewing, e.target.value)} className="bg-gray-950 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-purple-500">
+                  <Select id="etapa-detalhe" value={viewing.etapa} onChange={(e) => moveTo(viewing, e.target.value)} className="bg-gray-950 border border-gray-700 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-purple-500">
                     {STAGES.map(s => <option key={s.key} value={s.key}>{s.label}</option>)}
-                  </select>
+                  </Select>
                   <button onClick={() => { openEdit(viewing); }} className="ml-auto inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-blue-400 border border-gray-800 rounded-lg px-3 py-1.5"><FaEdit /> Editar</button>
                   <button onClick={() => handleDelete(viewing)} className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-red-400 border border-gray-800 rounded-lg px-3 py-1.5"><FaTrashAlt /> Excluir</button>
                 </div>

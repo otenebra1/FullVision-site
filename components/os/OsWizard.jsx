@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FaTimes, FaCamera, FaCheck, FaSpinner, FaMinus, FaPlus, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaTimes, FaCamera, FaCheck, FaSpinner, FaMinus, FaPlus, FaMapMarkerAlt, FaChevronDown } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
 import { carregarTabelas, montarContexto, calcularOS } from '../../lib/precos';
 import { salvarOS } from '../../lib/osSalvar';
@@ -7,8 +7,9 @@ import { BRL, inputBase } from '../admin/ui';
 import SignaturePad from './SignaturePad';
 import {
   SERVICO_TAGS, FOTO_TIPOS, CHECKLIST_ITENS, CHECKLIST_RESPOSTAS, REGIOES,
-  TAGS_QUE_RETIRAM, TAGS_QUE_INSTALAM, normalizaPlaca,
+  TAGS_QUE_RETIRAM, TAGS_QUE_INSTALAM, normalizaPlaca, SERVICOS_PRIMARIOS, rotuloOpcao,
 } from '../../lib/osConstants';
+import { Select, DateInput, Combobox } from '../ui/FormControls';
 
 const STEPS = [
   { key: 'servico', titulo: 'Serviço' },
@@ -73,19 +74,30 @@ function ValorMini({ valor, placeholder, onChange, ariaLabel }) {
 }
 
 // Nova OS em etapas. mode: 'escritorio' (você lança o que o técnico mandou) ou 'tecnico' (celular, no local do serviço)
-export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rastreadores, onClose, onSaved, showToast = () => {} }) {
+export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rastreadores, onClose, onSaved, showToast = () => {}, osAberta = null }) {
   const exigeEvidencias = mode === 'tecnico';
   const mostraFinanceiro = mode === 'escritorio';
 
   const [tabelas, setTabelas] = useState(null);
   const [tabelasCarregadas, setTabelasCarregadas] = useState(false);
   const [step, setStep] = useState(0);
-  const [f, setF] = useState({
+  const [f, setF] = useState(() => ({
     data: hoje(), tecnicoId: '', tecnicoNome: '', tecnicoEmail: '', empresaId: '', servicos: {}, placaTexto: '',
     rastreadorInstaladoId: '', rastreadorRetiradoDestino: 'estoque_tecnico', local: '', km: '', atendimentos: 1,
     checklist: {}, regioes: [], problemas: '', observacoes: '', assinanteNome: '',
     manuais: {}, deslocT: '', deslocC: '', totalTecnicoManual: '', totalClienteManual: '',
-  });
+    // OS aberta (criada a partir de uma solicitação): já vem com os dados que o cliente informou
+    ...(osAberta ? {
+      data: osAberta.data || hoje(),
+      tecnicoId: osAberta.tecnico_id ? String(osAberta.tecnico_id) : '',
+      tecnicoNome: osAberta.tecnico_nome || '',
+      tecnicoEmail: osAberta.tecnico_email || '',
+      empresaId: osAberta.empresa_id ? String(osAberta.empresa_id) : '',
+      placaTexto: osAberta.veiculos?.placa || osAberta.placa_texto || (veiculos.find(v => v.id === osAberta.veiculo_id)?.placa) || '',
+      local: osAberta.local_instalacao || '',
+      observacoes: osAberta.observacoes || '',
+    } : {}),
+  }));
   const [fotos, setFotos] = useState({});
   const [previews, setPreviews] = useState({});
   const [assinatura, setAssinatura] = useState(null);
@@ -95,6 +107,7 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
   const [confirmandoSaida, setConfirmandoSaida] = useState(false);
   const [salvando, setSalvando] = useState(false);
   const [progresso, setProgresso] = useState('');
+  const [primarioAberto, setPrimarioAberto] = useState(null);
   const bodyRef = useRef(null);
   const previewsRef = useRef({});
 
@@ -180,6 +193,29 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
   }, [ctx, f.servicos, f.manuais, f.km, f.atendimentos, f.deslocT, f.deslocC]);
 
   // ---------------- ações ----------------
+  // Serviços agrupados em primários; o que estiver no catálogo e não couber em nenhum vai para "Outros" (só admin)
+  const primarios = useMemo(() => {
+    const porNome = new Map(catalogo.map(s => [s.nome, s]));
+    const usados = new Set();
+    const lista = SERVICOS_PRIMARIOS
+      .filter(p => !(exigeEvidencias && p.adminOnly))
+      .map(p => ({
+        ...p,
+        itens: p.opcoes.map(nome => { usados.add(nome); return porNome.get(nome) || { id: null, nome }; }),
+      }));
+    const outros = catalogo.filter(s => !usados.has(s.nome) && !SERVICOS_PRIMARIOS.some(p => p.opcoes.includes(s.nome)));
+    if (!exigeEvidencias && outros.length) lista.push({ key: 'OUTROS', label: 'Outros', adminOnly: true, itens: outros });
+    return lista;
+  }, [catalogo, exigeEvidencias]);
+
+  // KM: se não existe como serviço com preço, marca que a OS cobra deslocamento (KM informado na etapa Veículo)
+  const kmEhFlag = (p) => p.key === 'KM' && !p.itens[0].id;
+  const clicaPrimario = (p) => {
+    if (kmEhFlag(p)) { set('cobraKm', !f.cobraKm); return; }
+    if (p.itens.length === 1) { toggleServico(p.itens[0]); return; }
+    setPrimarioAberto(atual => (atual === p.key ? null : p.key));
+  };
+
   const toggleServico = (s) => {
     setF(prev => {
       const novo = { ...prev.servicos };
@@ -212,9 +248,10 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
       if (!f.data) return 'Informe a data';
       if (!tecnico) return 'Escolha o técnico';
       if (!f.empresaId) return 'Escolha o cliente';
-      if (nomesSel.length === 0) return 'Marque ao menos um serviço';
+      if (nomesSel.length === 0 && !f.cobraKm) return 'Marque ao menos um serviço';
     }
     if (i === 1 && normalizaPlaca(f.placaTexto).length < 5) return 'Informe a placa';
+    if (i === 1 && f.cobraKm && !(Number(String(f.km).replace(',', '.')) > 0)) return 'Informe os KM percorridos';
     if (i === 2) {
       const falta = FOTO_TIPOS.filter(ft => !fotos[ft.key]).length;
       if (falta > 0) return `Faltam ${falta} ${falta === 1 ? 'foto' : 'fotos'}`;
@@ -261,6 +298,7 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
         assinatura,
         assinanteNome: f.assinanteNome.trim(),
         geo,
+        osExistenteId: osAberta?.id || null,
       }, setProgresso);
       onSaved(res);
       if (res.falhas.length) showToast(`OS salva, mas não consegui enviar: ${res.falhas.join(', ')}. Tente reenviar depois.`, 'error');
@@ -300,15 +338,15 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Rotulo>Data</Rotulo>
-                  <input type="date" value={f.data} onChange={e => set('data', e.target.value)} aria-label="Data" className={campo} />
+                  <DateInput value={f.data} onChange={e => set('data', e.target.value)} aria-label="Data" className={campo} />
                 </div>
                 <div>
                   <Rotulo>Técnico</Rotulo>
                   {tabelas ? (
-                    <select value={f.tecnicoId} onChange={e => set('tecnicoId', e.target.value)} aria-label="Técnico" className={campo}>
+                    <Select value={f.tecnicoId} onChange={e => set('tecnicoId', e.target.value)} aria-label="Técnico" className={campo}>
                       <option value="">Escolha...</option>
                       {tecnicosAtivos.map(t => <option key={t.id} value={t.id}>{t.nome}</option>)}
-                    </select>
+                    </Select>
                   ) : (
                     <input type="text" value={f.tecnicoNome} onChange={e => set('tecnicoNome', e.target.value)} placeholder="Nome do técnico" aria-label="Técnico" className={campo} />
                   )}
@@ -316,30 +354,71 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
               </div>
               <div>
                 <Rotulo>Cliente</Rotulo>
-                <select value={f.empresaId} onChange={e => set('empresaId', e.target.value)} aria-label="Cliente" className={campo}>
+                <Select value={f.empresaId} onChange={e => set('empresaId', e.target.value)} aria-label="Cliente" className={campo}>
                   <option value="">Escolha...</option>
                   {empresasOrdenadas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
-                </select>
+                </Select>
               </div>
               <div>
                 <Rotulo>O que foi feito</Rotulo>
                 <div className="flex flex-wrap gap-2">
-                  {catalogo.map(s => {
-                    const sel = f.servicos[s.nome];
+                  {primarios.map(p => {
+                    const qtdSel = kmEhFlag(p) ? (f.cobraKm ? 1 : 0) : p.itens.filter(s => f.servicos[s.nome]).length;
+                    const unico = p.itens.length === 1;
+                    const aberto = primarioAberto === p.key;
+                    const ativo = qtdSel > 0 || aberto;
                     return (
-                      <div key={s.nome} className={`inline-flex items-center rounded-full border text-sm transition-colors ${sel ? 'bg-blue-600/15 border-blue-500 text-white' : 'border-gray-700 text-gray-300 hover:border-gray-500'}`}>
-                        <button type="button" aria-pressed={Boolean(sel)} onClick={() => toggleServico(s)} className={`py-2 ${sel ? 'pl-3.5 pr-2' : 'px-3.5'}`}>{s.nome}</button>
-                        {sel && (
-                          <span className="flex items-center gap-1 pr-2.5">
-                            <button type="button" aria-label={`Diminuir ${s.nome}`} onClick={() => mudaQtd(s.nome, -1)} className="p-1 text-gray-400 hover:text-white"><FaMinus size={9} /></button>
-                            <span className="tabular-nums w-3 text-center">{sel.quantidade}</span>
-                            <button type="button" aria-label={`Aumentar ${s.nome}`} onClick={() => mudaQtd(s.nome, 1)} className="p-1 text-gray-400 hover:text-white"><FaPlus size={9} /></button>
-                          </span>
-                        )}
-                      </div>
+                      <button
+                        key={p.key} type="button" onClick={() => clicaPrimario(p)} aria-expanded={unico ? undefined : aberto} aria-pressed={unico ? qtdSel > 0 : undefined}
+                        className={`inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-sm transition-colors ${ativo ? 'bg-blue-600/15 border-blue-500 text-white' : 'border-gray-700 text-gray-300 hover:border-gray-500'}`}
+                      >
+                        {p.label}
+                        {p.adminOnly && <span className="text-[10px] uppercase tracking-wide text-amber-400/80">adm</span>}
+                        {!unico && qtdSel > 0 && <span className="bg-blue-600 text-white text-[11px] font-semibold rounded-full min-w-[18px] h-[18px] px-1 inline-flex items-center justify-center tabular-nums">{qtdSel}</span>}
+                        {!unico && <FaChevronDown size={9} className={`text-gray-500 transition-transform ${aberto ? 'rotate-180' : ''}`} />}
+                      </button>
                     );
                   })}
                 </div>
+
+                {primarios.filter(p => p.key === primarioAberto && p.itens.length > 1).map(p => (
+                  <div key={p.key} className="mt-3 rounded-xl border border-gray-800 bg-gray-950/60 p-3">
+                    <div className="text-xs text-gray-400 mb-2">{p.label}: escolha o que foi feito</div>
+                    <div className="flex flex-wrap gap-2">
+                      {p.itens.map(s => {
+                        const sel = f.servicos[s.nome];
+                        return (
+                          <div key={s.nome} className={`inline-flex items-center rounded-full border text-sm transition-colors ${sel ? 'bg-blue-600/15 border-blue-500 text-white' : 'border-gray-700 text-gray-300 hover:border-gray-500'}`}>
+                            <button type="button" aria-pressed={Boolean(sel)} onClick={() => toggleServico(s)} className={`py-1.5 ${sel ? 'pl-3 pr-2' : 'px-3'}`}>{rotuloOpcao(s.nome, p.prefixo)}</button>
+                            {sel && (
+                              <span className="flex items-center gap-1 pr-2">
+                                <button type="button" aria-label={`Diminuir ${s.nome}`} onClick={() => mudaQtd(s.nome, -1)} className="p-1 text-gray-400 hover:text-white"><FaMinus size={9} /></button>
+                                <span className="tabular-nums w-3 text-center">{sel.quantidade}</span>
+                                <button type="button" aria-label={`Aumentar ${s.nome}`} onClick={() => mudaQtd(s.nome, 1)} className="p-1 text-gray-400 hover:text-white"><FaPlus size={9} /></button>
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+
+                {nomesSel.length > 0 && (
+                  <div className="mt-3 flex flex-wrap items-center gap-1.5 text-xs">
+                    <span className="text-gray-500">Selecionados:</span>
+                    {nomesSel.map(n => (
+                      <span key={n} className="inline-flex items-center gap-1.5 bg-gray-800 border border-gray-700 text-gray-200 rounded-full pl-2.5 pr-1.5 py-0.5">
+                        {n}{f.servicos[n].quantidade > 1 ? ` ×${f.servicos[n].quantidade}` : ''}
+                        <button type="button" aria-label={`Remover ${n}`} onClick={() => toggleServico({ nome: n, id: f.servicos[n].servicoId })} className="text-gray-500 hover:text-white"><FaTimes size={8} /></button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+                {f.cobraKm && <p className="mt-2 text-xs text-blue-300">KM: informe os quilômetros percorridos na etapa Veículo; o deslocamento é calculado pelas regras de preço.</p>}
+                {nomesSel.includes('UPGRADE LOCALIZADOR') && (
+                  <p className="mt-2 text-xs text-blue-300">Upgrade: o rastreador que está hoje na placa já entra como retirado na etapa do veículo.</p>
+                )}
               </div>
               {tabelasCarregadas && !tabelas && (
                 <p className="text-xs text-amber-400">As tabelas de preço ainda não estão no banco: os valores serão digitados na revisão. Rode o migration_os_v2.sql para automatizar.</p>
@@ -352,12 +431,12 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
             <Passo>
               <div>
                 <Rotulo>Placa</Rotulo>
-                <input
-                  type="text" list="placas-do-cliente" value={f.placaTexto} autoComplete="off" autoCapitalize="characters"
+                <Combobox
+                  value={f.placaTexto} autoCapitalize="characters"
                   onChange={e => set('placaTexto', e.target.value.toUpperCase())} placeholder="Digite ou escolha" aria-label="Placa"
-                  className={`${campo} uppercase tracking-wide`}
+                  options={veiculosDoCliente.map(v => ({ value: v.placa, label: v.placa, hint: v.modelo || '' }))}
+                  className={campo} inputClassName="uppercase tracking-wide"
                 />
-                <datalist id="placas-do-cliente">{veiculosDoCliente.map(v => <option key={v.id} value={v.placa} />)}</datalist>
                 <div className="mt-1.5 text-xs min-h-[1rem]">
                   {veiculoMatch && !placaDeOutroCliente && <span className="text-gray-500">Placa cadastrada.</span>}
                   {placaDeOutroCliente && <span className="text-amber-400">Esta placa está cadastrada em outro cliente. Confira se o cliente da etapa 1 está certo, pois os preços dependem dele.</span>}
@@ -368,10 +447,10 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
               {mostraInstalado && (
                 <div>
                   <Rotulo>Rastreador instalado <span className="text-gray-600">(se houver)</span></Rotulo>
-                  <select value={f.rastreadorInstaladoId} onChange={e => set('rastreadorInstaladoId', e.target.value)} aria-label="Rastreador instalado" className={campo}>
+                  <Select value={f.rastreadorInstaladoId} onChange={e => set('rastreadorInstaladoId', e.target.value)} aria-label="Rastreador instalado" className={campo}>
                     <option value="">Nenhum</option>
                     {disponiveis.map(r => <option key={r.id} value={r.id}>{r.serial}{r.modelo ? `, ${r.modelo}` : ''}</option>)}
-                  </select>
+                  </Select>
                 </div>
               )}
 
@@ -390,11 +469,11 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
                       ) : (
                         <div>
                           <Rotulo>Depois de retirado, vai para</Rotulo>
-                          <select value={f.rastreadorRetiradoDestino} onChange={e => set('rastreadorRetiradoDestino', e.target.value)} aria-label="Destino do rastreador retirado" className={campo}>
+                          <Select value={f.rastreadorRetiradoDestino} onChange={e => set('rastreadorRetiradoDestino', e.target.value)} aria-label="Destino do rastreador retirado" className={campo}>
                             <option value="estoque_tecnico">Estoque com o técnico</option>
                             <option value="estoque_central">Estoque central</option>
                             <option value="aguardando_manutencao">Aguardando manutenção</option>
-                          </select>
+                          </Select>
                         </div>
                       )}
                     </>
@@ -405,13 +484,13 @@ export default function OsWizard({ mode = 'escritorio', empresas, veiculos, rast
               )}
 
               <div>
-                <Rotulo>Local do serviço <span className="text-gray-600">(opcional)</span></Rotulo>
-                <input type="text" value={f.local} onChange={e => set('local', e.target.value)} placeholder="Ex.: pátio da fábrica, Mogi Guaçu" aria-label="Local do serviço" className={campo} />
+                <Rotulo>Endereço <span className="text-gray-600">(opcional)</span></Rotulo>
+                <input type="text" value={f.local} onChange={e => set('local', e.target.value)} placeholder="Rua, número, bairro, cidade" aria-label="Endereço" className={campo} />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Rotulo>KM percorridos</Rotulo>
+                  <Rotulo>KM percorridos{f.cobraKm && <span className="text-blue-400"> *</span>}</Rotulo>
                   <input type="text" inputMode="decimal" value={f.km} onChange={e => set('km', e.target.value.replace(/[^\d.,]/g, ''))} placeholder="0" aria-label="KM percorridos" className={campo} />
                 </div>
                 <div>

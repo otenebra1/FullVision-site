@@ -9,11 +9,14 @@ import {
   FaKey, FaUsers, FaUser, FaUserCircle, FaFilter, FaExclamationCircle, FaBell, FaTimes,
   FaTools, FaClipboardList, FaCar
 } from 'react-icons/fa';
+import { Select, DateInput } from '../components/ui/FormControls';
+import { criarPreOS, criarSolicitacaoComOS, carregarTecnicos } from '../lib/solicitacoes';
+import { osCodigo } from '../lib/osConstants';
 
 // Linha da tabela de "Solicitações de Serviço" no painel do admin.
 // Componente separado porque cada linha precisa do próprio estado local
 // pro campo de data/hora antes de enviar pro cliente.
-function AdminServiceRow({ s, onUpdateStatus, onSetSchedule, onEdit, onDelete, serviceTypeLabel, serviceStatusLabel, serviceStatusColor }) {
+function AdminServiceRow({ s, onUpdateStatus, onSetSchedule, onEdit, onDelete, onCriarOS, criandoOS, serviceTypeLabel, serviceStatusLabel, serviceStatusColor }) {
   const [dataPrevista, setDataPrevista] = useState(
     s.data_hora_prevista ? new Date(s.data_hora_prevista).toISOString().slice(0, 16) : ''
   );
@@ -43,8 +46,7 @@ function AdminServiceRow({ s, onUpdateStatus, onSetSchedule, onEdit, onDelete, s
       <td className="p-3">
         {podeDefinirData ? (
           <div className="flex items-center gap-2">
-            <input
-              type="datetime-local"
+            <DateInput withTime
               value={dataPrevista}
               onChange={e => setDataPrevista(e.target.value)}
               className="bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-amber-500 w-[150px]"
@@ -67,7 +69,7 @@ function AdminServiceRow({ s, onUpdateStatus, onSetSchedule, onEdit, onDelete, s
       </td>
       <td className="p-3">
         <div className="flex items-center gap-2">
-          <select
+          <Select
             value={s.status}
             onChange={e => onUpdateStatus(s.id, e.target.value)}
             className="bg-gray-950 border border-gray-700 rounded-lg px-2 py-1.5 text-xs text-white outline-none focus:border-amber-500"
@@ -79,9 +81,20 @@ function AdminServiceRow({ s, onUpdateStatus, onSetSchedule, onEdit, onDelete, s
             <option value="em_andamento">Em Andamento</option>
             <option value="concluido">Concluído</option>
             <option value="cancelado">Cancelado</option>
-          </select>
+          </Select>
           <button onClick={() => onEdit(s)} title="Editar" className="text-gray-400 hover:text-blue-400 p-1.5"><FaEdit size={14} /></button>
           <button onClick={() => onDelete(s.id)} title="Excluir" className="text-gray-400 hover:text-red-400 p-1.5"><FaTrashAlt size={14} /></button>
+        </div>
+        <div className="mt-2">
+          {s.os_id ? (
+            <a href="/painel-admin" className="inline-flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300" title="OS aberta no painel administrativo">
+              <FaClipboardList size={11} /> {osCodigo(s.os_id)} criada
+            </a>
+          ) : (
+            <button type="button" disabled={criandoOS} onClick={() => onCriarOS(s)} className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300 disabled:opacity-50">
+              <FaPlus size={9} /> {criandoOS ? 'Criando OS...' : 'Criar OS'}
+            </button>
+          )}
         </div>
       </td>
     </tr>
@@ -149,6 +162,13 @@ export default function AreaDoCliente() {
   const [isAdminServiceModalOpen, setIsAdminServiceModalOpen] = useState(false);
   const [filterServiceStatus, setFilterServiceStatus] = useState('all');
   const [filterServiceEmpresa, setFilterServiceEmpresa] = useState('all');
+  const [adminServiceView, setAdminServiceView] = useState('lista'); // 'lista' | 'nova'
+  const [admNs, setAdmNs] = useState({ empresaId: '', tipo: 'manutencao', veiculoId: '', placaNova: '', telefone: '', endereco: '', dataHora: '', descricao: '', tecnicoId: '' });
+  const [tecnicos, setTecnicos] = useState([]);
+  const [criarOsPara, setCriarOsPara] = useState(null); // solicitação do cliente que vai virar OS
+  const [criarOsTecnicoId, setCriarOsTecnicoId] = useState('');
+  const [isCreatingAdminService, setIsCreatingAdminService] = useState(false);
+  const [criandoOsId, setCriandoOsId] = useState(null);
 
   // Solicitações de Serviço (Cliente) + veículos da empresa logada
   const [veiculos, setVeiculos] = useState([]);
@@ -491,6 +511,46 @@ export default function AreaDoCliente() {
     setSolicitacoes(solicitacoes.filter(s => s.id !== id));
     setDeletingSolicitacaoId(null);
     showToast('Solicitação excluída com sucesso!');
+  };
+
+  // Admin: nova solicitação já com pré-OS
+  const setAdm = (k, v) => setAdmNs(p => ({ ...p, [k]: v }));
+  const resetAdmNs = () => setAdmNs({ empresaId: '', tipo: 'manutencao', veiculoId: '', placaNova: '', telefone: '', endereco: '', dataHora: '', descricao: '', tecnicoId: '' });
+  const tecnicoPorId = (id) => tecnicos.find(t => String(t.id) === String(id)) || null;
+  useEffect(() => { if (isAdminServiceModalOpen && tecnicos.length === 0) carregarTecnicos(supabase).then(setTecnicos); }, [isAdminServiceModalOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleAdminCreateService = async (e) => {
+    e.preventDefault();
+    const nova = admNs.tipo === 'nova_instalacao';
+    if (!admNs.empresaId) { showToast('Escolha o cliente.', 'error'); return; }
+    if (nova && !admNs.placaNova.trim()) { showToast('Informe a placa a ser instalada.', 'error'); return; }
+    if (!nova && !admNs.veiculoId) { showToast('Selecione a placa do veículo.', 'error'); return; }
+    setIsCreatingAdminService(true);
+    try {
+      const { solicitacao, erroOS } = await criarSolicitacaoComOS(supabase, { ...admNs, tecnico: tecnicoPorId(admNs.tecnicoId) });
+      setSolicitacoes(prev => [solicitacao, ...prev]);
+      if (erroOS) showToast('Solicitação criada, mas a OS não: ' + erroOS, 'error');
+      else showToast('Solicitação criada e OS aberta no painel!');
+      resetAdmNs();
+      setAdminServiceView('lista');
+    } catch (err) {
+      showToast('Erro ao criar solicitação: ' + err.message, 'error');
+    }
+    setIsCreatingAdminService(false);
+  };
+
+  // Admin: gera a pré-OS de uma solicitação feita pelo cliente
+  const handleCriarOSDaSolicitacao = async (s, tecnico) => {
+    setCriandoOsId(s.id);
+    setCriarOsPara(null);
+    try {
+      const { solicitacao } = await criarPreOS(supabase, s, tecnico);
+      setSolicitacoes(prev => prev.map(x => (x.id === s.id ? solicitacao : x)));
+      showToast('OS aberta no painel administrativo!');
+    } catch (err) {
+      showToast('Erro ao criar a OS: ' + err.message, 'error');
+    }
+    setCriandoOsId(null);
   };
 
   const handleCreateServiceRequest = async (e) => {
@@ -938,15 +998,14 @@ export default function AreaDoCliente() {
                   <span className="font-bold text-sm tracking-wide text-white uppercase">Visualizar Roadmap de:</span>
                 </div>
                 <div className="relative w-full md:w-72">
-                  <select value={selectedClientView} onChange={(e) => setSelectedClientView(e.target.value)} className="w-full appearance-none bg-gray-950 border border-gray-700 text-white text-sm font-medium rounded-xl pl-4 pr-10 py-3 focus:outline-none focus:border-blue-500 transition-all cursor-pointer shadow-inner">
+                  <Select value={selectedClientView} onChange={(e) => setSelectedClientView(e.target.value)} className="w-full appearance-none bg-gray-950 border border-gray-700 text-white text-sm font-medium rounded-xl pl-4 pr-10 py-3 focus:outline-none focus:border-blue-500 transition-all cursor-pointer shadow-inner">
                     <option value="all">Visão Geral (Todos)</option>
                     {empresasComLogin.map(empresa => (
                       <option key={empresa.id} value={empresa.id}>
                         Cliente: {empresa.nome}
                       </option>
                     ))}
-                  </select>
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-blue-500"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg></div>
+                  </Select>
                 </div>
               </div>
             )}
@@ -972,12 +1031,12 @@ export default function AreaDoCliente() {
                   <div className="flex flex-col md:flex-row gap-4">
                     <div className="w-full md:w-56">
                       <label className="block text-xs text-gray-400 mb-1">Tipo de serviço</label>
-                      <select value={newServiceTipo} onChange={e => setNewServiceTipo(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500">
+                      <Select value={newServiceTipo} onChange={e => setNewServiceTipo(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500">
                         <option value="manutencao">Manutenção</option>
                         <option value="troca">Troca</option>
                         <option value="desinstalacao">Desinstalação</option>
                         <option value="nova_instalacao">Nova Instalação</option>
-                      </select>
+                      </Select>
                     </div>
 
                     {newServiceTipo === 'nova_instalacao' ? (
@@ -988,12 +1047,12 @@ export default function AreaDoCliente() {
                     ) : (
                       <div className="flex-1 w-full">
                         <label className="block text-xs text-gray-400 mb-1">Placa do veículo</label>
-                        <select required value={newServiceVeiculoId} onChange={e => setNewServiceVeiculoId(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500">
+                        <Select required value={newServiceVeiculoId} onChange={e => setNewServiceVeiculoId(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500">
                           <option value="">Selecione a placa...</option>
                           {veiculos.map(v => (
                             <option key={v.id} value={v.id}>{v.placa}{v.modelo ? ` — ${v.modelo}` : ''}</option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                     )}
                   </div>
@@ -1171,7 +1230,7 @@ export default function AreaDoCliente() {
                   <form onSubmit={handleSaveUser} className="bg-gray-950 p-4 rounded-xl border border-gray-800 space-y-4">
                     <div className="flex flex-col md:flex-row gap-4">
                       <div className="flex-1 w-full"><label className="block text-xs text-gray-400 mb-1">Usuário (nome de exibição)</label><input type="text" required value={userFormName} onChange={e => setUserFormName(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500" /></div>
-                      <div className="w-full md:w-32"><label className="block text-xs text-gray-400 mb-1">Cargo</label><select value={userFormRole} onChange={e => setUserFormRole(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500"><option value="cliente">Cliente</option><option value="admin">Admin</option></select></div>
+                      <div className="w-full md:w-32"><label className="block text-xs text-gray-400 mb-1">Cargo</label><Select value={userFormRole} onChange={e => setUserFormRole(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500"><option value="cliente">Cliente</option><option value="admin">Admin</option></Select></div>
                     </div>
                     {!editingUser && (
                       <div className="flex-1 w-full"><label className="block text-xs text-gray-400 mb-1">Email de acesso</label><input type="email" required value={userFormEmail} onChange={e => setUserFormEmail(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500" /></div>
@@ -1179,12 +1238,12 @@ export default function AreaDoCliente() {
                     {userFormRole !== 'admin' && (
                       <div className="flex-1 w-full">
                         <label className="block text-xs text-gray-400 mb-1">Empresa</label>
-                        <select required value={userFormEmpresaId} onChange={e => setUserFormEmpresaId(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500">
+                        <Select required value={userFormEmpresaId} onChange={e => setUserFormEmpresaId(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500">
                           <option value="">Selecione a empresa...</option>
                           {empresas.map(emp => (
                             <option key={emp.id} value={emp.id}>{emp.nome}</option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                     )}
                     <div className="flex-1 w-full"><label className="block text-xs text-gray-400 mb-1">{editingUser ? 'Nova senha (deixe em branco para manter)' : 'Senha inicial'}</label><input type="text" required={!editingUser} value={userFormPassword} onChange={e => setUserFormPassword(e.target.value)} className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-purple-500" /></div>
@@ -1214,13 +1273,81 @@ export default function AreaDoCliente() {
                 <div className="bg-gray-900 border border-amber-500/30 rounded-2xl max-w-6xl w-full p-6 space-y-6 max-h-[90vh] overflow-y-auto">
                   <div className="flex justify-between items-center border-b border-gray-800 pb-4">
                     <h3 className="text-lg font-bold text-white flex items-center gap-2"><FaTools className="text-amber-400"/> Solicitações de Serviço</h3>
-                    <button onClick={() => setIsAdminServiceModalOpen(false)} className="text-gray-400 hover:text-white"><FaTimes/></button>
+                    <div className="flex items-center gap-3">
+                      {adminServiceView === 'lista' ? (
+                        <button type="button" onClick={() => setAdminServiceView('nova')} className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold"><FaPlus size={11} /> Nova solicitação</button>
+                      ) : (
+                        <button type="button" onClick={() => setAdminServiceView('lista')} className="text-sm text-gray-300 hover:text-white border border-gray-700 rounded-lg px-3.5 py-2">Voltar para a lista</button>
+                      )}
+                      <button onClick={() => { setIsAdminServiceModalOpen(false); setAdminServiceView('lista'); }} className="text-gray-400 hover:text-white"><FaTimes/></button>
+                    </div>
                   </div>
 
+                  {adminServiceView === 'nova' ? (
+                    <form onSubmit={handleAdminCreateService} className="space-y-4">
+                      <p className="text-sm text-gray-400">Ao criar, a solicitação aparece para o cliente e uma <span className="text-white">OS aberta</span> já é gerada no painel com esses dados, pronta para o técnico finalizar.</p>
+                      <div className="grid md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Cliente</label>
+                          <Select value={admNs.empresaId} onChange={e => setAdmNs(p => ({ ...p, empresaId: e.target.value, veiculoId: '' }))} placeholder="Escolha o cliente" className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+                            {empresas.map(emp => <option key={emp.id} value={emp.id}>{emp.nome}</option>)}
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Serviço</label>
+                          <Select value={admNs.tipo} onChange={e => setAdm('tipo', e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+                            <option value="manutencao">Manutenção</option>
+                            <option value="troca">Troca</option>
+                            <option value="desinstalacao">Desinstalação</option>
+                            <option value="nova_instalacao">Nova Instalação</option>
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Veículo</label>
+                          {admNs.tipo === 'nova_instalacao' ? (
+                            <input type="text" value={admNs.placaNova} onChange={e => setAdm('placaNova', e.target.value)} placeholder="Placa a ser instalada (ex.: ABC1D23)" className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500 uppercase" />
+                          ) : (
+                            <Select value={admNs.veiculoId} onChange={e => setAdm('veiculoId', e.target.value)} disabled={!admNs.empresaId} placeholder={admNs.empresaId ? 'Escolha a placa' : 'Escolha o cliente primeiro'} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+                              {veiculos.filter(v => v.empresa_id === admNs.empresaId).map(v => <option key={v.id} value={v.id}>{`${v.placa}${v.modelo ? ` · ${v.modelo}` : ''}`}</option>)}
+                            </Select>
+                          )}
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Data e horário</label>
+                          <DateInput withTime value={admNs.dataHora} onChange={e => setAdm('dataHora', e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Técnico responsável</label>
+                          <Select value={admNs.tecnicoId} onChange={e => setAdm('tecnicoId', e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+                            <option value="">Escolher depois</option>
+                            {tecnicos.map(t => <option key={t.id} value={String(t.id)}>{t.nome}</option>)}
+                          </Select>
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Telefone de contato</label>
+                          <input type="tel" value={admNs.telefone} onChange={e => setAdm('telefone', e.target.value)} placeholder="(11) 99999-9999" className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
+                        </div>
+                        <div>
+                          <label className="block text-xs text-gray-400 mb-1">Endereço</label>
+                          <input type="text" value={admNs.endereco} onChange={e => setAdm('endereco', e.target.value)} placeholder="Rua, número, cidade..." className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Descrição</label>
+                        <textarea value={admNs.descricao} onChange={e => setAdm('descricao', e.target.value)} rows={3} placeholder="O que precisa ser feito..." className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500 resize-none" />
+                      </div>
+                      <div className="flex gap-3">
+                        <button type="submit" disabled={isCreatingAdminService} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+                          {isCreatingAdminService ? 'Criando...' : 'Criar solicitação e OS'}
+                        </button>
+                        <button type="button" onClick={() => setAdminServiceView('lista')} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
+                      </div>
+                    </form>
+                  ) : (<>
                   <div className="flex flex-col md:flex-row gap-4">
                     <div className="flex-1">
                       <label className="block text-xs text-gray-400 mb-1">Status</label>
-                      <select value={filterServiceStatus} onChange={e => setFilterServiceStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500">
+                      <Select value={filterServiceStatus} onChange={e => setFilterServiceStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500">
                         <option value="all">Todos</option>
                         <option value="pendente">Pendente</option>
                         <option value="aguardando_confirmacao">Aguardando Confirmação</option>
@@ -1229,14 +1356,14 @@ export default function AreaDoCliente() {
                         <option value="em_andamento">Em Andamento</option>
                         <option value="concluido">Concluído</option>
                         <option value="cancelado">Cancelado</option>
-                      </select>
+                      </Select>
                     </div>
                     <div className="flex-1">
                       <label className="block text-xs text-gray-400 mb-1">Empresa</label>
-                      <select value={filterServiceEmpresa} onChange={e => setFilterServiceEmpresa(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500">
+                      <Select value={filterServiceEmpresa} onChange={e => setFilterServiceEmpresa(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-amber-500">
                         <option value="all">Todas</option>
                         {empresas.map(emp => (<option key={emp.id} value={emp.id}>{emp.nome}</option>))}
-                      </select>
+                      </Select>
                     </div>
                   </div>
 
@@ -1266,6 +1393,8 @@ export default function AreaDoCliente() {
                               onSetSchedule={handleSetSchedule}
                               onEdit={openEditSolicitacao}
                               onDelete={setDeletingSolicitacaoId}
+                              onCriarOS={(sol) => { setCriarOsPara(sol); setCriarOsTecnicoId(''); }}
+                              criandoOS={criandoOsId === s.id}
                               serviceTypeLabel={serviceTypeLabel}
                               serviceStatusLabel={serviceStatusLabel}
                               serviceStatusColor={serviceStatusColor}
@@ -1274,6 +1403,31 @@ export default function AreaDoCliente() {
                         )}
                       </tbody>
                     </table>
+                  </div>
+                  </>)}
+                </div>
+              </div>
+            )}
+
+            {/* 2.1b Criar OS de uma solicitação do cliente: escolhe o técnico */}
+            {criarOsPara && isAdmin && (
+              <div className="fixed inset-0 z-[75] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+                <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-sm w-full p-6 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-bold text-white">Criar OS</h3>
+                    <button onClick={() => setCriarOsPara(null)} className="text-gray-400 hover:text-white"><FaTimes /></button>
+                  </div>
+                  <p className="text-sm text-gray-400">{criarOsPara.empresas?.nome} · {criarOsPara.veiculos?.placa || criarOsPara.placa_nova || 'sem placa'}</p>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Técnico responsável</label>
+                    <Select value={criarOsTecnicoId} onChange={e => setCriarOsTecnicoId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+                      <option value="">Escolher depois</option>
+                      {tecnicos.map(t => <option key={t.id} value={String(t.id)}>{t.nome}</option>)}
+                    </Select>
+                  </div>
+                  <div className="flex gap-3">
+                    <button type="button" onClick={() => handleCriarOSDaSolicitacao(criarOsPara, tecnicoPorId(criarOsTecnicoId))} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">Criar OS</button>
+                    <button type="button" onClick={() => setCriarOsPara(null)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
                   </div>
                 </div>
               </div>
@@ -1292,12 +1446,12 @@ export default function AreaDoCliente() {
                   <form onSubmit={handleSaveSolicitacaoEdit} className="space-y-4">
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">Tipo de serviço</label>
-                      <select value={editServiceTipo} onChange={e => setEditServiceTipo(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
+                      <Select value={editServiceTipo} onChange={e => setEditServiceTipo(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
                         <option value="manutencao">Manutenção</option>
                         <option value="troca">Troca</option>
                         <option value="desinstalacao">Desinstalação</option>
                         <option value="nova_instalacao">Nova Instalação</option>
-                      </select>
+                      </Select>
                     </div>
 
                     {editServiceTipo === 'nova_instalacao' ? (
@@ -1308,12 +1462,12 @@ export default function AreaDoCliente() {
                     ) : (
                       <div>
                         <label className="block text-xs text-gray-400 mb-1">Placa do veículo</label>
-                        <select required value={editServiceVeiculoId} onChange={e => setEditServiceVeiculoId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
+                        <Select required value={editServiceVeiculoId} onChange={e => setEditServiceVeiculoId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
                           <option value="">Selecione a placa...</option>
                           {veiculos.filter(v => v.empresa_id === editingSolicitacao.empresa_id).map(v => (
                             <option key={v.id} value={v.id}>{v.placa}{v.modelo ? ` — ${v.modelo}` : ''}</option>
                           ))}
-                        </select>
+                        </Select>
                       </div>
                     )}
 
@@ -1461,20 +1615,20 @@ export default function AreaDoCliente() {
                     <div><label className="block text-xs font-semibold text-gray-400 mb-1">Título</label><input type="text" required value={formTitle} onChange={(e) => setFormTitle(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500" /></div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-400 mb-1">Pertence ao Cliente:</label>
-                      <select required value={formEmpresaId} onChange={(e) => setFormEmpresaId(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500">
+                      <Select required value={formEmpresaId} onChange={(e) => setFormEmpresaId(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500">
                         <option value="" disabled>Selecione um cliente</option>
                         {empresasComLogin.map(empresa => (<option key={empresa.id} value={empresa.id}>{empresa.nome}</option>))}
-                      </select>
+                      </Select>
                     </div>
                     <div><label className="block text-xs font-semibold text-gray-400 mb-1">Descrição</label><textarea rows={3} value={formDescription} onChange={(e) => setFormDescription(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white outline-none focus:border-blue-500" /></div>
                     <div>
                       <label className="block text-xs font-semibold text-gray-400 mb-1">Status</label>
-                      <select value={formStatus} onChange={(e) => setFormStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500">
+                      <Select value={formStatus} onChange={(e) => setFormStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-800 rounded-xl px-3 py-2.5 text-sm text-white outline-none focus:border-blue-500">
                         <option value="Pendente">Pendente</option>
                         <option value="Pendente em atraso">Pendente em atraso</option>
                         <option value="Em desenvolvimento">Em desenvolvimento</option>
                         <option value="Concluído">Concluído</option>
-                      </select>
+                      </Select>
                     </div>
                     <div className="flex justify-end gap-3 pt-4 border-t border-gray-800">
                       <button type="button" onClick={() => setIsStepModalOpen(false)} className="px-4 py-2 rounded-xl text-sm font-semibold text-gray-400 hover:text-white border border-gray-800">Cancelar</button>

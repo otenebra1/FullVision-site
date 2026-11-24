@@ -4,12 +4,17 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import {
   FaTruck, FaCheckCircle, FaSpinner, FaArrowLeft, FaExclamationCircle,
-  FaEdit, FaTrashAlt, FaTimes, FaSatelliteDish, FaLink, FaUnlink, FaClipboardList,
+  FaEdit, FaTrashAlt, FaTimes, FaSatelliteDish, FaLink, FaUnlink, FaClipboardList, FaExpandAlt, FaCamera,
 } from 'react-icons/fa';
 import OsHistory from '../components/os/OsHistory';
 import OsWizard from '../components/os/OsWizard';
 import VeiculosAgrupados from '../components/admin/VeiculosAgrupados';
 import PrecosPanel from '../components/admin/PrecosPanel';
+import ClientesPanel from '../components/admin/ClientesPanel';
+import EstoqueCatalogo from '../components/admin/EstoqueCatalogo';
+import VeiculoDetalhe from '../components/admin/VeiculoDetalhe';
+import { reduzirImagem } from '../lib/osSalvar';
+import { SERVICOS_VEICULO, calcularDrePlaca, ordensPorVeiculo, rastreadorPorVeiculo } from '../lib/veiculos';
 import {
   BRL,
   norm,
@@ -36,10 +41,16 @@ import {
   ToggleFilter,
   FilterSummary,
   Pagination,
-  ResumoRow,
   SegmentedControl,
 } from '../components/admin/ui';
+import { Select, DateInput } from '../components/ui/FormControls';
 
+
+const BUCKET_FOTOS_VEICULOS = 'veiculos-fotos';
+// Itens do estoque: categoria e, para localizadores, os modelos
+const CATEGORIAS_ESTOQUE = ['LOCALIZADOR', 'SENSOR', 'ATUADOR'];
+const MODELOS_LOCALIZADOR = ['FT4G', 'NEO', 'VOLT', 'CARGO', 'FROTA', 'DUO', 'TRIO'];
+const RESUMO_VAZIO = { total: 0, ativos: 0, inativos: 0, mensalidade: 0, faturamento: 0, custoTotal: 0 };
 
 export default function PainelAdmin() {
   const router = useRouter();
@@ -68,7 +79,14 @@ export default function PainelAdmin() {
   const [filterOperacoes, setFilterOperacoes] = useState([]);
   const [filterSemEquip, setFilterSemEquip] = useState(false);
   const [vSort, setVSort] = useState({ key: 'placa', dir: 'asc' });
-  const [vGroupBy, setVGroupBy] = useState('empresa'); // 'empresa' | 'operacao' | 'lista'
+  const [vGroupBy, setVGroupBy] = useState('cliente'); // 'cliente' | 'lista'
+  const [vSubGroupBy, setVSubGroupBy] = useState('operacao'); // dentro do cliente: 'operacao' | 'associado'
+  const [viewingVehicle, setViewingVehicle] = useState(null);
+  const [clienteModal, setClienteModal] = useState(null); // { empresa | null } aberto para criar/editar cliente
+  const [cFormNome, setCFormNome] = useState('');
+  const [cFormGrupoId, setCFormGrupoId] = useState('');
+  const [cFormContratoFim, setCFormContratoFim] = useState('');
+  const [isSavingCliente, setIsSavingCliente] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [activeSection, setActiveSection] = useState('resumo'); // 'resumo' | 'veiculos' | 'rastreadores' | 'ordens'
   const itemsPerPage = 20;
@@ -85,7 +103,10 @@ export default function PainelAdmin() {
   const [vFormDataDesinst, setVFormDataDesinst] = useState('');
   const [vFormMensalidade, setVFormMensalidade] = useState('');
   const [vFormCustoTotal, setVFormCustoTotal] = useState('');
-  const [vFormDrePlaca, setVFormDrePlaca] = useState('');
+  const [vFormCustoAcessorios, setVFormCustoAcessorios] = useState('');
+  const [vFormServicos, setVFormServicos] = useState([]);
+  const [vFormFotoFile, setVFormFotoFile] = useState(null);
+  const [vFormFotoUrl, setVFormFotoUrl] = useState('');
   const [isSavingVehicle, setIsSavingVehicle] = useState(false);
 
   // Rastreadores (Estoque)
@@ -102,6 +123,11 @@ export default function PainelAdmin() {
   const [editingRastreador, setEditingRastreador] = useState(null);
   const [rFormCategoria, setRFormCategoria] = useState('');
   const [rFormModelo, setRFormModelo] = useState('');
+  const [rFormCategoriaId, setRFormCategoriaId] = useState('');
+  const [rFormProdutoId, setRFormProdutoId] = useState('');
+  // Catálogo do estoque (categorias e produtos com código). ok=false enquanto as tabelas não existem.
+  const [catalogo, setCatalogo] = useState({ ok: false, categorias: [], produtos: [] });
+  const [isCatalogoOpen, setIsCatalogoOpen] = useState(false);
   const [rFormSerial, setRFormSerial] = useState('');
   const [rFormSimCard, setRFormSimCard] = useState('');
   const [rFormOperadora, setRFormOperadora] = useState('');
@@ -120,6 +146,7 @@ export default function PainelAdmin() {
   const [ordensServico, setOrdensServico] = useState([]);
 
   const [isOsModalOpen, setIsOsModalOpen] = useState(false);
+  const [osAberta, setOsAberta] = useState(null); // OS aberta (de solicitação) sendo finalizada
 
 
   // ------------------------------------------
@@ -161,7 +188,7 @@ export default function PainelAdmin() {
 
       const { data: empresasData } = await supabase
         .from('empresas')
-        .select('id, nome, grupo_id')
+        .select('*')
         .order('nome');
       if (empresasData) setEmpresas(empresasData);
 
@@ -182,6 +209,8 @@ export default function PainelAdmin() {
         .select('*')
         .order('serial');
       if (rastreadoresData) setRastreadores(rastreadoresData);
+
+      await carregarCatalogo();
 
       const { data: ordensData } = await supabase
         .from('ordens_servico')
@@ -220,11 +249,20 @@ export default function PainelAdmin() {
     return leafIds.filter(id => comVeiculoAtivo.has(id)).length;
   }, [empresas, empresaIdsComFilhos, veiculos]);
 
+  // DRE de cada placa (faturado − serviços − equipamento)
+  const drePorVeiculo = useMemo(() => {
+    const osMap = ordensPorVeiculo(ordensServico);
+    const rMap = rastreadorPorVeiculo(veiculos, rastreadores);
+    const map = {};
+    veiculos.forEach(v => { map[v.id] = calcularDrePlaca(v, osMap[v.id] || [], rMap[v.id]); });
+    return map;
+  }, [veiculos, ordensServico, rastreadores]);
+
   // Agrega veículos por empresa
   const resumoPorEmpresa = useMemo(() => {
     const map = {};
     empresas.forEach(e => {
-      map[e.id] = { total: 0, ativos: 0, inativos: 0, mensalidade: 0, custoTotal: 0 };
+      map[e.id] = { total: 0, ativos: 0, inativos: 0, mensalidade: 0, faturamento: 0, custoTotal: 0 };
     });
     veiculos.forEach(v => {
       const r = map[v.empresa_id];
@@ -232,10 +270,11 @@ export default function PainelAdmin() {
       r.total += 1;
       if (v.status === 'Ativo') { r.ativos += 1; r.mensalidade += Number(v.mensalidade) || 0; }
       else r.inativos += 1;
+      r.faturamento += drePorVeiculo[v.id]?.faturado || 0;
       r.custoTotal += Number(v.custo_total) || 0;
     });
     return map;
-  }, [empresas, veiculos]);
+  }, [empresas, veiculos, drePorVeiculo]);
 
   // Monta a hierarquia: grupos (com soma dos filhos) + clientes avulsos
   const hierarquia = useMemo(() => {
@@ -245,15 +284,16 @@ export default function PainelAdmin() {
     const gruposComFilhos = grupos.map(g => {
       const filhos = empresas.filter(e => e.grupo_id === g.id);
       const somaGrupo = filhos.reduce((acc, f) => {
-        const r = resumoPorEmpresa[f.id] || { total: 0, ativos: 0, inativos: 0, mensalidade: 0, custoTotal: 0 };
+        const r = resumoPorEmpresa[f.id] || RESUMO_VAZIO;
         return {
           total: acc.total + r.total,
           ativos: acc.ativos + r.ativos,
           inativos: acc.inativos + r.inativos,
           mensalidade: acc.mensalidade + r.mensalidade,
+          faturamento: acc.faturamento + r.faturamento,
           custoTotal: acc.custoTotal + r.custoTotal,
         };
-      }, { total: 0, ativos: 0, inativos: 0, mensalidade: 0, custoTotal: 0 });
+      }, RESUMO_VAZIO);
 
       return { grupo: g, resumo: somaGrupo, filhos };
     });
@@ -269,6 +309,13 @@ export default function PainelAdmin() {
     empresas.forEach(e => { map[e.id] = e.nome; });
     return map;
   }, [empresas]);
+
+  // Cliente principal de cada empresa: o grupo dela, ou ela mesma se for avulsa
+  const clienteNomeById = useMemo(() => {
+    const map = {};
+    empresas.forEach(e => { map[e.id] = (e.grupo_id && empresaNomeById[e.grupo_id]) || e.nome; });
+    return map;
+  }, [empresas, empresaNomeById]);
 
   const empresaOptions = useMemo(() => {
     const blocks = [];
@@ -353,7 +400,8 @@ export default function PainelAdmin() {
     setVFormEmpresaId(''); setVFormPlaca(''); setVFormStatus('Ativo');
     setVFormOperacao(''); setVFormModelo(''); setVFormIdInstalado('');
     setVFormDataInst(''); setVFormDataDesinst('');
-    setVFormMensalidade(''); setVFormCustoTotal(''); setVFormDrePlaca('');
+    setVFormMensalidade(''); setVFormCustoTotal('');
+    setVFormCustoAcessorios(''); setVFormServicos([]); setVFormFotoFile(null); setVFormFotoUrl('');
   };
 
   const openVehicleForm = (v) => {
@@ -369,12 +417,47 @@ export default function PainelAdmin() {
       setVFormDataDesinst(v.data_desinst || '');
       setVFormMensalidade(v.mensalidade ?? '');
       setVFormCustoTotal(v.custo_total ?? '');
-      setVFormDrePlaca(v.dre_placa ?? '');
+      setVFormCustoAcessorios(v.custo_acessorios ?? '');
+      setVFormServicos(v.servicos || []);
+      setVFormFotoFile(null);
+      setVFormFotoUrl(v.foto_placa_url || '');
     } else {
       setEditingVehicle(null);
       resetVehicleForm();
     }
+    setViewingVehicle(null);
     setIsVehicleModalOpen(true);
+  };
+
+  // Prévia do DRE no formulário, com os valores que estão sendo digitados
+  const vFormDre = useMemo(() => {
+    const base = editingVehicle || {};
+    const rastreador = rastreadorPorVeiculo([{ id: base.id, id_instalado: vFormIdInstalado }], rastreadores)[base.id] || null;
+    const ordens = base.id ? ordensServico.filter(o => o.veiculo_id === base.id) : [];
+    return calcularDrePlaca({
+      mensalidade: vFormMensalidade, data_inst: vFormDataInst, data_desinst: vFormDataDesinst, custo_acessorios: vFormCustoAcessorios,
+    }, ordens, rastreador);
+  }, [editingVehicle, vFormIdInstalado, vFormMensalidade, vFormDataInst, vFormDataDesinst, vFormCustoAcessorios, rastreadores, ordensServico]);
+
+  // Prévia da foto: arquivo recém-escolhido ou a URL já salva
+  const [vFormFotoPreview, setVFormFotoPreview] = useState('');
+  useEffect(() => {
+    if (!vFormFotoFile) { setVFormFotoPreview(vFormFotoUrl); return undefined; }
+    const url = URL.createObjectURL(vFormFotoFile);
+    setVFormFotoPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [vFormFotoFile, vFormFotoUrl]);
+
+  const toggleServico = (key) => setVFormServicos(cur => (cur.includes(key) ? cur.filter(k => k !== key) : [...cur, key]));
+
+  // Sobe a foto da placa para o bucket próprio do cadastro de veículos e devolve a URL pública
+  const uploadFotoPlaca = async (file, placa) => {
+    const reduzida = await reduzirImagem(file);
+    const ext = (reduzida.name.split('.').pop() || 'jpg').toLowerCase();
+    const path = `${placa.replace(/[^A-Z0-9]/gi, '') || 'sem-placa'}/${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from(BUCKET_FOTOS_VEICULOS).upload(path, reduzida);
+    if (error) throw new Error(error.message);
+    return supabase.storage.from(BUCKET_FOTOS_VEICULOS).getPublicUrl(path).data.publicUrl;
   };
 
   const handleSaveVehicle = async (e) => {
@@ -383,6 +466,16 @@ export default function PainelAdmin() {
     if (!vFormEmpresaId) { showToast('Selecione a empresa.', 'error'); return; }
 
     setIsSavingVehicle(true);
+    let fotoUrl = vFormFotoUrl || null;
+    if (vFormFotoFile) {
+      try {
+        fotoUrl = await uploadFotoPlaca(vFormFotoFile, vFormPlaca.trim().toUpperCase());
+      } catch (err) {
+        setIsSavingVehicle(false);
+        showToast('Erro ao enviar a foto da placa: ' + err.message, 'error');
+        return;
+      }
+    }
     const payload = {
       empresa_id: vFormEmpresaId,
       placa: vFormPlaca.trim().toUpperCase(),
@@ -394,8 +487,11 @@ export default function PainelAdmin() {
       data_desinst: vFormDataDesinst || null,
       mensalidade: vFormMensalidade === '' ? null : Number(vFormMensalidade),
       custo_total: vFormCustoTotal === '' ? null : Number(vFormCustoTotal),
-      dre_placa: vFormDrePlaca === '' ? null : Number(vFormDrePlaca),
+      custo_acessorios: vFormCustoAcessorios === '' ? null : Number(vFormCustoAcessorios),
+      servicos: vFormServicos,
+      foto_placa_url: fotoUrl,
     };
+    payload.dre_placa = vFormDre.dre; // guarda a última foto do DRE calculado
 
     let result;
     if (editingVehicle) {
@@ -422,9 +518,45 @@ export default function PainelAdmin() {
       const { error } = await supabase.from('veiculos').delete().eq('id', id);
       if (error) { showToast('Erro ao excluir veículo: ' + error.message, 'error'); return; }
       setVeiculos(veiculos.filter(v => v.id !== id));
+      setViewingVehicle(null);
       showToast('Veículo excluído com sucesso!');
     });
   };
+
+  const openCliente = (empresa) => {
+    setClienteModal({ empresa });
+    setCFormNome(empresa?.nome || '');
+    setCFormGrupoId(empresa?.grupo_id ? String(empresa.grupo_id) : '');
+    setCFormContratoFim(empresa?.contrato_fim || '');
+  };
+
+  const handleSaveCliente = async (e) => {
+    e.preventDefault();
+    const nome = cFormNome.trim().toUpperCase();
+    if (!nome) { showToast('Informe o nome do cliente.', 'error'); return; }
+    const editando = clienteModal?.empresa;
+    const grupo = empresas.find(x => String(x.id) === cFormGrupoId);
+    const payload = { nome, grupo_id: grupo ? grupo.id : null, contrato_fim: cFormContratoFim || null };
+    setIsSavingCliente(true);
+    const result = editando
+      ? await supabase.from('empresas').update(payload).eq('id', editando.id).select().single()
+      : await supabase.from('empresas').insert([payload]).select().single();
+    setIsSavingCliente(false);
+    if (result.error) { showToast('Erro ao salvar cliente: ' + result.error.message, 'error'); return; }
+    setEmpresas(prev => (editando
+      ? prev.map(x => (x.id === editando.id ? result.data : x))
+      : [...prev, result.data].sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR'))));
+    setClienteModal(null);
+    showToast(editando ? 'Cliente atualizado!' : 'Cliente criado!');
+  };
+
+  // Quem pode ser "cliente principal" de um associado: empresas sem grupo (exceto a própria)
+  const gruposPossiveis = useMemo(() => {
+    const atual = clienteModal?.empresa;
+    const temFilhos = atual && empresas.some(x => x.grupo_id === atual.id);
+    if (temFilhos) return []; // um grupo não pode virar associado de outro
+    return empresas.filter(x => !x.grupo_id && (!atual || x.id !== atual.id));
+  }, [empresas, clienteModal]);
 
   // ------------------------------------------
   // Rastreadores (Estoque): filtro, paginação e CRUD
@@ -501,7 +633,25 @@ export default function PainelAdmin() {
 
   useEffect(() => { setRastreadorPage(1); }, [searchRastreador, filterRastreadorStatuses, filterRastreadorOperadoras, filterRastreadorCategorias, rSort]);
 
+  async function carregarCatalogo() {
+    const [cats, prods] = await Promise.all([
+      supabase.from('estoque_categorias').select('*').order('ordem').order('nome'),
+      supabase.from('estoque_produtos').select('*').order('ordem').order('nome'),
+    ]);
+    if (cats.error || prods.error) { setCatalogo({ ok: false, categorias: [], produtos: [] }); return; }
+    setCatalogo({ ok: true, categorias: cats.data || [], produtos: prods.data || [] });
+  }
+
+  const produtoById = useMemo(() => Object.fromEntries(catalogo.produtos.map(p => [p.id, p])), [catalogo.produtos]);
+  const categoriaById = useMemo(() => Object.fromEntries(catalogo.categorias.map(c => [c.id, c])), [catalogo.categorias]);
+
+  // Produto do catálogo de um item: pelo vínculo, ou pelo nome do modelo
+  const produtoDoItem = (r) => (r.produto_id && produtoById[r.produto_id])
+    || catalogo.produtos.find(p => p.nome === (r.modelo || '').trim().toUpperCase()) || null;
+
   const resetRastreadorForm = () => {
+    const loc = catalogo.categorias.find(c => c.codigo === 'LOC');
+    setRFormCategoriaId(loc ? loc.id : ''); setRFormProdutoId('');
     setRFormCategoria('LOCALIZADOR'); setRFormModelo(''); setRFormSerial('');
     setRFormSimCard(''); setRFormOperadora(''); setRFormDataEntrada('');
     setRFormCustoAquisicao(''); setRFormCustoMensal(''); setRFormValorMensalidade('');
@@ -511,8 +661,13 @@ export default function PainelAdmin() {
   const openRastreadorForm = (r) => {
     if (r) {
       setEditingRastreador(r);
-      setRFormCategoria(r.categoria || '');
-      setRFormModelo(r.modelo || '');
+      const cat = (r.categoria || '').trim();
+      const mod = (r.modelo || '').trim();
+      setRFormCategoria(CATEGORIAS_ESTOQUE.includes(cat.toUpperCase()) ? cat.toUpperCase() : cat);
+      setRFormModelo(MODELOS_LOCALIZADOR.includes(mod.toUpperCase()) ? mod.toUpperCase() : mod);
+      const prod = produtoDoItem(r);
+      setRFormProdutoId(prod ? prod.id : '');
+      setRFormCategoriaId(prod ? prod.categoria_id : (catalogo.categorias.find(c => c.nome.toUpperCase() === cat.toUpperCase())?.id || ''));
       setRFormSerial(r.serial || '');
       setRFormSimCard(r.sim_card || '');
       setRFormOperadora(r.operadora || '');
@@ -534,9 +689,13 @@ export default function PainelAdmin() {
     if (!rFormSerial.trim()) { showToast('Informe o serial.', 'error'); return; }
 
     setIsSavingRastreador(true);
+    const catSel = categoriaById[rFormCategoriaId];
+    const prodSel = produtoById[rFormProdutoId];
+    if (catalogo.ok && !prodSel) { setIsSavingRastreador(false); showToast('Escolha o produto.', 'error'); return; }
     const payload = {
-      categoria: rFormCategoria || null,
-      modelo: rFormModelo || null,
+      ...(catalogo.ok
+        ? { categoria: catSel ? catSel.nome.toUpperCase() : null, modelo: prodSel.nome, produto_id: prodSel.id }
+        : { categoria: rFormCategoria || null, modelo: rFormModelo || null }),
       serial: rFormSerial.trim(),
       sim_card: rFormSimCard || null,
       operadora: rFormOperadora || null,
@@ -733,48 +892,23 @@ export default function PainelAdmin() {
                 active={activeSection}
                 onChange={setActiveSection}
                 tabs={[
-                  { key: 'resumo', label: 'Resumo por cliente' },
+                  { key: 'resumo', label: 'Cliente', count: empresas.length },
                   { key: 'veiculos', label: 'Banco de veículos', count: veiculos.length },
-                  { key: 'rastreadores', label: 'Rastreadores', count: rastreadores.length },
+                  { key: 'rastreadores', label: 'Estoque', count: rastreadores.length },
                   { key: 'ordens', label: 'Ordens de serviço', count: ordensServico.length },
-                  { key: 'precos', label: 'Preços' },
+                  { key: 'precos-cliente', label: 'Tabela de preço cliente' },
+                  { key: 'precos-tecnico', label: 'Tabela de preço técnico' },
                 ]}
               />
 
-              {/* Resumo por cliente/grupo */}
+              {/* Clientes */}
               {activeSection === 'resumo' && (
-                <SectionCard title="Resumo por cliente">
-                  <div className={tableWrap}>
-                    <table className="w-full min-w-[720px] text-sm">
-                      <thead className={theadClass}>
-                        <tr>
-                          <Th>Cliente</Th>
-                          <Th align="right">Total</Th>
-                          <Th align="right">Ativos</Th>
-                          <Th align="right">Inativos</Th>
-                          <Th align="right">Mensalidade ativa</Th>
-                          <Th align="right">Custo total</Th>
-                        </tr>
-                      </thead>
-                      <tbody className={tbodyClass}>
-                        {hierarquia.gruposComFilhos.map(({ grupo, resumo, filhos }) => (
-                          <React.Fragment key={grupo.id}>
-                            <ResumoRow nome={grupo.nome} isGrupo {...resumo} />
-                            {filhos.map(f => (
-                              <ResumoRow key={f.id} nome={f.nome} isGrupo={false} {...(resumoPorEmpresa[f.id] || { total: 0, ativos: 0, inativos: 0, mensalidade: 0, custoTotal: 0 })} />
-                            ))}
-                          </React.Fragment>
-                        ))}
-                        {hierarquia.avulsos.map(e => (
-                          <ResumoRow key={e.id} nome={e.nome} isGrupo={false} {...(resumoPorEmpresa[e.id] || { total: 0, ativos: 0, inativos: 0, mensalidade: 0, custoTotal: 0 })} />
-                        ))}
-                        {empresas.length === 0 && (
-                          <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-500">Nenhuma empresa cadastrada.</td></tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </SectionCard>
+                <ClientesPanel
+                  hierarquia={hierarquia}
+                  resumoPorEmpresa={resumoPorEmpresa}
+                  onNovo={() => openCliente(null)}
+                  onEditar={openCliente}
+                />
               )}
 
               {/* Banco de veículos */}
@@ -796,12 +930,22 @@ export default function PainelAdmin() {
                     extra={<>Mensalidade ativa nesta lista: <span className="text-white font-medium tabular-nums">{BRL(vehicleSummary.mensalidadeAtiva)}</span></>}
                   />
 
-                  <SegmentedControl
-                    label="Agrupar por"
-                    value={vGroupBy}
-                    onChange={setVGroupBy}
-                    options={[{ key: 'empresa', label: 'Cliente' }, { key: 'operacao', label: 'Operação' }, { key: 'lista', label: 'Lista' }]}
-                  />
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+                    <SegmentedControl
+                      label="Ver por"
+                      value={vGroupBy}
+                      onChange={setVGroupBy}
+                      options={[{ key: 'cliente', label: 'Cliente' }, { key: 'lista', label: 'Lista' }]}
+                    />
+                    {vGroupBy === 'cliente' && (
+                      <SegmentedControl
+                        label="Agrupar dentro do cliente por"
+                        value={vSubGroupBy}
+                        onChange={setVSubGroupBy}
+                        options={[{ key: 'operacao', label: 'Operação' }, { key: 'associado', label: 'Cliente associado' }]}
+                      />
+                    )}
+                  </div>
 
                   {vGroupBy === 'lista' ? (
                     <>
@@ -816,7 +960,7 @@ export default function PainelAdmin() {
                               <Th sortKey="modelo" sort={vSort} onSort={k => setVSort(s => nextSort(s, k))}>Modelo</Th>
                               <Th sortKey="id_instalado" sort={vSort} onSort={k => setVSort(s => nextSort(s, k))}>ID instalado</Th>
                               <Th sortKey="mensalidade" sort={vSort} onSort={k => setVSort(s => nextSort(s, k))} align="right">Mensalidade</Th>
-                              <Th align="right">Ações</Th>
+                              <Th align="right"><span className="sr-only">Detalhes</span></Th>
                             </tr>
                           </thead>
                           <tbody className={tbodyClass}>
@@ -831,7 +975,7 @@ export default function PainelAdmin() {
                               </tr>
                             ) : (
                               paginatedVeiculos.map(v => (
-                                <tr key={v.id} className={rowClass}>
+                                <tr key={v.id} className={`${rowClass} cursor-pointer`} onClick={() => setViewingVehicle(v)}>
                                   <td className="px-4 py-3 text-white font-semibold tracking-wide whitespace-nowrap">{v.placa}</td>
                                   <td className="px-4 py-3 text-gray-300">{empresaNomeById[v.empresa_id] || <Dash />}</td>
                                   <td className="px-4 py-3 text-gray-300"><StatusDot tone={v.status === 'Ativo' ? 'ok' : 'bad'}>{v.status || '—'}</StatusDot></td>
@@ -840,8 +984,7 @@ export default function PainelAdmin() {
                                   <td className="px-4 py-3 text-gray-400 tabular-nums">{v.id_instalado || <Dash />}</td>
                                   <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap text-gray-200">{v.mensalidade != null ? BRL(v.mensalidade) : <Dash />}</td>
                                   <td className="px-3 py-1.5 text-right whitespace-nowrap">
-                                    <ActionButton title="Editar" hover="hover:text-blue-400" onClick={() => openVehicleForm(v)}><FaEdit size={14} /></ActionButton>
-                                    <ActionButton title="Excluir" hover="hover:text-red-400" onClick={() => handleDeleteVehicle(v.id)}><FaTrashAlt size={14} /></ActionButton>
+                                    <ActionButton title="Ver detalhes" hover="hover:text-blue-400" onClick={(e) => { e.stopPropagation(); setViewingVehicle(v); }}><FaExpandAlt size={13} /></ActionButton>
                                   </td>
                                 </tr>
                               ))
@@ -863,11 +1006,11 @@ export default function PainelAdmin() {
                     <VeiculosAgrupados
                       veiculos={filteredVeiculos}
                       empresaNomeById={empresaNomeById}
-                      groupBy={vGroupBy}
+                      clienteNomeById={clienteNomeById}
+                      subGroupBy={vSubGroupBy}
                       sort={vSort}
                       onSort={k => setVSort(cur => nextSort(cur, k))}
-                      onEdit={openVehicleForm}
-                      onDelete={handleDeleteVehicle}
+                      onOpen={setViewingVehicle}
                     />
                   )}
                 </SectionCard>
@@ -875,7 +1018,12 @@ export default function PainelAdmin() {
 
               {/* Rastreadores (estoque) */}
               {activeSection === 'rastreadores' && (
-                <SectionCard title="Rastreadores" action={<PrimaryButton onClick={() => openRastreadorForm(null)}>Novo rastreador</PrimaryButton>}>
+                <SectionCard title="Estoque" action={(
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setIsCatalogoOpen(true)} className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">Categorias e produtos</button>
+                    <PrimaryButton onClick={() => openRastreadorForm(null)}>Novo item</PrimaryButton>
+                  </div>
+                )}>
                   <StatStrip
                     colsClass="grid-cols-1 sm:grid-cols-3"
                     items={[
@@ -925,7 +1073,7 @@ export default function PainelAdmin() {
                           paginatedRastreadores.map(r => (
                             <tr key={r.id} className={rowClass}>
                               <td className="px-4 py-3 text-white font-semibold tabular-nums whitespace-nowrap">{r.serial}</td>
-                              <td className="px-4 py-3 text-gray-300">{r.categoria}{r.modelo ? ` — ${r.modelo}` : ''}</td>
+                              <td className="px-4 py-3 text-gray-300">{r.categoria}{r.modelo ? ` — ${r.modelo}` : ''}{produtoDoItem(r) && <span className="ml-2 text-xs font-mono text-gray-500">{produtoDoItem(r).codigo}</span>}</td>
                               <td className="px-4 py-3 text-gray-400">
                                 {r.sim_card || <Dash />}
                                 {r.operadora && <span className="text-gray-500"> ({r.operadora})</span>}
@@ -959,7 +1107,8 @@ export default function PainelAdmin() {
               )}
 
               {/* Preços (técnicos, clientes e regras do financeiro automático) */}
-              {activeSection === 'precos' && <PrecosPanel empresas={empresas} showToast={showToast} />}
+              {activeSection === 'precos-cliente' && <PrecosPanel modo="cliente" empresas={empresas} showToast={showToast} />}
+              {activeSection === 'precos-tecnico' && <PrecosPanel modo="tecnico" empresas={empresas} showToast={showToast} />}
 
               {/* Ordens de serviço */}
               {activeSection === 'ordens' && (
@@ -967,7 +1116,9 @@ export default function PainelAdmin() {
                   ordens={ordensServico}
                   empresaOptions={empresaOptions}
                   rastreadores={rastreadores}
-                  onNew={() => setIsOsModalOpen(true)}
+                  onNew={() => { setOsAberta(null); setIsOsModalOpen(true); }}
+                  onFinalizar={(os) => { setOsAberta(os); setIsOsModalOpen(true); }}
+                  onUpdated={(os) => setOrdensServico(prev => prev.map(o => (o.id === os.id ? os : o)))}
                   onDelete={handleDeleteOs}
                 />
               )}
@@ -975,6 +1126,74 @@ export default function PainelAdmin() {
           )}
         </div>
       </div>
+
+      {/* Detalhes do veículo (editar e excluir ficam aqui dentro) */}
+      {viewingVehicle && (
+        <VeiculoDetalhe
+          veiculo={viewingVehicle}
+          empresaNome={empresaNomeById[viewingVehicle.empresa_id]}
+          clienteNome={clienteNomeById[viewingVehicle.empresa_id]}
+          dre={drePorVeiculo[viewingVehicle.id]}
+          onClose={() => setViewingVehicle(null)}
+          onEdit={openVehicleForm}
+          onDelete={handleDeleteVehicle}
+        />
+      )}
+
+      {/* Catálogo do estoque */}
+      {isCatalogoOpen && (
+        catalogo.ok ? (
+          <EstoqueCatalogo
+            categorias={catalogo.categorias}
+            produtos={catalogo.produtos}
+            onClose={() => setIsCatalogoOpen(false)}
+            onChanged={carregarCatalogo}
+            showToast={showToast}
+          />
+        ) : (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setIsCatalogoOpen(false)}>
+            <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 space-y-3" onClick={e => e.stopPropagation()}>
+              <h3 className="text-lg font-bold text-white">Categorias e produtos</h3>
+              <p className="text-sm text-gray-400">As tabelas do catálogo ainda não existem no banco. Rode o arquivo <span className="font-mono text-gray-200">migracao-estoque-catalogo.sql</span> no SQL Editor do Supabase e recarregue a página.</p>
+              <button type="button" onClick={() => setIsCatalogoOpen(false)} className="text-sm text-blue-400 hover:text-blue-300">Fechar</button>
+            </div>
+          </div>
+        )
+      )}
+
+      {/* Criar/editar cliente */}
+      {clienteModal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+          <form onSubmit={handleSaveCliente} className="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex justify-between items-center border-b border-gray-800 pb-4">
+              <h3 className="text-lg font-bold text-white">{clienteModal.empresa ? 'Editar cliente' : 'Novo cliente'}</h3>
+              <button type="button" onClick={() => setClienteModal(null)} className="text-gray-400 hover:text-white"><FaTimes /></button>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Nome</label>
+              <input type="text" required autoFocus value={cFormNome} onChange={e => setCFormNome(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500 uppercase" />
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Associado a</label>
+              <Select value={cFormGrupoId} onChange={e => setCFormGrupoId(e.target.value)} disabled={gruposPossiveis.length === 0 && !cFormGrupoId} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+                <option value="">Nenhum (cliente principal)</option>
+                {gruposPossiveis.map(g => <option key={g.id} value={String(g.id)}>{g.nome}</option>)}
+              </Select>
+              <p className="text-xs text-gray-500 mt-1">Escolha um cliente aqui se este for uma unidade/associado dele (ex.: ADORO - FRANGO dentro de ADORO).</p>
+            </div>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1">Deadline do contrato</label>
+              <DateInput value={cFormContratoFim} onChange={e => setCFormContratoFim(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white" />
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button type="submit" disabled={isSavingCliente} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-semibold">
+                {isSavingCliente ? 'Salvando...' : (clienteModal.empresa ? 'Salvar alterações' : 'Criar cliente')}
+              </button>
+              <button type="button" onClick={() => setClienteModal(null)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
+            </div>
+          </form>
+        </div>
+      )}
 
       {/* Modal Criar/Editar Veículo */}
       {isVehicleModalOpen && (
@@ -995,19 +1214,19 @@ export default function PainelAdmin() {
                 </div>
                 <div className="w-36">
                   <label className="block text-xs text-gray-400 mb-1">Status</label>
-                  <select value={vFormStatus} onChange={e => setVFormStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
+                  <Select value={vFormStatus} onChange={e => setVFormStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
                     <option value="Ativo">Ativo</option>
                     <option value="Inativo">Inativo</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
 
               <div>
                 <label className="block text-xs text-gray-400 mb-1">Empresa</label>
-                <select required value={vFormEmpresaId} onChange={e => setVFormEmpresaId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
+                <Select required value={vFormEmpresaId} onChange={e => setVFormEmpresaId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
                   <option value="">Selecione a empresa...</option>
                   {empresas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
-                </select>
+                </Select>
               </div>
 
               <div className="flex gap-4">
@@ -1029,11 +1248,11 @@ export default function PainelAdmin() {
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Data Instalação</label>
-                  <input type="date" value={vFormDataInst} onChange={e => setVFormDataInst(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
+                  <DateInput value={vFormDataInst} onChange={e => setVFormDataInst(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Data Desinstalação</label>
-                  <input type="date" value={vFormDataDesinst} onChange={e => setVFormDataDesinst(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
+                  <DateInput value={vFormDataDesinst} onChange={e => setVFormDataDesinst(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
               </div>
 
@@ -1048,7 +1267,68 @@ export default function PainelAdmin() {
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">DRE Placa (R$)</label>
-                  <input type="number" step="0.01" value={vFormDrePlaca} onChange={e => setVFormDrePlaca(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
+                  <div className={`w-full bg-gray-950/50 border border-gray-800 rounded-lg px-3 py-2 text-sm tabular-nums ${vFormDre.dre < 0 ? 'text-red-400' : 'text-emerald-400'}`} title="Calculado: valor faturado − serviços realizados − equipamento e acessórios">
+                    {BRL(vFormDre.dre)}
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Custo acessórios (R$)</label>
+                  <input type="number" step="0.01" value={vFormCustoAcessorios} onChange={e => setVFormCustoAcessorios(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-xs text-gray-400 mb-1">Custo do rastreador (estoque)</label>
+                  <div className="w-full bg-gray-950/50 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-300 tabular-nums" title={vFormDre.rastreadorSerial ? `Rastreador ${vFormDre.rastreadorSerial}` : 'Nenhum rastreador do estoque ligado a esta placa'}>
+                    {vFormDre.rastreadorSerial ? BRL(vFormDre.custoRastreador) : <span className="text-gray-600">Sem rastreador</span>}
+                  </div>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 -mt-2">
+                DRE = faturado {BRL(vFormDre.faturado)} ({vFormDre.meses} {vFormDre.meses === 1 ? 'mês' : 'meses'}{vFormDre.faturadoOs ? ' + OS' : ''}) − serviços {BRL(vFormDre.servicos)} − equipamento e acessórios {BRL(vFormDre.equipamento)}
+              </p>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-2">Serviços</label>
+                <div className="space-y-2">
+                  {SERVICOS_VEICULO.map(s => {
+                    const on = vFormServicos.includes(s.key);
+                    return (
+                      <button
+                        key={s.key}
+                        type="button"
+                        role="switch"
+                        aria-checked={on}
+                        onClick={() => toggleServico(s.key)}
+                        className="w-full flex items-center justify-between bg-gray-950 border border-gray-700 hover:border-gray-600 rounded-lg px-3 py-2 text-sm text-white transition-colors"
+                      >
+                        <span>{s.label}</span>
+                        <span className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${on ? 'bg-emerald-500' : 'bg-gray-700'}`}>
+                          <span className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${on ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-2">Foto da placa</label>
+                <div className="flex items-center gap-3">
+                  <div className="w-24 h-16 rounded-lg border border-gray-700 bg-gray-950 overflow-hidden flex items-center justify-center shrink-0">
+                    {vFormFotoPreview
+                      ? <img src={vFormFotoPreview} alt="Foto da placa" className="w-full h-full object-cover" />
+                      : <FaCamera className="text-gray-600" />}
+                  </div>
+                  <div className="flex flex-col items-start gap-1">
+                    <label className="cursor-pointer text-sm text-blue-400 hover:text-blue-300">
+                      {vFormFotoPreview ? 'Trocar foto' : 'Adicionar foto'}
+                      <input type="file" accept="image/*" capture="environment" className="hidden" onChange={e => setVFormFotoFile(e.target.files?.[0] || null)} />
+                    </label>
+                    {vFormFotoPreview && (
+                      <button type="button" onClick={() => { setVFormFotoFile(null); setVFormFotoUrl(''); }} className="text-xs text-gray-500 hover:text-red-400">Remover foto</button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1069,21 +1349,54 @@ export default function PainelAdmin() {
           <div className="bg-gray-900 border border-gray-800 rounded-2xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-gray-800 pb-4">
               <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <FaSatelliteDish className="text-cyan-400" /> {editingRastreador ? 'Editar Rastreador' : 'Novo Rastreador'}
+                <FaSatelliteDish className="text-cyan-400" /> {editingRastreador ? 'Editar item' : 'Novo item'}
               </h3>
               <button onClick={() => setIsRastreadorModalOpen(false)} className="text-gray-400 hover:text-white"><FaTimes/></button>
             </div>
 
             <form onSubmit={handleSaveRastreador} className="space-y-4">
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-xs text-gray-400 mb-1">Categoria</label>
-                  <input type="text" value={rFormCategoria} onChange={e => setRFormCategoria(e.target.value)} placeholder="LOCALIZADOR" className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
+              {catalogo.ok ? (
+                <div className="flex gap-4">
+                  <div className="flex-1 min-w-0">
+                    <label className="block text-xs text-gray-400 mb-1">Categoria</label>
+                    <Select value={rFormCategoriaId} onChange={e => { setRFormCategoriaId(e.target.value); setRFormProdutoId(''); }} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+                      <option value="">Selecione...</option>
+                      {catalogo.categorias.filter(c => c.ativo || c.id === rFormCategoriaId).map(c => <option key={c.id} value={c.id}>{`${c.codigo} · ${c.nome}`}</option>)}
+                    </Select>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <label className="block text-xs text-gray-400 mb-1">Produto</label>
+                    <Select value={rFormProdutoId} required disabled={!rFormCategoriaId} placeholder={rFormCategoriaId ? 'Selecione...' : 'Escolha a categoria'} onChange={e => setRFormProdutoId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+                      {catalogo.produtos.filter(p => p.categoria_id === rFormCategoriaId && (p.ativo || p.id === rFormProdutoId)).map(p => <option key={p.id} value={p.id}>{`${p.codigo} · ${p.nome}`}</option>)}
+                    </Select>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <label className="block text-xs text-gray-400 mb-1">Modelo</label>
-                  <input type="text" value={rFormModelo} onChange={e => setRFormModelo(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
+              ) : (
+                <div className="flex gap-4">
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-400 mb-1">Categoria</label>
+                    <Select value={rFormCategoria} onChange={e => { const c = e.target.value; setRFormCategoria(c); if (c !== 'LOCALIZADOR' && MODELOS_LOCALIZADOR.includes(rFormModelo)) setRFormModelo(''); }} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+                      <option value="">Selecione...</option>
+                      {CATEGORIAS_ESTOQUE.map(c => <option key={c} value={c}>{c.charAt(0) + c.slice(1).toLowerCase()}</option>)}
+                      {rFormCategoria && !CATEGORIAS_ESTOQUE.includes(rFormCategoria) && <option value={rFormCategoria}>{rFormCategoria}</option>}
+                    </Select>
+                  </div>
+                  <div className="flex-1">
+                    <label className="block text-xs text-gray-400 mb-1">Modelo</label>
+                    {rFormCategoria === 'LOCALIZADOR' ? (
+                      <Select value={rFormModelo} onChange={e => setRFormModelo(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
+                        <option value="">Selecione...</option>
+                        {MODELOS_LOCALIZADOR.map(m => <option key={m} value={m}>{m}</option>)}
+                        {rFormModelo && !MODELOS_LOCALIZADOR.includes(rFormModelo) && <option value={rFormModelo}>{rFormModelo}</option>}
+                      </Select>
+                    ) : (
+                      <input type="text" value={rFormModelo} onChange={e => setRFormModelo(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
+                    )}
+                  </div>
                 </div>
+              )}
+              <div className="-mt-2 text-right">
+                <button type="button" onClick={() => setIsCatalogoOpen(true)} className="text-xs text-blue-400 hover:text-blue-300">Cadastrar categorias e produtos</button>
               </div>
 
               <div>
@@ -1105,17 +1418,17 @@ export default function PainelAdmin() {
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Data de Entrada</label>
-                  <input type="date" value={rFormDataEntrada} onChange={e => setRFormDataEntrada(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
+                  <DateInput value={rFormDataEntrada} onChange={e => setRFormDataEntrada(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Status</label>
-                  <select value={rFormStatus} onChange={e => setRFormStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
+                  <Select value={rFormStatus} onChange={e => setRFormStatus(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
                     <option value="estoque_central">Estoque Central</option>
                     <option value="estoque_tecnico">Estoque c/ Técnico</option>
                     <option value="aguardando_manutencao">Aguardando Manutenção</option>
                     <option value="baixado">Baixado</option>
                     <option value="instalado" disabled={!editingRastreador || editingRastreador.status !== 'instalado'}>Instalado (use o botão de vincular)</option>
-                  </select>
+                  </Select>
                 </div>
               </div>
 
@@ -1164,12 +1477,12 @@ export default function PainelAdmin() {
             </div>
             <div>
               <label className="block text-xs text-gray-400 mb-1">Selecione o veículo</label>
-              <select value={installVeiculoId} onChange={e => setInstallVeiculoId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
+              <Select value={installVeiculoId} onChange={e => setInstallVeiculoId(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500">
                 <option value="">Selecione a placa...</option>
                 {veiculos.map(v => (
                   <option key={v.id} value={v.id}>{v.placa} — {empresaNomeById[v.empresa_id] || 'sem empresa'}</option>
                 ))}
-              </select>
+              </Select>
             </div>
             <div className="flex gap-3 pt-2">
               <button onClick={handleInstallRastreador} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-semibold">Confirmar Instalação</button>
@@ -1187,9 +1500,10 @@ export default function PainelAdmin() {
           veiculos={veiculos}
           rastreadores={rastreadores}
           showToast={showToast}
-          onClose={() => setIsOsModalOpen(false)}
+          osAberta={osAberta}
+          onClose={() => { setIsOsModalOpen(false); setOsAberta(null); }}
           onSaved={({ os, rastreadores: rAtualizados, veiculos: vAtualizados }) => {
-            setOrdensServico(prev => [os, ...prev]);
+            setOrdensServico(prev => (prev.some(o => o.id === os.id) ? prev.map(o => (o.id === os.id ? os : o)) : [os, ...prev]));
             if (rAtualizados.length) setRastreadores(prev => prev.map(r => rAtualizados.find(x => x.id === r.id) || r));
             if (vAtualizados.length) setVeiculos(prev => prev.map(v => { const u = vAtualizados.find(x => x.id === v.id); return u ? { ...v, id_instalado: u.id_instalado } : v; }));
           }}

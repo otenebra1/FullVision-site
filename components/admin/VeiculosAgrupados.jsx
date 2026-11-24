@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { FaChevronDown, FaEdit, FaTrashAlt, FaArrowUp, FaArrowDown } from 'react-icons/fa';
+import { FaChevronDown, FaExpandAlt, FaArrowUp, FaArrowDown } from 'react-icons/fa';
 import { BRL, StatusDot, Dash, ActionButton } from './ui';
 
-const COLS = 'grid grid-cols-[minmax(130px,1.1fr)_minmax(120px,1fr)_minmax(110px,1fr)_110px_120px_72px] gap-x-4 items-center';
+const COLS = 'grid grid-cols-[minmax(130px,1.1fr)_minmax(120px,1fr)_minmax(110px,1fr)_110px_120px_52px] gap-x-4 items-center';
 const INITIAL_ROWS = 10;
 const MORE_ROWS = 25;
 
@@ -17,13 +17,13 @@ const SORTABLE = [
 const somaAtiva = (items) => items.reduce((s, v) => s + (v.status === 'Ativo' ? Number(v.mensalidade) || 0 : 0), 0);
 const contaInativos = (items) => items.filter(v => v.status !== 'Ativo').length;
 
-// Banco de veículos separado por cliente (e, dentro dele, por operação) ou por operação (e, dentro dela, por cliente)
-export default function VeiculosAgrupados({ veiculos, empresaNomeById, groupBy, sort, onSort, onEdit, onDelete }) {
+// Banco de veículos sempre agrupado por cliente; dentro dele, por operação ou por cliente associado
+export default function VeiculosAgrupados({ veiculos, empresaNomeById, clienteNomeById, subGroupBy, sort, onSort, onOpen }) {
   const [collapsed, setCollapsed] = useState({});
   const [shown, setShown] = useState({});
 
-  const primaryOf = (v) => (groupBy === 'operacao' ? (v.operacao || 'Sem operação') : (empresaNomeById[v.empresa_id] || 'Sem empresa'));
-  const secondaryOf = (v) => (groupBy === 'operacao' ? (empresaNomeById[v.empresa_id] || 'Sem empresa') : (v.operacao || 'Sem operação'));
+  const primaryOf = (v) => clienteNomeById[v.empresa_id] || 'Sem cliente';
+  const secondaryOf = (v) => (subGroupBy === 'associado' ? (empresaNomeById[v.empresa_id] || 'Sem cliente associado') : (v.operacao || 'Sem operação'));
 
   const groups = useMemo(() => {
     const map = new Map();
@@ -42,7 +42,7 @@ export default function VeiculosAgrupados({ veiculos, empresaNomeById, groupBy, 
       return { name, subs, total: all.length, inativos: contaInativos(all), mensalidade: somaAtiva(all) };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [veiculos, groupBy, empresaNomeById]);
+  }, [veiculos, subGroupBy, empresaNomeById, clienteNomeById]);
 
   const todosRecolhidos = groups.length > 0 && groups.every(g => collapsed[g.name]);
   const setAll = (value) => setCollapsed(Object.fromEntries(groups.map(g => [g.name, value])));
@@ -113,15 +113,14 @@ export default function VeiculosAgrupados({ veiculos, empresaNomeById, groupBy, 
                       </div>
                       <div className="divide-y divide-gray-800/70">
                         {visible.map(v => (
-                          <div key={v.id} className={`${COLS} px-4 py-2.5 hover:bg-gray-800/40 transition-colors text-sm`}>
+                          <div key={v.id} onClick={() => onOpen(v)} className={`${COLS} px-4 py-2.5 hover:bg-gray-800/40 transition-colors text-sm cursor-pointer`}>
                             <div className="font-semibold text-white tracking-wide truncate">{v.placa}</div>
                             <div className="text-gray-400 truncate">{v.modelo || <Dash />}</div>
                             <div className="text-gray-400 tabular-nums truncate">{v.id_instalado || <Dash />}</div>
                             <div className="text-gray-300"><StatusDot tone={v.status === 'Ativo' ? 'ok' : 'bad'}>{v.status || '—'}</StatusDot></div>
                             <div className="text-right tabular-nums whitespace-nowrap text-gray-200">{v.mensalidade != null ? BRL(v.mensalidade) : <Dash />}</div>
                             <div className="flex justify-end">
-                              <ActionButton title="Editar" hover="hover:text-blue-400" onClick={() => onEdit(v)}><FaEdit size={14} /></ActionButton>
-                              <ActionButton title="Excluir" hover="hover:text-red-400" onClick={() => onDelete(v.id)}><FaTrashAlt size={14} /></ActionButton>
+                              <ActionButton title="Ver detalhes" hover="hover:text-blue-400" onClick={(e) => { e.stopPropagation(); onOpen(v); }}><FaExpandAlt size={13} /></ActionButton>
                             </div>
                           </div>
                         ))}

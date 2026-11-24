@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   FaSearch, FaPlus, FaTimes, FaChevronLeft, FaChevronRight, FaChevronDown, FaCheck, FaArrowUp, FaArrowDown,
 } from 'react-icons/fa';
+import { DateInput } from '../ui/FormControls';
 
 // ==========================================
 // Utilitários e componentes do padrão visual do painel
@@ -208,7 +209,7 @@ export function FilterShell({ label, count = 0, children }) {
 
   useEffect(() => {
     if (!open) return undefined;
-    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target)) setOpen(false); };
+    const onDown = (e) => { if (ref.current && !ref.current.contains(e.target) && !e.target.closest?.('[data-floating]')) setOpen(false); };
     const onKey = (e) => { if (e.key === 'Escape') setOpen(false); };
     document.addEventListener('mousedown', onDown);
     document.addEventListener('keydown', onKey);
@@ -313,11 +314,11 @@ export function DateRangeFilter({ label = 'Período', from, to, onChange }) {
       <div className="p-3 space-y-3">
         <label className="block text-xs text-gray-400">
           De
-          <input type="date" value={from} onChange={e => onChange({ from: e.target.value, to })} className={`mt-1 w-full px-3 py-2 ${inputBase}`} />
+          <DateInput value={from} onChange={e => onChange({ from: e.target.value, to })} className={`mt-1 w-full px-3 py-2 ${inputBase}`} />
         </label>
         <label className="block text-xs text-gray-400">
           Até
-          <input type="date" value={to} onChange={e => onChange({ from, to: e.target.value })} className={`mt-1 w-full px-3 py-2 ${inputBase}`} />
+          <DateInput value={to} onChange={e => onChange({ from, to: e.target.value })} className={`mt-1 w-full px-3 py-2 ${inputBase}`} />
         </label>
         {count > 0 && (
           <button type="button" onClick={() => onChange({ from: '', to: '' })} className="text-xs text-gray-400 hover:text-white">Limpar período</button>
@@ -374,7 +375,16 @@ export function Pagination({ page, totalPages, total, perPage, onPage }) {
 }
 
 // Linha de resumo (usada tanto pro grupo quanto pela unidade filha)
-export function ResumoRow({ nome, isGrupo, total, ativos, inativos, mensalidade, custoTotal }) {
+// Deadline do contrato: vermelho se venceu, âmbar se vence em até 30 dias
+function DeadlineCell({ data }) {
+  if (!data) return <Dash />;
+  const hoje = new Date(); hoje.setHours(0, 0, 0, 0);
+  const dias = Math.round((new Date(data + 'T00:00:00') - hoje) / 86400000);
+  const cls = dias < 0 ? 'text-red-400' : dias <= 30 ? 'text-amber-400' : 'text-gray-300';
+  return <span className={cls} title={dias < 0 ? 'Contrato vencido' : `Vence em ${dias} dia(s)`}>{formatDateBR(data)}</span>;
+}
+
+export function ResumoRow({ nome, isGrupo, total, ativos, inativos, mensalidade, faturamento, custoTotal, contratoFim, onEditContrato }) {
   const num = (n) => `px-4 py-3 text-right tabular-nums ${n === 0 ? 'text-gray-600' : 'text-gray-300'}`;
   return (
     <tr className={isGrupo ? 'bg-gray-800/40' : rowClass}>
@@ -383,7 +393,15 @@ export function ResumoRow({ nome, isGrupo, total, ativos, inativos, mensalidade,
       <td className={num(ativos)}>{ativos}</td>
       <td className={num(inativos)}>{inativos}</td>
       <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap text-gray-300">{BRL(mensalidade)}</td>
+      <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap text-gray-300">{BRL(faturamento)}</td>
       <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap text-gray-300">{BRL(custoTotal)}</td>
+      <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap">
+        {onEditContrato ? (
+          <button type="button" onClick={onEditContrato} title="Alterar deadline do contrato" className="hover:underline decoration-gray-600 underline-offset-4">
+            <DeadlineCell data={contratoFim} />
+          </button>
+        ) : <DeadlineCell data={contratoFim} />}
+      </td>
     </tr>
   );
 }
