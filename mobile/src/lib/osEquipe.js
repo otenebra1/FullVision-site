@@ -1,0 +1,2 @@
+// Campos de OS que o app da equipe usa (sem valores em R$)
+export const CAMPOS_OS = 'id, status, data, horario_previsto, finalizada_em, tecnico_id, tecnico_nome, servico_realizado, local_instalacao, placa_texto, veiculo_id, empresa_id, telefone_contato, observacoes, problemas_relatados, assinante_nome, assinatura_url, geo_lat, geo_lng, checklist_estado, regioes_mexidas, empresas(nome), veiculos(placa, modelo)';
