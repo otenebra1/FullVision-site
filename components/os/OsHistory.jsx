@@ -96,6 +96,8 @@ export default function OsHistory({ ordens, empresaOptions, rastreadores, onNew,
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [soIncompletas, setSoIncompletas] = useState(false);
+  // Só as OS abertas: as pré-OS criadas a partir da solicitação do cliente, ainda não executadas
+  const [soAbertas, setSoAbertas] = useState(false);
   const [tecnico, setTecnico] = useState('');
   const [groupBy, setGroupBy] = useState('cliente');
   const [collapsed, setCollapsed] = useState({});
@@ -122,6 +124,7 @@ export default function OsHistory({ ordens, empresaOptions, rastreadores, onNew,
     return () => { cancelled = true; };
   }, [ordens.length]);
 
+  const qtdAbertas = useMemo(() => ordens.filter(o => o.status === 'aberta').length, [ordens]);
   const countOf = (o) => (fotosCount ? (fotosCount[o.id] || 0) : null);
   const servicoOptions = useMemo(() => mkOptions(uniqueSorted(ordens.flatMap(o => splitServicos(o.servico_realizado)))), [ordens]);
 
@@ -139,10 +142,11 @@ export default function OsHistory({ ordens, empresaOptions, rastreadores, onNew,
       if (dateFrom && (o.data || '') < dateFrom) return false;
       if (dateTo && (o.data || '') > dateTo) return false;
       if (soIncompletas && fotosStatus(o, countOf(o)) !== 'incompleta') return false;
+      if (soAbertas && o.status !== 'aberta') return false;
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ordens, search, empresas, servicos, dateFrom, dateTo, soIncompletas, fotosCount]);
+  }, [ordens, search, empresas, servicos, dateFrom, dateTo, soIncompletas, soAbertas, fotosCount]);
 
   const tecnicos = useMemo(() => {
     const map = new Map();
@@ -183,7 +187,7 @@ export default function OsHistory({ ordens, empresaOptions, rastreadores, onNew,
   }, [filtered]);
 
   const clearAll = () => {
-    setSearch(''); setEmpresas([]); setServicos([]); setDateFrom(''); setDateTo(''); setSoIncompletas(false); setTecnico('');
+    setSearch(''); setEmpresas([]); setServicos([]); setDateFrom(''); setDateTo(''); setSoIncompletas(false); setSoAbertas(false); setTecnico('');
   };
 
   const chips = useMemo(() => {
@@ -200,9 +204,10 @@ export default function OsHistory({ ordens, empresaOptions, rastreadores, onNew,
       c.push({ key: 'per', label: `Período: ${periodo}`, onRemove: () => { setDateFrom(''); setDateTo(''); } });
     }
     if (soIncompletas) c.push({ key: 'inc', label: 'Fotos incompletas', onRemove: () => setSoIncompletas(false) });
+    if (soAbertas) c.push({ key: 'abertas', label: 'Só abertas (solicitações)', onRemove: () => setSoAbertas(false) });
     if (tecnico) c.push({ key: 'tec', label: `Técnico: ${tecnico}`, onRemove: () => setTecnico('') });
     return c;
-  }, [search, empresaOptions, empresas, servicoOptions, servicos, dateFrom, dateTo, soIncompletas, tecnico]);
+  }, [search, empresaOptions, empresas, servicoOptions, servicos, dateFrom, dateTo, soIncompletas, soAbertas, tecnico]);
 
   const toggleGroup = (key) => setCollapsed(prev => ({ ...prev, [key]: !prev[key] }));
   const todosRecolhidos = groups.length > 0 && groups.every(g => collapsed[g.key]);
@@ -223,6 +228,7 @@ export default function OsHistory({ ordens, empresaOptions, rastreadores, onNew,
         <FilterDropdown label="Cliente" options={empresaOptions} selected={empresas} onChange={setEmpresas} searchable />
         <FilterDropdown label="Serviço" options={servicoOptions} selected={servicos} onChange={setServicos} />
         <DateRangeFilter from={dateFrom} to={dateTo} onChange={({ from, to }) => { setDateFrom(from); setDateTo(to); }} />
+        <ToggleFilter label={`Abertas (solicitações)${qtdAbertas ? ` · ${qtdAbertas}` : ''}`} active={soAbertas} onClick={() => setSoAbertas(v => !v)} />
         <ToggleFilter label="Fotos incompletas" active={soIncompletas} onClick={() => setSoIncompletas(v => !v)} />
       </div>
 
