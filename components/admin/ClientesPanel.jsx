@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { FaChevronDown, FaPen } from 'react-icons/fa';
+import { FaChevronDown, FaPen, FaIdCard } from 'react-icons/fa';
 import { BRL, Dash, SectionCard, PrimaryButton, SearchInput, SegmentedControl, ActionButton, formatDateBR, norm } from './ui';
+import { formatCNPJ, soDigitos } from '../../lib/cliente';
 
-const COLS = 'grid grid-cols-[minmax(180px,1.6fr)_70px_70px_70px_minmax(120px,1fr)_minmax(120px,1fr)_minmax(120px,1fr)_110px_44px] gap-x-4 items-center';
+const COLS = 'grid grid-cols-[minmax(180px,1.6fr)_70px_70px_70px_minmax(120px,1fr)_minmax(120px,1fr)_minmax(120px,1fr)_110px_72px] gap-x-4 items-center';
 const VAZIO = { total: 0, ativos: 0, inativos: 0, mensalidade: 0, faturamento: 0, custoTotal: 0 };
 
 function Deadline({ data }) {
@@ -16,33 +17,52 @@ function Deadline({ data }) {
 const n = (v, cls = '') => <div className={`text-right tabular-nums ${v === 0 ? 'text-gray-600' : 'text-gray-300'} ${cls}`}>{v}</div>;
 const money = (v, cls = 'text-gray-300') => <div className={`text-right tabular-nums whitespace-nowrap ${cls}`}>{BRL(v)}</div>;
 
-function Linha({ nome, r, contratoFim, onEdit, destaque, recuo }) {
+// Linha de apoio embaixo do nome: CNPJ e cidade/UF
+function Sub({ e }) {
+  const t = [e.cnpj ? formatCNPJ(e.cnpj) : null, [e.cidade, e.uf].filter(Boolean).join('/')].filter(Boolean).join(' · ');
+  return t ? <div className="text-xs text-gray-500 truncate tabular-nums">{t}</div> : null;
+}
+
+function Acoes({ onVer, onEdit }) {
+  return (
+    <div className="flex justify-end gap-1">
+      <ActionButton title="Ver ficha do cliente" hover="hover:text-emerald-400" onClick={(e) => { e.stopPropagation(); onVer(); }}><FaIdCard size={13} /></ActionButton>
+      <ActionButton title="Editar cliente" hover="hover:text-blue-400" onClick={(e) => { e.stopPropagation(); onEdit(); }}><FaPen size={11} /></ActionButton>
+    </div>
+  );
+}
+
+function Linha({ empresa, r, onVer, onEdit, destaque, recuo }) {
   return (
     <>
-      <div className={`truncate ${destaque ? 'font-semibold text-white' : 'text-gray-300'} ${recuo ? 'pl-5' : ''}`}>{nome}</div>
+      <div className={`min-w-0 ${recuo ? 'pl-5' : ''}`}>
+        <button type="button" onClick={onVer} className={`block max-w-full truncate text-left hover:text-blue-400 ${destaque ? 'font-semibold text-white' : 'text-gray-300'}`}>{empresa.nome}</button>
+        <Sub e={empresa} />
+      </div>
       {n(r.total, destaque ? 'text-white' : '')}
       {n(r.ativos)}
       {n(r.inativos, r.inativos > 0 ? 'text-red-400' : '')}
       {money(r.mensalidade)}
       {money(r.faturamento, 'text-emerald-400/90')}
       {money(r.custoTotal)}
-      <div className="text-right tabular-nums whitespace-nowrap"><Deadline data={contratoFim} /></div>
-      <div className="flex justify-end">
-        <ActionButton title="Editar cliente" hover="hover:text-blue-400" onClick={(e) => { e.stopPropagation(); onEdit(); }}><FaPen size={11} /></ActionButton>
-      </div>
+      <div className="text-right tabular-nums whitespace-nowrap"><Deadline data={empresa.contrato_fim} /></div>
+      <Acoes onVer={onVer} onEdit={onEdit} />
     </>
   );
 }
 
 // Clientes organizados como o banco de veículos: busca, ordenação e grupos que abrem e fecham
-export default function ClientesPanel({ hierarquia, resumoPorEmpresa, onNovo, onEditar }) {
+export default function ClientesPanel({ hierarquia, resumoPorEmpresa, onNovo, onEditar, onVer }) {
   const [busca, setBusca] = useState('');
   const [ordem, setOrdem] = useState('nome');
   const [collapsed, setCollapsed] = useState({});
 
   const blocos = useMemo(() => {
     const q = norm(busca.trim());
-    const bate = (e) => !q || norm(e.nome).includes(q);
+    const qDig = soDigitos(busca);
+    const bate = (e) => !q
+      || [e.nome, e.razao_social, e.cidade, e.responsavel_comercial, e.contato_financeiro_nome].some(t => norm(t).includes(q))
+      || (qDig.length >= 3 && soDigitos(e.cnpj).includes(qDig));
     const lista = [
       ...hierarquia.gruposComFilhos.map(({ grupo, resumo, filhos }) => {
         const filhosVisiveis = bate(grupo) ? filhos : filhos.filter(bate);
@@ -66,7 +86,7 @@ export default function ClientesPanel({ hierarquia, resumoPorEmpresa, onNovo, on
   return (
     <SectionCard title="Clientes" action={<PrimaryButton onClick={onNovo}>Novo cliente</PrimaryButton>}>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <SearchInput value={busca} onChange={setBusca} placeholder="Buscar cliente" />
+        <SearchInput value={busca} onChange={setBusca} placeholder="Buscar por nome, CNPJ ou cidade" />
         <SegmentedControl
           label="Ordenar por"
           value={ordem}
@@ -118,7 +138,10 @@ export default function ClientesPanel({ hierarquia, resumoPorEmpresa, onNovo, on
                     {temFilhos
                       ? <FaChevronDown size={10} className={`shrink-0 text-gray-500 transition-transform ${fechado ? '-rotate-90' : ''}`} />
                       : <span className="w-[10px] shrink-0" />}
-                    <span className="font-semibold text-white truncate">{empresa.nome}</span>
+                    <div className="min-w-0">
+                      <button type="button" onClick={(e) => { e.stopPropagation(); onVer(empresa); }} className="block max-w-full font-semibold text-white truncate text-left hover:text-blue-400">{empresa.nome}</button>
+                      <Sub e={empresa} />
+                    </div>
                     {temFilhos && <span className="text-xs bg-gray-800 text-gray-400 rounded-md px-1.5 py-0.5 tabular-nums shrink-0">{filhos.length} associados</span>}
                   </div>
                   {n(resumo.total, 'text-white font-medium')}
@@ -128,16 +151,14 @@ export default function ClientesPanel({ hierarquia, resumoPorEmpresa, onNovo, on
                   {money(resumo.faturamento, 'text-emerald-400')}
                   {money(resumo.custoTotal, 'text-gray-300')}
                   <div className="text-right tabular-nums whitespace-nowrap"><Deadline data={empresa.contrato_fim} /></div>
-                  <div className="flex justify-end">
-                    <ActionButton title="Editar cliente" hover="hover:text-blue-400" onClick={(e) => { e.stopPropagation(); onEditar(empresa); }}><FaPen size={11} /></ActionButton>
-                  </div>
+                  <Acoes onVer={() => onVer(empresa)} onEdit={() => onEditar(empresa)} />
                 </div>
 
                 {temFilhos && !fechado && (
                   <div className="divide-y divide-gray-800/70 border-t border-gray-800">
                     {filhos.map(f => (
                       <div key={f.id} className={`${COLS} px-4 py-2 text-sm hover:bg-gray-800/40 transition-colors`}>
-                        <Linha nome={f.nome} r={resumoPorEmpresa[f.id] || VAZIO} contratoFim={f.contrato_fim} onEdit={() => onEditar(f)} recuo />
+                        <Linha empresa={f} r={resumoPorEmpresa[f.id] || VAZIO} onVer={() => onVer(f)} onEdit={() => onEditar(f)} recuo />
                       </div>
                     ))}
                   </div>
