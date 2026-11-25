@@ -184,7 +184,7 @@ export function Select({
         onClick={() => setOpen(o => !o)}
         className={`${field} ${fieldBase} ${open ? 'border-blue-500' : ''}`}
       >
-        <span className={`truncate ${isPlaceholder ? 'text-gray-400' : ''}`}>{current ? current.label : placeholder}</span>
+        <span className={`truncate tabular-nums ${isPlaceholder ? 'text-gray-400' : ''}`}>{current ? current.label : placeholder}</span>
         <FaChevronDown size={10} className={`shrink-0 text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       <RequiredProxy value={value} required={required} name={name} />
@@ -210,9 +210,9 @@ export function Select({
                 onMouseEnter={() => setActive(i)}
                 onMouseDown={e => e.preventDefault()}
                 onClick={() => pick(o)}
-                className={`flex items-center justify-between gap-3 px-3 py-2 cursor-pointer ${o.disabled ? 'opacity-40 cursor-not-allowed' : ''} ${i === active ? 'bg-gray-800' : ''} ${sel ? 'text-white font-medium' : 'text-gray-300'} ${o.value === '' ? 'text-gray-400' : ''}`}
+                className={`flex items-center justify-between gap-3 px-3 py-2 cursor-pointer ${o.disabled ? 'opacity-40 cursor-not-allowed' : ''} ${i === active ? 'bg-gray-800' : ''} ${sel ? 'text-white' : 'text-gray-300'} ${o.value === '' ? 'text-gray-400' : ''}`}
               >
-                <span className="truncate">{o.label}</span>
+                <span className="truncate tabular-nums">{o.label}</span>
                 {sel && <FaCheck size={10} className="text-blue-400 shrink-0" />}
               </li>
             );
@@ -416,7 +416,7 @@ export function Combobox({
             <li
               key={`${o.value}-${i}`} role="option" aria-selected={o.value === value}
               onMouseEnter={() => setActive(i)} onMouseDown={e => e.preventDefault()} onClick={() => pick(o)}
-              className={`flex items-center justify-between gap-3 px-3 py-2 cursor-pointer ${i === active ? 'bg-gray-800' : ''} ${o.value === value ? 'text-white font-medium' : 'text-gray-300'}`}
+              className={`flex items-center justify-between gap-3 px-3 py-2 cursor-pointer ${i === active ? 'bg-gray-800' : ''} ${o.value === value ? 'text-white' : 'text-gray-300'} tabular-nums`}
             >
               <span className="truncate">{o.label}</span>
               {o.hint && <span className="text-xs text-gray-500 shrink-0">{o.hint}</span>}

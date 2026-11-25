@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FaSpinner, FaTimes, FaPlus } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
 import { carregarTabelas } from '../../lib/precos';
+import { SERVICOS_VEICULO } from '../../lib/veiculos';
 import {
   BRL, SectionCard, SegmentedControl, inputBase, tableWrap, theadClass, tbodyClass, rowClass, Th, Dash,
 } from './ui';
@@ -108,7 +109,7 @@ function PriceGrid({ servicos, valores, referencia, referenciaLabel, onCommit })
 
 const mapa = (rows, filtro, chave = 'servico_id') => new Map((rows || []).filter(filtro).map(r => [r[chave], Number(r.valor)]));
 
-export default function PrecosPanel({ empresas = [], showToast = () => {}, modo = 'tecnico' }) {
+export default function PrecosPanel({ empresas = [], showToast = () => {}, modo = 'tecnico', onMensalidadeChanged = () => {} }) {
   const titulo = modo === 'cliente' ? 'Tabela de preço cliente' : 'Tabela de preço técnico';
   const [tabelas, setTabelas] = useState(null);
   const [erro, setErro] = useState(null);
@@ -120,8 +121,12 @@ export default function PrecosPanel({ empresas = [], showToast = () => {}, modo 
   const [novoTecnico, setNovoTecnico] = useState({ nome: '', email: '' });
   const [novoServico, setNovoServico] = useState('');
 
+  // Mensalidade por serviço de cada cliente (tabela mensalidade_cliente; vazia até rodar a migração)
+  const [mensalidadeCliente, setMensalidadeCliente] = useState({});
   const reload = async () => {
     try { setTabelas(await carregarTabelas(supabase)); setErro(null); } catch (e) { setErro(e.message); }
+    const { data } = await supabase.from('mensalidade_cliente').select('*');
+    setMensalidadeCliente(Object.fromEntries((data || []).map(m => [m.empresa_id, m])));
   };
   useEffect(() => { reload(); }, []);
 
@@ -213,6 +218,13 @@ export default function PrecosPanel({ empresas = [], showToast = () => {}, modo 
   // ---- Regras e serviços ----
   const cfg = tabelas.config || { km_limite: 30, atendimentos_isencao: 3, km_cliente: 0 };
   const salvarConfig = (campos) => run(supabase.from('financeiro_config').update(campos).eq('id', 1));
+  // Depois de salvar uma mensalidade, o painel recarrega clientes e valores para o cadastro de veículos
+  const salvarMensalidade = async (promessa) => { if (await promessa) await onMensalidadeChanged(); };
+  const empresaEscopo = clienteEscopo === 'padrao' ? null : empresas.find(e => String(e.id) === String(clienteEscopo)) || null;
+  const mensalidadeEscopo = empresaEscopo ? mensalidadeCliente[empresaEscopo.id] || null : null;
+  const salvarMensalidadeCliente = (coluna, valor) => salvarMensalidade(run(
+    supabase.from('mensalidade_cliente').upsert([{ ...(mensalidadeEscopo || {}), empresa_id: empresaEscopo.id, [coluna]: valor }], { onConflict: 'empresa_id' }),
+  ));
 
   const adicionarServico = async (e) => {
     e.preventDefault();
@@ -373,6 +385,38 @@ export default function PrecosPanel({ empresas = [], showToast = () => {}, modo 
           {clienteEscopo === 'padrao' && precosPadrao.size === 0 && (
             <p className="text-sm text-amber-400">A tabela de preços do cliente ainda está vazia. Enquanto isso, o valor cobrado de cada OS fica R$ 0,00 e você pode digitá-lo na própria OS.</p>
           )}
+
+          {/* Mensalidade da placa: soma dos serviços ligados no veículo, com preço por cliente */}
+          <div className="rounded-xl border border-gray-800 bg-gray-950/40 p-4 space-y-3">
+            <h3 className="text-base font-semibold text-white">Mensalidade por serviço {clienteEscopo === 'padrao' ? '(padrão)' : `(${empresaEscopo?.nome || ''})`}</h3>
+            <p className="text-sm text-gray-400">
+              A mensalidade de cada placa é a soma dos serviços ligados nela. Vale o preço do cliente da placa; se ele não tiver, o do grupo dele; se não, o padrão.
+              {clienteEscopo !== 'padrao' && ' Deixe em branco para usar o padrão.'}
+            </p>
+            {!('mensalidade_rastreamento' in cfg) && (
+              <p className="text-sm text-amber-400">Rode o arquivo <span className="font-mono">20261125_veiculo_obs_mensalidade_codigo.sql</span> no SQL Editor do Supabase para liberar estes campos.</p>
+            )}
+            <div className="flex flex-wrap gap-5">
+              {SERVICOS_VEICULO.map(sv => (
+                <label key={sv.key} className="text-xs text-gray-400">{sv.label} (R$/mês)
+                  <div className="mt-1">
+                    {clienteEscopo === 'padrao' ? (
+                      <PriceInput value={cfg[sv.coluna]} placeholder="—" ariaLabel={`Mensalidade padrão de ${sv.label}`} onCommit={(v) => salvarMensalidade(salvarConfig({ [sv.coluna]: v }))} />
+                    ) : (
+                      <PriceInput
+                        key={`${clienteEscopo}-${sv.key}`}
+                        value={mensalidadeEscopo?.[sv.coluna]}
+                        placeholder={cfg[sv.coluna] != null ? fmt(cfg[sv.coluna]) : '—'}
+                        ariaLabel={`Mensalidade de ${sv.label} para ${empresaEscopo?.nome || 'o cliente'}`}
+                        onCommit={(v) => empresaEscopo && salvarMensalidadeCliente(sv.coluna, v)}
+                      />
+                    )}
+                  </div>
+                </label>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500">As placas já cadastradas passam a usar o novo valor quando forem salvas de novo.</p>
+          </div>
         </div>
       )}
 

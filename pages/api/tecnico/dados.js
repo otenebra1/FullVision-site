@@ -42,9 +42,9 @@ export default async function handler(req, res) {
     veiculos = v.data || [];
     const veiculoIds = veiculos.map(x => x.id);
     const [disp, inst] = await Promise.all([
-      supabaseAdmin.from('rastreadores').select('id, serial, modelo, status, veiculo_id').in('status', ['estoque_central', 'estoque_tecnico']).order('serial'),
+      supabaseAdmin.from('rastreadores').select('id, serial, modelo, categoria, status, veiculo_id').in('status', ['estoque_central', 'estoque_tecnico']).order('serial'),
       veiculoIds.length
-        ? supabaseAdmin.from('rastreadores').select('id, serial, modelo, status, veiculo_id').eq('status', 'instalado').in('veiculo_id', veiculoIds)
+        ? supabaseAdmin.from('rastreadores').select('id, serial, modelo, categoria, status, veiculo_id').eq('status', 'instalado').in('veiculo_id', veiculoIds)
         : Promise.resolve({ data: [] }),
     ]);
     rastreadores = [...(disp.data || []), ...(inst.data || [])];

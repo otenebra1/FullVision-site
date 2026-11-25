@@ -15,7 +15,8 @@ import EstoqueCatalogo from '../components/admin/EstoqueCatalogo';
 import VeiculoDetalhe from '../components/admin/VeiculoDetalhe';
 import { reduzirImagem } from '../lib/osSalvar';
 import { ehAdmin, ehEquipe } from '../lib/perfis';
-import { SERVICOS_VEICULO, calcularDrePlaca, ordensPorVeiculo, rastreadorPorVeiculo } from '../lib/veiculos';
+import { ehDaCategoria, itemInstaladoNaPlaca, categoriaDoItem, CAT_LOCALIZADOR, CAT_ATUADOR } from '../lib/osConstants';
+import { SERVICOS_VEICULO, calcularDrePlaca, calcularMensalidade, ordensPorVeiculo, rastreadorPorVeiculo } from '../lib/veiculos';
 import {
   BRL, setOcultarValores,
   norm,
@@ -83,7 +84,7 @@ export default function PainelAdmin() {
   const [filterSemEquip, setFilterSemEquip] = useState(false);
   const [vSort, setVSort] = useState({ key: 'placa', dir: 'asc' });
   const [vGroupBy, setVGroupBy] = useState('cliente'); // 'cliente' | 'lista'
-  const [vSubGroupBy, setVSubGroupBy] = useState('operacao'); // dentro do cliente: 'operacao' | 'associado'
+  const [vSubGroupBy, setVSubGroupBy] = useState(['operacao']); // dentro do cliente: 'associado' e/ou 'operacao' (dá para ligar os dois)
   const [viewingVehicle, setViewingVehicle] = useState(null);
   const [clienteModal, setClienteModal] = useState(null); // { empresa | null } aberto para criar/editar cliente
   const [cFormNome, setCFormNome] = useState('');
@@ -108,6 +109,10 @@ export default function PainelAdmin() {
   const [vFormCustoTotal, setVFormCustoTotal] = useState('');
   const [vFormCustoAcessorios, setVFormCustoAcessorios] = useState('');
   const [vFormServicos, setVFormServicos] = useState([]);
+  const [vFormObservacao, setVFormObservacao] = useState('');
+  // Valores mensais por serviço: padrão (financeiro_config) e por cliente (mensalidade_cliente)
+  const [configFinanceiro, setConfigFinanceiro] = useState(null);
+  const [mensalidadePorCliente, setMensalidadePorCliente] = useState({});
   const [vFormFotoFile, setVFormFotoFile] = useState(null);
   const [vFormFotoUrl, setVFormFotoUrl] = useState('');
   const [isSavingVehicle, setIsSavingVehicle] = useState(false);
@@ -221,6 +226,9 @@ export default function PainelAdmin() {
       if (rastreadoresData) setRastreadores(rastreadoresData);
 
       await carregarCatalogo();
+
+      // Só o ADM lê os valores; para os outros perfis a conta fica a cargo do banco
+      await recarregarMensalidades();
 
       const { data: ordensData } = await supabase
         .from('ordens_servico')
@@ -411,7 +419,7 @@ export default function PainelAdmin() {
     setVFormOperacao(''); setVFormModelo(''); setVFormIdInstalado('');
     setVFormDataInst(''); setVFormDataDesinst('');
     setVFormMensalidade(''); setVFormCustoTotal('');
-    setVFormCustoAcessorios(''); setVFormServicos([]); setVFormFotoFile(null); setVFormFotoUrl('');
+    setVFormCustoAcessorios(''); setVFormServicos([]); setVFormObservacao(''); setVFormFotoFile(null); setVFormFotoUrl('');
   };
 
   const openVehicleForm = (v) => {
@@ -429,6 +437,7 @@ export default function PainelAdmin() {
       setVFormCustoTotal(v.custo_total ?? '');
       setVFormCustoAcessorios(v.custo_acessorios ?? '');
       setVFormServicos(v.servicos || []);
+      setVFormObservacao(v.observacao || '');
       setVFormFotoFile(null);
       setVFormFotoUrl(v.foto_placa_url || '');
     } else {
@@ -439,15 +448,24 @@ export default function PainelAdmin() {
     setIsVehicleModalOpen(true);
   };
 
+  // Mensalidade automática: soma dos serviços ligados (null = regra ainda não configurada em Preços)
+  const vFormMensalidadeAuto = useMemo(() => {
+    const empresa = empresas.find(e => String(e.id) === String(vFormEmpresaId)) || null;
+    const doCliente = empresa ? mensalidadePorCliente[empresa.id] || null : null;
+    const doGrupo = empresa?.grupo_id ? mensalidadePorCliente[empresa.grupo_id] || null : null;
+    return calcularMensalidade(vFormServicos, configFinanceiro, doCliente, doGrupo);
+  }, [vFormServicos, vFormEmpresaId, empresas, configFinanceiro, mensalidadePorCliente]);
+  const vFormMensalidadeFinal = vFormMensalidadeAuto != null ? vFormMensalidadeAuto : vFormMensalidade;
+
   // Prévia do DRE no formulário, com os valores que estão sendo digitados
   const vFormDre = useMemo(() => {
     const base = editingVehicle || {};
     const rastreador = rastreadorPorVeiculo([{ id: base.id, id_instalado: vFormIdInstalado }], rastreadores)[base.id] || null;
     const ordens = base.id ? ordensServico.filter(o => o.veiculo_id === base.id) : [];
     return calcularDrePlaca({
-      mensalidade: vFormMensalidade, data_inst: vFormDataInst, data_desinst: vFormDataDesinst, custo_acessorios: vFormCustoAcessorios,
+      mensalidade: vFormMensalidadeFinal, data_inst: vFormDataInst, data_desinst: vFormDataDesinst, custo_acessorios: vFormCustoAcessorios,
     }, ordens, rastreador);
-  }, [editingVehicle, vFormIdInstalado, vFormMensalidade, vFormDataInst, vFormDataDesinst, vFormCustoAcessorios, rastreadores, ordensServico]);
+  }, [editingVehicle, vFormIdInstalado, vFormMensalidadeFinal, vFormDataInst, vFormDataDesinst, vFormCustoAcessorios, rastreadores, ordensServico]);
 
   // Prévia da foto: arquivo recém-escolhido ou a URL já salva
   const [vFormFotoPreview, setVFormFotoPreview] = useState('');
@@ -495,10 +513,11 @@ export default function PainelAdmin() {
       id_instalado: vFormIdInstalado || null,
       data_inst: vFormDataInst || null,
       data_desinst: vFormDataDesinst || null,
-      mensalidade: vFormMensalidade === '' ? null : Number(vFormMensalidade),
+      mensalidade: vFormMensalidadeFinal === '' || vFormMensalidadeFinal == null ? null : Number(vFormMensalidadeFinal),
       custo_total: vFormCustoTotal === '' ? null : Number(vFormCustoTotal),
       custo_acessorios: vFormCustoAcessorios === '' ? null : Number(vFormCustoAcessorios),
       servicos: vFormServicos,
+      observacao: vFormObservacao.trim() || null,
       foto_placa_url: fotoUrl,
     };
     payload.dre_placa = vFormDre.dre; // guarda a última foto do DRE calculado
@@ -646,6 +665,16 @@ export default function PainelAdmin() {
 
   useEffect(() => { setRastreadorPage(1); }, [searchRastreador, filterRastreadorStatuses, filterRastreadorOperadoras, filterRastreadorCategorias, rSort]);
 
+  // Valores de mensalidade por serviço (padrão e de cada cliente); recarrega depois de mudar em Preços
+  async function recarregarMensalidades() {
+    const [{ data: cfgData }, { data: porCliente }] = await Promise.all([
+      supabase.from('financeiro_config').select('*').eq('id', 1).maybeSingle(),
+      supabase.from('mensalidade_cliente').select('*'),
+    ]);
+    setConfigFinanceiro(cfgData || null);
+    setMensalidadePorCliente(Object.fromEntries((porCliente || []).map(m => [m.empresa_id, m])));
+  }
+
   async function carregarCatalogo() {
     const [cats, prods] = await Promise.all([
       supabase.from('estoque_categorias').select('*').order('ordem').order('nome'),
@@ -754,6 +783,16 @@ export default function PainelAdmin() {
   // Instalar rastreador num veículo: atualiza os dois lados (rastreador + veiculo.id_instalado)
   const handleInstallRastreador = async () => {
     if (!installTargetRastreador || !installVeiculoId) { showToast('Selecione um veículo.', 'error'); return; }
+    // Regra: no máximo 1 rastreador e 1 atuador por veículo
+    const cat = categoriaDoItem(installTargetRastreador);
+    const ehLocalizador = cat === CAT_LOCALIZADOR;
+    if (ehLocalizador || cat === CAT_ATUADOR) {
+      const jaTem = itemInstaladoNaPlaca(rastreadores, installVeiculoId, cat);
+      if (jaTem && jaTem.id !== installTargetRastreador.id) {
+        showToast(`Esta placa já tem ${ehLocalizador ? 'o rastreador' : 'o atuador'} ${jaTem.serial}. Retire antes de instalar outro.`, 'error');
+        return;
+      }
+    }
 
     const { data: updatedRastreador, error: errR } = await supabase
       .from('rastreadores')
@@ -763,14 +802,17 @@ export default function PainelAdmin() {
       .single();
     if (errR) { showToast('Erro ao instalar rastreador: ' + errR.message, 'error'); return; }
 
-    const { error: errV } = await supabase
-      .from('veiculos')
-      .update({ id_instalado: installTargetRastreador.serial })
-      .eq('id', installVeiculoId);
-    if (errV) { showToast('Rastreador vinculado, mas houve erro ao atualizar o veículo: ' + errV.message, 'error'); }
+    // O "ID instalado" da placa é só do rastreador; atuador e sensor ficam ligados pelo estoque
+    if (ehLocalizador) {
+      const { error: errV } = await supabase
+        .from('veiculos')
+        .update({ id_instalado: installTargetRastreador.serial })
+        .eq('id', installVeiculoId);
+      if (errV) { showToast('Rastreador vinculado, mas houve erro ao atualizar o veículo: ' + errV.message, 'error'); }
+      setVeiculos(veiculos.map(v => v.id === installVeiculoId ? { ...v, id_instalado: installTargetRastreador.serial } : v));
+    }
 
     setRastreadores(rastreadores.map(r => r.id === updatedRastreador.id ? updatedRastreador : r));
-    setVeiculos(veiculos.map(v => v.id === installVeiculoId ? { ...v, id_instalado: installTargetRastreador.serial } : v));
     setInstallTargetRastreador(null);
     setInstallVeiculoId('');
   };
@@ -788,7 +830,7 @@ export default function PainelAdmin() {
         .single();
       if (errR) { showToast('Erro ao retirar rastreador: ' + errR.message, 'error'); return; }
 
-      if (veiculoAnteriorId) {
+      if (veiculoAnteriorId && ehDaCategoria(r, CAT_LOCALIZADOR)) {
         const { error: errV } = await supabase
           .from('veiculos')
           .update({ id_instalado: null })
@@ -958,9 +1000,10 @@ export default function PainelAdmin() {
                     {vGroupBy === 'cliente' && (
                       <SegmentedControl
                         label="Agrupar dentro do cliente por"
+                        multiple
                         value={vSubGroupBy}
                         onChange={setVSubGroupBy}
-                        options={[{ key: 'operacao', label: 'Operação' }, { key: 'associado', label: 'Cliente associado' }]}
+                        options={[{ key: 'associado', label: 'Cliente associado' }, { key: 'operacao', label: 'Operação' }]}
                       />
                     )}
                   </div>
@@ -1125,7 +1168,7 @@ export default function PainelAdmin() {
               )}
 
               {/* Preços (técnicos, clientes e regras do financeiro automático) */}
-              {isSuperAdmin && activeSection === 'precos-cliente' && <PrecosPanel modo="cliente" empresas={empresas} showToast={showToast} />}
+              {isSuperAdmin && activeSection === 'precos-cliente' && <PrecosPanel modo="cliente" empresas={empresas} showToast={showToast} onMensalidadeChanged={recarregarMensalidades} />}
               {isSuperAdmin && activeSection === 'precos-tecnico' && <PrecosPanel modo="tecnico" empresas={empresas} showToast={showToast} />}
 
               {/* Ordens de serviço */}
@@ -1152,6 +1195,7 @@ export default function PainelAdmin() {
           empresaNome={empresaNomeById[viewingVehicle.empresa_id]}
           clienteNome={clienteNomeById[viewingVehicle.empresa_id]}
           dre={drePorVeiculo[viewingVehicle.id]}
+          ordens={ordensServico.filter(o => o.veiculo_id === viewingVehicle.id)}
           onClose={() => setViewingVehicle(null)}
           onEdit={openVehicleForm}
           onDelete={isSuperAdmin ? handleDeleteVehicle : undefined}
@@ -1278,7 +1322,13 @@ export default function PainelAdmin() {
               <div className="flex gap-4">
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Mensalidade (R$)</label>
-                  <input type="number" step="0.01" value={vFormMensalidade} onChange={e => setVFormMensalidade(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
+                  {vFormMensalidadeAuto != null ? (
+                    <div className="w-full bg-gray-950/50 border border-gray-800 rounded-lg px-3 py-2 text-sm text-gray-200 tabular-nums" title="Calculada pelos serviços ligados abaixo (valores em Preços do cliente)">
+                      {BRL(vFormMensalidadeAuto)}
+                    </div>
+                  ) : (
+                    <input type="number" step="0.01" value={vFormMensalidade} onChange={e => setVFormMensalidade(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500" />
+                  )}
                 </div>
                 <div className="flex-1">
                   <label className="block text-xs text-gray-400 mb-1">Custo Total (R$)</label>
@@ -1304,6 +1354,9 @@ export default function PainelAdmin() {
                 </div>
               </div>
               <p className="text-xs text-gray-500 -mt-2">
+                {vFormMensalidadeAuto != null
+                  ? 'Mensalidade automática: soma dos serviços ligados abaixo, com o preço deste cliente (Preços do cliente). '
+                  : 'Mensalidade manual: preencha os valores por serviço em Preços do cliente para ela ser calculada sozinha. '}
                 DRE = faturado {BRL(vFormDre.faturado)} ({vFormDre.meses} {vFormDre.meses === 1 ? 'mês' : 'meses'}{vFormDre.faturadoOs ? ' + OS' : ''}) − serviços {BRL(vFormDre.servicos)} − equipamento e acessórios {BRL(vFormDre.equipamento)}
               </p>
               </>)}
@@ -1330,6 +1383,11 @@ export default function PainelAdmin() {
                     );
                   })}
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-1">Observação</label>
+                <textarea rows={3} value={vFormObservacao} onChange={e => setVFormObservacao(e.target.value)} placeholder="Anotações sobre este veículo" className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500 resize-y" />
               </div>
 
               <div>
@@ -1535,4 +1593,4 @@ export default function PainelAdmin() {
 
     </>
   );
-}
+}

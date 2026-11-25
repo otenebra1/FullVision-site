@@ -7,7 +7,9 @@ import { BRL, inputBase } from '../admin/ui';
 import SignaturePad from './SignaturePad';
 import {
   SERVICO_TAGS, FOTO_TIPOS, CHECKLIST_ITENS, CHECKLIST_RESPOSTAS, REGIOES,
-  TAGS_QUE_RETIRAM, TAGS_QUE_INSTALAM, normalizaPlaca, SERVICOS_PRIMARIOS, rotuloOpcao,
+  TAGS_QUE_RETIRAM, normalizaPlaca, SERVICOS_PRIMARIOS, rotuloOpcao,
+  categoriaInstalada, ehDaCategoria, itemInstaladoNaPlaca, SERVICOS_INSTALACAO_UNICA,
+  CAT_LOCALIZADOR, CAT_ATUADOR, CAT_SENSOR,
 } from '../../lib/osConstants';
 import { Select, DateInput, Combobox } from '../ui/FormControls';
 
@@ -27,6 +29,8 @@ const numOuNull = (t) => {
   const n = parseFloat(s.replace(/\./g, '').replace(',', '.'));
   return Number.isFinite(n) && n >= 0 ? n : null;
 };
+const SERVICOS_RETIRAM_ATUADOR = ['RETIRADA BLOQUEIO', 'RETIRADA IMOBILIZADOR SEM FIO'];
+const rotuloItem = (r) => `${r.serial}${r.modelo ? ` · ${r.modelo}` : ''}`;
 const SEM_BARRA = '[scrollbar-width:none] [&::-webkit-scrollbar]:hidden';
 
 function Rotulo({ children, className = '' }) {
@@ -89,7 +93,7 @@ export default function OsWizard({
   const [step, setStep] = useState(0);
   const [f, setF] = useState(() => ({
     data: hoje(), tecnicoId: '', tecnicoNome: '', tecnicoEmail: '', empresaId: '', servicos: {}, placaTexto: '',
-    rastreadorInstaladoId: '', rastreadorRetiradoDestino: 'estoque_tecnico', local: '', km: '', atendimentos: 1,
+    rastreadorInstaladoId: '', atuadorInstaladoId: '', sensoresInstaladosIds: [], rastreadorRetiradoDestino: 'estoque_tecnico', local: '', km: '', atendimentos: 1,
     checklist: {}, regioes: [], problemas: '', observacoes: '', assinanteNome: '',
     manuais: {}, deslocT: '', deslocC: '', totalTecnicoManual: '', totalClienteManual: '',
     // OS aberta (criada a partir de uma solicitação): já vem com os dados que o cliente informou
@@ -172,13 +176,27 @@ export default function OsWizard({
   const placaNova = !veiculoMatch && normalizaPlaca(f.placaTexto).length >= 5;
   const placaDeOutroCliente = veiculoMatch && f.empresaId && String(veiculoMatch.empresa_id) !== String(f.empresaId);
 
-  const rastreadorNaPlaca = veiculoId ? rastreadores.find(r => r.status === 'instalado' && r.veiculo_id === veiculoId) || null : null;
+  // Equipamentos da placa: no máximo 1 rastreador (localizador) e 1 atuador por veículo
+  const rastreadorNaPlaca = itemInstaladoNaPlaca(rastreadores, veiculoId, CAT_LOCALIZADOR);
+  const atuadorNaPlaca = itemInstaladoNaPlaca(rastreadores, veiculoId, CAT_ATUADOR);
   const precisaRetirada = nomesSel.some(n => TAGS_QUE_RETIRAM.includes(n));
+  const retiraAtuador = nomesSel.some(n => SERVICOS_RETIRAM_ATUADOR.includes(n));
   const ehExtravio = nomesSel.includes('EXTRAVIO LOCALIZADOR');
-  const mostraInstalado = nomesSel.some(n => TAGS_QUE_INSTALAM.includes(n) || n.startsWith('INSTALAÇÃO'));
+  // O que os serviços marcados instalam: o dropdown de serial só mostra itens dessa categoria
+  const instalaLocalizador = nomesSel.some(n => categoriaInstalada(n) === CAT_LOCALIZADOR);
+  const instalaAtuador = nomesSel.some(n => categoriaInstalada(n) === CAT_ATUADOR);
+  const qtdSensores = nomesSel.filter(n => categoriaInstalada(n) === CAT_SENSOR).reduce((t, n) => t + (f.servicos[n]?.quantidade || 1), 0);
   const retiradoId = precisaRetirada && rastreadorNaPlaca ? rastreadorNaPlaca.id : '';
+  const atuadorRetiradoId = retiraAtuador && atuadorNaPlaca ? atuadorNaPlaca.id : '';
   const destinoRetirado = ehExtravio ? 'baixado' : f.rastreadorRetiradoDestino;
-  const disponiveis = rastreadores.filter(r => r.status === 'estoque_central' || r.status === 'estoque_tecnico');
+  const emEstoque = useMemo(
+    () => rastreadores
+      .filter(r => r.status === 'estoque_central' || r.status === 'estoque_tecnico')
+      .sort((a, b) => String(a.serial || '').localeCompare(String(b.serial || ''), 'pt-BR', { numeric: true })),
+    [rastreadores],
+  );
+  const disponiveisDa = (cat) => emEstoque.filter(r => ehDaCategoria(r, cat));
+  const sensoresEscolhidos = f.sensoresInstaladosIds.slice(0, qtdSensores);
 
   const ctx = useMemo(
     () => (tabelas ? montarContexto(tabelas, { tecnicoId: f.tecnicoId, empresaId: f.empresaId }) : null),
@@ -226,13 +244,30 @@ export default function OsWizard({
   const toggleServico = (s) => {
     setF(prev => {
       const novo = { ...prev.servicos };
-      if (novo[s.nome]) delete novo[s.nome]; else novo[s.nome] = { servicoId: s.id, quantidade: 1 };
+      if (novo[s.nome]) delete novo[s.nome];
+      else {
+        // 1 atuador por veículo: marcar um tira o outro da mesma categoria (ex.: bloqueio x imobilizador)
+        const cat = categoriaInstalada(s.nome);
+        if (SERVICOS_INSTALACAO_UNICA.includes(s.nome)) {
+          Object.keys(novo).forEach(n => { if (n !== s.nome && SERVICOS_INSTALACAO_UNICA.includes(n) && categoriaInstalada(n) === cat) delete novo[n]; });
+        }
+        novo[s.nome] = { servicoId: s.id, quantidade: 1 };
+      }
       return { ...prev, servicos: novo };
     });
     setDirty(true);
   };
+  const maxQtd = (nome) => (SERVICOS_INSTALACAO_UNICA.includes(nome) ? 1 : 9);
   const mudaQtd = (nome, delta) => {
-    setF(prev => ({ ...prev, servicos: { ...prev.servicos, [nome]: { ...prev.servicos[nome], quantidade: Math.min(9, Math.max(1, prev.servicos[nome].quantidade + delta)) } } }));
+    setF(prev => ({ ...prev, servicos: { ...prev.servicos, [nome]: { ...prev.servicos[nome], quantidade: Math.min(maxQtd(nome), Math.max(1, prev.servicos[nome].quantidade + delta)) } } }));
+  };
+  const setSensor = (i, id) => {
+    setF(prev => {
+      const lista = [...prev.sensoresInstaladosIds];
+      lista[i] = id;
+      return { ...prev, sensoresInstaladosIds: lista };
+    });
+    setDirty(true);
   };
   const escolheFoto = (tipo, file) => {
     if (!file) return;
@@ -258,6 +293,12 @@ export default function OsWizard({
       if (nomesSel.length === 0 && !f.cobraKm) return 'Marque ao menos um serviço';
     }
     if (i === 1 && normalizaPlaca(f.placaTexto).length < 5) return 'Informe a placa';
+    if (i === 1 && nomesSel.includes('INSTALAÇÃO LOCALIZADOR') && rastreadorNaPlaca && !precisaRetirada) {
+      return `Esta placa já tem o rastreador ${rastreadorNaPlaca.serial}. Só cabe 1 por veículo: use Troca de equipamento ou Upgrade`;
+    }
+    if (i === 1 && instalaAtuador && atuadorNaPlaca && !retiraAtuador) {
+      return `Esta placa já tem o atuador ${atuadorNaPlaca.serial}. Só cabe 1 por veículo: marque a retirada dele antes`;
+    }
     if (i === 1 && f.cobraKm && !(Number(String(f.km).replace(',', '.')) > 0)) return 'Informe os KM percorridos';
     if (i === 2) {
       const falta = FOTO_TIPOS.filter(ft => !fotos[ft.key]).length;
@@ -277,6 +318,9 @@ export default function OsWizard({
 
   const finalizar = async () => {
     if (erroAtual) return;
+    // A regra de 1 rastreador / 1 atuador por placa vale mesmo pulando etapas
+    const erroVeiculo = erroDaEtapa(1);
+    if (erroVeiculo) { showToast(erroVeiculo, 'error'); setStep(1); return; }
     setSalvando(true);
     try {
       const dados = {
@@ -287,8 +331,14 @@ export default function OsWizard({
         veiculoId,
         placaTexto: f.placaTexto,
         placaDoVeiculo: veiculoMatch?.placa || null,
-        rastreadorInstaladoId: f.rastreadorInstaladoId,
-        rastreadorInstaladoSerial: rastreadores.find(r => r.id === f.rastreadorInstaladoId)?.serial || null,
+        rastreadorInstaladoId: instalaLocalizador ? f.rastreadorInstaladoId : '',
+        rastreadorInstaladoSerial: instalaLocalizador ? (rastreadores.find(r => r.id === f.rastreadorInstaladoId)?.serial || null) : null,
+        // Atuador e sensores: só vinculam o item à placa no estoque
+        equipamentosInstaladosIds: [
+          ...(instalaAtuador && f.atuadorInstaladoId ? [f.atuadorInstaladoId] : []),
+          ...sensoresEscolhidos.filter(Boolean),
+        ],
+        atuadorRetiradoId,
         rastreadorRetiradoId: retiradoId,
         rastreadorRetiradoDestino: destinoRetirado,
         local: f.local,
@@ -397,8 +447,8 @@ export default function OsWizard({
                         const sel = f.servicos[s.nome];
                         return (
                           <div key={s.nome} className={`inline-flex items-center rounded-full border text-sm transition-colors ${sel ? 'bg-blue-600/15 border-blue-500 text-white' : 'border-gray-700 text-gray-300 hover:border-gray-500'}`}>
-                            <button type="button" aria-pressed={Boolean(sel)} onClick={() => toggleServico(s)} className={`py-1.5 ${sel ? 'pl-3 pr-2' : 'px-3'}`}>{rotuloOpcao(s.nome, p.prefixo)}</button>
-                            {sel && (
+                            <button type="button" aria-pressed={Boolean(sel)} onClick={() => toggleServico(s)} className={`py-1.5 ${sel && maxQtd(s.nome) > 1 ? 'pl-3 pr-2' : 'px-3'}`}>{rotuloOpcao(s.nome, p.prefixo)}</button>
+                            {sel && maxQtd(s.nome) > 1 && (
                               <span className="flex items-center gap-1 pr-2">
                                 <button type="button" aria-label={`Diminuir ${s.nome}`} onClick={() => mudaQtd(s.nome, -1)} className="p-1 text-gray-400 hover:text-white"><FaMinus size={9} /></button>
                                 <span className="tabular-nums w-3 text-center">{sel.quantidade}</span>
@@ -452,14 +502,44 @@ export default function OsWizard({
                 </div>
               </div>
 
-              {mostraInstalado && (
+              {instalaLocalizador && (
                 <div>
                   <Rotulo>Rastreador instalado <span className="text-gray-600">(se houver)</span></Rotulo>
                   <Select value={f.rastreadorInstaladoId} onChange={e => set('rastreadorInstaladoId', e.target.value)} aria-label="Rastreador instalado" className={campo}>
                     <option value="">Nenhum</option>
-                    {disponiveis.map(r => <option key={r.id} value={r.id}>{r.serial}{r.modelo ? `, ${r.modelo}` : ''}</option>)}
+                    {disponiveisDa(CAT_LOCALIZADOR).map(r => <option key={r.id} value={r.id}>{rotuloItem(r)}</option>)}
                   </Select>
                 </div>
+              )}
+
+              {instalaAtuador && (
+                <div>
+                  <Rotulo>Atuador instalado <span className="text-gray-600">(se houver)</span></Rotulo>
+                  <Select value={f.atuadorInstaladoId} onChange={e => set('atuadorInstaladoId', e.target.value)} aria-label="Atuador instalado" className={campo}>
+                    <option value="">Nenhum</option>
+                    {disponiveisDa(CAT_ATUADOR).map(r => <option key={r.id} value={r.id}>{rotuloItem(r)}</option>)}
+                  </Select>
+                </div>
+              )}
+
+              {Array.from({ length: qtdSensores }).map((_, i) => (
+                <div key={`sensor-${i}`}>
+                  <Rotulo>{qtdSensores > 1 ? `Sensor instalado ${i + 1}` : 'Sensor instalado'} <span className="text-gray-600">(se houver)</span></Rotulo>
+                  <Select value={sensoresEscolhidos[i] || ''} onChange={e => setSensor(i, e.target.value)} aria-label={`Sensor instalado ${i + 1}`} className={campo}>
+                    <option value="">Nenhum</option>
+                    {disponiveisDa(CAT_SENSOR)
+                      .filter(r => r.id === sensoresEscolhidos[i] || !sensoresEscolhidos.includes(r.id))
+                      .map(r => <option key={r.id} value={r.id}>{rotuloItem(r)}</option>)}
+                  </Select>
+                </div>
+              ))}
+
+              {retiraAtuador && veiculoId && (
+                <p className="text-xs text-gray-400">
+                  {atuadorNaPlaca
+                    ? `Atuador retirado: ${rotuloItem(atuadorNaPlaca)} (vai para o mesmo destino do rastreador retirado, ou estoque com o técnico).`
+                    : 'Não há atuador instalado nesta placa no sistema.'}
+                </p>
               )}
 
               {precisaRetirada && (

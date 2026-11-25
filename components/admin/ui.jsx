@@ -411,7 +411,14 @@ export function ResumoRow({ nome, isGrupo, total, ativos, inativos, mensalidade,
 
 
 // Seletor de opções lado a lado (ex.: "Agrupar por: Cliente | Operação | Lista")
-export function SegmentedControl({ label, options, value, onChange }) {
+// multiple: value é uma lista e cada botão liga/desliga sozinho (dá para combinar opções)
+export function SegmentedControl({ label, options, value, onChange, multiple = false }) {
+  const ativo = (key) => (multiple ? (value || []).includes(key) : value === key);
+  const clicar = (key) => {
+    if (!multiple) { onChange(key); return; }
+    const atual = value || [];
+    onChange(atual.includes(key) ? atual.filter(k => k !== key) : options.map(o => o.key).filter(k => k === key || atual.includes(k)));
+  };
   return (
     <div className="flex items-center gap-2 text-sm">
       {label && <span className="text-gray-500">{label}</span>}
@@ -420,9 +427,9 @@ export function SegmentedControl({ label, options, value, onChange }) {
           <button
             key={o.key}
             type="button"
-            onClick={() => onChange(o.key)}
-            aria-pressed={value === o.key}
-            className={`px-3 py-1.5 transition-colors ${value === o.key ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}
+            onClick={() => clicar(o.key)}
+            aria-pressed={ativo(o.key)}
+            className={`px-3 py-1.5 transition-colors ${ativo(o.key) ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-white'}`}
           >
             {o.label}
           </button>

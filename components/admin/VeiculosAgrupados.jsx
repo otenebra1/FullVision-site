@@ -17,13 +17,21 @@ const SORTABLE = [
 const somaAtiva = (items) => items.reduce((s, v) => s + (v.status === 'Ativo' ? Number(v.mensalidade) || 0 : 0), 0);
 const contaInativos = (items) => items.filter(v => v.status !== 'Ativo').length;
 
-// Banco de veículos sempre agrupado por cliente; dentro dele, por operação ou por cliente associado
-export default function VeiculosAgrupados({ veiculos, empresaNomeById, clienteNomeById, subGroupBy, sort, onSort, onOpen }) {
+// Banco de veículos sempre agrupado por cliente; dentro dele, por cliente associado, por operação
+// ou pelos dois juntos (subGroupBy é a lista dos agrupadores ligados, ex.: ['associado', 'operacao'])
+export default function VeiculosAgrupados({ veiculos, empresaNomeById, clienteNomeById, subGroupBy = [], sort, onSort, onOpen }) {
   const [collapsed, setCollapsed] = useState({});
   const [shown, setShown] = useState({});
 
   const primaryOf = (v) => clienteNomeById[v.empresa_id] || 'Sem cliente';
-  const secondaryOf = (v) => (subGroupBy === 'associado' ? (empresaNomeById[v.empresa_id] || 'Sem cliente associado') : (v.operacao || 'Sem operação'));
+  const porAssociado = subGroupBy.includes('associado');
+  const porOperacao = subGroupBy.includes('operacao');
+  const secondaryOf = (v) => {
+    const partes = [];
+    if (porAssociado) partes.push(empresaNomeById[v.empresa_id] || 'Sem cliente associado');
+    if (porOperacao) partes.push(v.operacao || 'Sem operação');
+    return partes.length ? partes.join(' › ') : 'Todos os veículos';
+  };
 
   const groups = useMemo(() => {
     const map = new Map();
@@ -42,7 +50,7 @@ export default function VeiculosAgrupados({ veiculos, empresaNomeById, clienteNo
       return { name, subs, total: all.length, inativos: contaInativos(all), mensalidade: somaAtiva(all) };
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [veiculos, subGroupBy, empresaNomeById, clienteNomeById]);
+  }, [veiculos, porAssociado, porOperacao, empresaNomeById, clienteNomeById]);
 
   const todosRecolhidos = groups.length > 0 && groups.every(g => collapsed[g.name]);
   const setAll = (value) => setCollapsed(Object.fromEntries(groups.map(g => [g.name, value])));

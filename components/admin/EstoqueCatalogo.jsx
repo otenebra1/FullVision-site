@@ -25,7 +25,7 @@ function Toggle({ on, onClick, label }) {
 export default function EstoqueCatalogo({ categorias, produtos, onClose, onChanged, showToast }) {
   const [catId, setCatId] = useState(categorias[0]?.id || null);
   const [novaCat, setNovaCat] = useState({ codigo: '', nome: '' });
-  const [novoProd, setNovoProd] = useState({ codigo: '', nome: '' });
+  const [novoProd, setNovoProd] = useState({ nome: '' });
   const [salvando, setSalvando] = useState(false);
 
   const cat = categorias.find(c => c.id === catId) || null;
@@ -54,11 +54,12 @@ export default function EstoqueCatalogo({ categorias, produtos, onClose, onChang
   const criarProduto = async (e) => {
     e.preventDefault();
     if (!cat) return;
-    const codigo = (novoProd.codigo.trim() || codigoSugerido).toUpperCase();
+    // Código sempre automático (o banco também gera, para não repetir nem pular número)
+    const codigo = codigoSugerido;
     const nome = novoProd.nome.trim().toUpperCase();
     if (!nome) { showToast('Informe o nome do produto.', 'error'); return; }
     const ok = await run(supabase.from('estoque_produtos').insert([{ categoria_id: cat.id, codigo, nome, ordem: (produtosDaCat.length + 1) * 10 }]), 'Produto criado');
-    if (ok) setNovoProd({ codigo: '', nome: '' });
+    if (ok) setNovoProd({ nome: '' });
   };
 
   const renomear = (tabela, id, campo, atual) => async (e) => {
@@ -110,9 +111,9 @@ export default function EstoqueCatalogo({ categorias, produtos, onClose, onChang
             ) : (
               <>
                 <div className="flex flex-wrap items-end gap-3">
-                  <label className="text-xs text-gray-400">Código
-                    <input key={`c-${cat.id}-${cat.codigo}`} defaultValue={cat.codigo} onBlur={renomear('estoque_categorias', cat.id, 'codigo', cat.codigo)} className={`mt-1 block w-24 font-mono ${campo}`} />
-                  </label>
+                  <div className="text-xs text-gray-400">Código
+                    <div title="O código da categoria não muda depois de criado" className="mt-1 w-24 px-3 py-2 rounded-lg border border-gray-800 bg-gray-950/50 text-sm font-mono text-gray-400 select-all">{cat.codigo}</div>
+                  </div>
                   <label className="text-xs text-gray-400 flex-1 min-w-[160px]">Nome da categoria
                     <input key={`n-${cat.id}-${cat.nome}`} defaultValue={cat.nome} onBlur={renomear('estoque_categorias', cat.id, 'nome', cat.nome)} className={`mt-1 block w-full ${campo}`} />
                   </label>
@@ -128,7 +129,7 @@ export default function EstoqueCatalogo({ categorias, produtos, onClose, onChang
                   <div className="divide-y divide-gray-800/70">
                     {produtosDaCat.map(p => (
                       <div key={p.id} className={`grid grid-cols-[110px_1fr_60px] gap-3 items-center px-4 py-1.5 ${p.ativo ? '' : 'opacity-50'}`}>
-                        <input key={`pc-${p.id}-${p.codigo}`} defaultValue={p.codigo} aria-label="Código do produto" onBlur={renomear('estoque_produtos', p.id, 'codigo', p.codigo)} className="bg-transparent border border-transparent hover:border-gray-800 focus:border-blue-500 rounded-md px-2 py-1 text-sm font-mono text-gray-300 outline-none" />
+                        <div title="Código automático, não pode ser editado" className="px-2 py-1 text-sm font-mono text-gray-400 select-all">{p.codigo}</div>
                         <input key={`pn-${p.id}-${p.nome}`} defaultValue={p.nome} aria-label="Nome do produto" onBlur={renomear('estoque_produtos', p.id, 'nome', p.nome)} className="bg-transparent border border-transparent hover:border-gray-800 focus:border-blue-500 rounded-md px-2 py-1 text-sm text-white outline-none" />
                         <div className="flex justify-end"><Toggle on={p.ativo} label={`${p.nome} ativo`} onClick={() => run(supabase.from('estoque_produtos').update({ ativo: !p.ativo }).eq('id', p.id))} /></div>
                       </div>
@@ -138,15 +139,15 @@ export default function EstoqueCatalogo({ categorias, produtos, onClose, onChang
                 </div>
 
                 <form onSubmit={criarProduto} className="flex flex-wrap items-end gap-2">
-                  <label className="text-xs text-gray-400">Código
-                    <input value={novoProd.codigo} onChange={e => setNovoProd(p => ({ ...p, codigo: e.target.value.toUpperCase() }))} placeholder={codigoSugerido} className={`mt-1 block w-28 font-mono ${campo}`} />
-                  </label>
+                  <div className="text-xs text-gray-400">Código
+                    <div title="Gerado automaticamente" className="mt-1 w-28 px-3 py-2 rounded-lg border border-gray-800 bg-gray-950/50 text-sm font-mono text-gray-400">{codigoSugerido}</div>
+                  </div>
                   <label className="text-xs text-gray-400 flex-1 min-w-[180px]">Novo produto em {cat.nome}
                     <input value={novoProd.nome} onChange={e => setNovoProd(p => ({ ...p, nome: e.target.value }))} placeholder="Ex.: SENSOR DE UMIDADE" className={`mt-1 block w-full uppercase ${campo}`} />
                   </label>
                   <button type="submit" disabled={salvando} className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-semibold"><FaPlus size={11} /> Adicionar</button>
                 </form>
-                <p className="text-xs text-gray-500">Deixe o código em branco para usar o próximo da sequência ({codigoSugerido}). Desativar um produto tira ele da lista do formulário, sem apagar os itens que já usam.</p>
+                <p className="text-xs text-gray-500">O código é gerado sozinho, na sequência da categoria ({codigoSugerido}), e não pode ser editado. Desativar um produto tira ele da lista do formulário, sem apagar os itens que já usam.</p>
               </>
             )}
           </div>
