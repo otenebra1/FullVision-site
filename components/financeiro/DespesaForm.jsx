@@ -1,11 +1,13 @@
 // Formulário de um gasto (NF-e, NF, romaneio, cupom, recibo...) com as linhas de itens.
-// Dá para importar o XML da NF-e: preenche fornecedor, número, chave, data e todos os itens.
+// Dá para importar a nota (XML da NF-e ou NFS-e, ou o PDF): preenche fornecedor, número, data e itens.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { FaTimes, FaPlus, FaTrashAlt, FaFileCode, FaPaperclip, FaSpinner, FaExclamationTriangle, FaExternalLinkAlt } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
 import { inputBase } from '../admin/ui';
 import { Select, DateInput } from '../ui/FormControls';
 import { lerXmlNfe, linhasDeAjuste, formatarCnpj, soDigitos } from '../../lib/nfe';
+import { ehXmlNfse, lerXmlNfse } from '../../lib/nfse';
+import { lerPdfNota } from '../../lib/notaPdf';
 import {
   TIPOS_DOCUMENTO, FORMAS_PAGAMENTO, STATUS_PAGAMENTO, UNIDADES, BUCKET_FINANCEIRO,
   reais, lerNumero, hojeIso, dataBR,
@@ -13,6 +15,18 @@ import {
 
 const campo = `w-full px-3 py-2 ${inputBase}`;
 const rotuloCls = 'block text-xs font-medium text-gray-400 mb-1';
+// Lê o arquivo da nota: XML de NF-e, XML de NFS-e ou PDF (DANFE / NFS-e)
+async function lerArquivoNota(file) {
+  const nome = (file.name || '').toLowerCase();
+  if (nome.endsWith('.pdf') || file.type === 'application/pdf') return lerPdfNota(file);
+  const texto = await file.text();
+  const doc = new DOMParser().parseFromString(texto, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) throw new Error('O arquivo não é um XML válido.');
+  if (doc.getElementsByTagNameNS('*', 'infNFe').length) return { tipo: 'NFE', origem: 'xml', avisos: [], ...lerXmlNfe(texto) };
+  if (ehXmlNfse(doc)) return lerXmlNfse(doc);
+  throw new Error('Não reconheci esse XML. Ele não é de NF-e nem de NFS-e.');
+}
+
 const linhaVazia = (ordem = 0) => ({ chave: Math.random().toString(36).slice(2), item_id: '', categoria_id: '', descricao: '', codigo_fornecedor: '', quantidade: '1', unidade: 'UN', valor_unitario: '', ordem });
 const virgula = (n) => String(n ?? '').replace('.', ',');
 const totalLinha = (l) => Math.round(lerNumero(l.quantidade) * lerNumero(l.valor_unitario) * 100) / 100;
@@ -97,12 +111,19 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
     if (forn?.categoria_id) setLinhas(ls => ls.map(l => (l.categoria_id ? l : { ...l, categoria_id: forn.categoria_id })));
   };
 
-  // ---------- Importar XML da NF-e ----------
+  // ---------- Importar a nota (XML ou PDF) ----------
+  const [lendo, setLendo] = useState(false);
+  const [avisos, setAvisos] = useState([]);
   const importarXml = async (file) => {
     if (!file) return;
-    setErro('');
+    setErro(''); setAvisos([]); setLendo(true);
     try {
-      const nfe = lerXmlNfe(await file.text());
+      const nfe = await lerArquivoNota(file);
+      const servico = nfe.tipo === 'NFSE';
+      const avisosNota = [...(nfe.avisos || [])];
+      if (/full\s*vision/i.test(nfe.fornecedor?.nome || '')) {
+        avisosNota.unshift('Essa nota parece ter sido emitida pela própria Full Vision (ela aparece como prestador/emitente). Se for um serviço que a Full Vision prestou ou vendeu, não é gasto.');
+      }
 
       if (nfe.chave) {
         const { data: ja } = await supabase.from('fin_despesas').select('id, data').eq('chave_nfe', nfe.chave).maybeSingle();
@@ -122,7 +143,7 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
         return {
           ...linhaVazia(i),
           item_id: item?.id || '',
-          categoria_id: v?.categoria_id || item?.categoria_id || catPadrao,
+          categoria_id: v?.categoria_id || item?.categoria_id || catPadrao || (servico ? categoriaPorNome['Serviços de terceiros'] || '' : ''),
           descricao: it.descricao,
           codigo_fornecedor: it.codigo_fornecedor,
           quantidade: virgula(it.quantidade),
@@ -139,7 +160,7 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
       const primeiraDup = nfe.duplicatas.find(d => d.vencimento && d.vencimento >= hojeIso());
       setF(prev => ({
         ...prev,
-        tipo_documento: 'NFE',
+        tipo_documento: servico ? 'NFSE' : 'NFE',
         data: nfe.data || prev.data,
         numero: nfe.numero,
         serie: nfe.serie,
@@ -148,18 +169,22 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
         forma_pagamento: nfe.forma_pagamento || prev.forma_pagamento,
         status: primeiraDup ? 'A_PAGAR' : prev.status,
         vencimento: primeiraDup?.vencimento || prev.vencimento,
-        descricao: prev.descricao || `NF ${nfe.numero} · ${nfe.fornecedor.nome_fantasia || nfe.fornecedor.nome}`,
-        observacao: prev.observacao || (nfe.duplicatas.length > 1
+        descricao: prev.descricao || [`${servico ? 'NFS-e' : 'NF'} ${nfe.numero || ''}`.trim(), nfe.fornecedor.nome_fantasia || nfe.fornecedor.nome].filter(Boolean).join(' · '),
+        observacao: prev.observacao || [nfe.duplicatas.length > 1
           ? `Parcelas: ${nfe.duplicatas.map(d => `${dataBR(d.vencimento)} ${reais(d.valor)}`).join(' | ')}`
-          : ''),
+          : '', nfe.observacao || ''].filter(Boolean).join(' · '),
       }));
-      setFornecedorNovo(existente ? null : nfe.fornecedor);
+      setFornecedorNovo(existente || !(nfe.fornecedor.nome || nfe.fornecedor.cnpj) ? null : { ...nfe.fornecedor, nome: nfe.fornecedor.nome || `Fornecedor ${formatarCnpj(nfe.fornecedor.cnpj)}` });
+      setAvisos(avisosNota);
       setTotalNota(nfe.totais.nota);
       setLinhas(novasLinhas.length ? novasLinhas : [linhaVazia()]);
-      setArquivosNovos(prev => [...prev.filter(a => a !== file), file]); // o XML fica anexado
-      showToast(`NF ${nfe.numero} lida: ${nfe.itens.length} item(ns). Confira as categorias e salve.`);
+      setArquivosNovos(prev => [...prev.filter(a => a !== file), file]); // o arquivo fica anexado
+      showToast(`${servico ? 'NFS-e' : 'NF'} ${nfe.numero || ''} lida${nfe.origem === 'pdf' ? ' do PDF' : ''}: confira os dados e salve.`);
     } catch (e) {
-      setErro(e.message || 'Não consegui ler esse XML.');
+      setErro(e.message || 'Não consegui ler esse arquivo.');
+      setArquivosNovos(prev => (prev.includes(file) ? prev : [...prev, file])); // mesmo sem ler, fica anexado
+    } finally {
+      setLendo(false);
     }
   };
 
@@ -280,11 +305,11 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
         <div className="flex items-center justify-between gap-3 px-5 py-4 border-b border-gray-800">
           <h3 className="text-lg font-semibold text-white">{editando ? 'Editar gasto' : 'Novo gasto'}</h3>
           <div className="flex items-center gap-2">
-            <input ref={xmlRef} type="file" accept=".xml,text/xml,application/xml" className="hidden"
+            <input ref={xmlRef} type="file" accept=".xml,.pdf,text/xml,application/xml,application/pdf" className="hidden"
               onChange={e => { importarXml(e.target.files?.[0]); e.target.value = ''; }} />
-            <button type="button" onClick={() => xmlRef.current?.click()}
-              className="inline-flex items-center gap-2 text-sm border border-blue-500/50 bg-blue-500/10 text-blue-300 hover:text-white rounded-lg px-3 py-2">
-              <FaFileCode /> Importar XML da NF-e
+            <button type="button" onClick={() => xmlRef.current?.click()} disabled={lendo}
+              className="inline-flex items-center gap-2 text-sm border border-blue-500/50 bg-blue-500/10 text-blue-300 hover:text-white disabled:opacity-60 rounded-lg px-3 py-2">
+              {lendo ? <FaSpinner className="animate-spin" /> : <FaFileCode />} Importar nota (XML ou PDF)
             </button>
             <button type="button" onClick={onClose} aria-label="Fechar" className="text-gray-500 hover:text-white p-2"><FaTimes /></button>
           </div>
@@ -295,6 +320,12 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
             <div className="flex items-start gap-2 text-sm text-red-300 bg-red-950/60 border border-red-500/30 rounded-lg px-3 py-2">
               <FaExclamationTriangle className="mt-0.5 shrink-0" /> {erro}
             </div>
+          )}
+
+          {avisos.length > 0 && (
+            <ul className="text-sm text-amber-200 bg-amber-950/40 border border-amber-500/30 rounded-lg px-3 py-2 space-y-1">
+              {avisos.map(a => <li key={a} className="flex items-start gap-2"><FaExclamationTriangle className="mt-0.5 shrink-0 text-amber-400" /> {a}</li>)}
+            </ul>
           )}
 
           {/* Documento */}

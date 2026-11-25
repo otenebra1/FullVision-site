@@ -346,7 +346,7 @@ export default function Financeiro() {
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <button type="button" onClick={() => setFormAberto({ abrirXml: true })} className="inline-flex items-center gap-2 text-sm border border-blue-500/50 bg-blue-500/10 text-blue-300 hover:text-white rounded-lg px-3.5 py-2">
-                <FaFileCode size={13} /> Lançar NF-e (XML)
+                <FaFileCode size={13} /> Lançar nota (XML ou PDF)
               </button>
               <a href="/painel-admin" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
                 <FaArrowLeft size={12} /> Painel administrativo
