@@ -11,13 +11,15 @@ import OsWizard from '../components/os/OsWizard';
 import VeiculosAgrupados from '../components/admin/VeiculosAgrupados';
 import PrecosPanel from '../components/admin/PrecosPanel';
 import ClientesPanel from '../components/admin/ClientesPanel';
+import ClienteForm from '../components/admin/ClienteForm';
+import ClienteFicha from '../components/admin/ClienteFicha';
 import EstoqueCatalogo from '../components/admin/EstoqueCatalogo';
 import SolicitarCompra from '../components/financeiro/SolicitarCompra';
 import VeiculoDetalhe from '../components/admin/VeiculoDetalhe';
 import { reduzirImagem } from '../lib/osSalvar';
 import { ehAdmin, ehEquipe } from '../lib/perfis';
 import { ehDaCategoria, itemInstaladoNaPlaca, categoriaDoItem, CAT_LOCALIZADOR, CAT_ATUADOR } from '../lib/osConstants';
-import { SERVICOS_VEICULO, calcularDrePlaca, calcularMensalidade, ordensPorVeiculo, rastreadorPorVeiculo } from '../lib/veiculos';
+import { SERVICOS_VEICULO, calcularDrePlaca, calcularMensalidade, comMensalidadeEfetiva, ordensPorVeiculo, rastreadorPorVeiculo } from '../lib/veiculos';
 import {
   BRL, setOcultarValores,
   norm,
@@ -88,10 +90,7 @@ export default function PainelAdmin() {
   const [vSubGroupBy, setVSubGroupBy] = useState(['operacao']); // dentro do cliente: 'associado' e/ou 'operacao' (dá para ligar os dois)
   const [viewingVehicle, setViewingVehicle] = useState(null);
   const [clienteModal, setClienteModal] = useState(null); // { empresa | null } aberto para criar/editar cliente
-  const [cFormNome, setCFormNome] = useState('');
-  const [cFormGrupoId, setCFormGrupoId] = useState('');
-  const [cFormContratoFim, setCFormContratoFim] = useState('');
-  const [isSavingCliente, setIsSavingCliente] = useState(false);
+  const [clienteFichaId, setClienteFichaId] = useState(null); // ficha (só leitura) do cliente aberta
   const [currentPage, setCurrentPage] = useState(1);
   const [activeSection, setActiveSection] = useState('resumo'); // 'resumo' | 'veiculos' | 'rastreadores' | 'ordens'
   const itemsPerPage = 20;
@@ -214,7 +213,8 @@ export default function PainelAdmin() {
         .from('veiculos')
         .select('*')
         .order('placa');
-      if (veiculosData) setVeiculos(veiculosData);
+      // Placa sem serviço ligado não cobra mensalidade, mesmo que tenha um valor antigo gravado
+      if (veiculosData) setVeiculos(veiculosData.map(comMensalidadeEfetiva));
 
       const { count } = await supabase
         .from('solicitacoes_servico')
@@ -538,9 +538,9 @@ export default function PainelAdmin() {
     if (result.error) { showToast('Erro ao salvar veículo: ' + result.error.message, 'error'); return; }
 
     if (editingVehicle) {
-      setVeiculos(veiculos.map(v => v.id === result.data.id ? result.data : v));
+      setVeiculos(veiculos.map(v => v.id === result.data.id ? comMensalidadeEfetiva(result.data) : v));
     } else {
-      setVeiculos([result.data, ...veiculos]);
+      setVeiculos([comMensalidadeEfetiva(result.data), ...veiculos]);
     }
     setIsVehicleModalOpen(false);
     setEditingVehicle(null);
@@ -559,39 +559,21 @@ export default function PainelAdmin() {
   };
 
   const openCliente = (empresa) => {
+    setClienteFichaId(null);
     setClienteModal({ empresa });
-    setCFormNome(empresa?.nome || '');
-    setCFormGrupoId(empresa?.grupo_id ? String(empresa.grupo_id) : '');
-    setCFormContratoFim(empresa?.contrato_fim || '');
   };
 
-  const handleSaveCliente = async (e) => {
-    e.preventDefault();
-    const nome = cFormNome.trim().toUpperCase();
-    if (!nome) { showToast('Informe o nome do cliente.', 'error'); return; }
-    const editando = clienteModal?.empresa;
-    const grupo = empresas.find(x => String(x.id) === cFormGrupoId);
-    const payload = { nome, grupo_id: grupo ? grupo.id : null, contrato_fim: cFormContratoFim || null };
-    setIsSavingCliente(true);
-    const result = editando
-      ? await supabase.from('empresas').update(payload).eq('id', editando.id).select().single()
-      : await supabase.from('empresas').insert([payload]).select().single();
-    setIsSavingCliente(false);
-    if (result.error) { showToast('Erro ao salvar cliente: ' + result.error.message, 'error'); return; }
+  // Depois de salvar no ClienteForm: atualiza a lista e volta para a ficha do cliente
+  const onClienteSalvo = (salvo, editando) => {
     setEmpresas(prev => (editando
-      ? prev.map(x => (x.id === editando.id ? result.data : x))
-      : [...prev, result.data].sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR'))));
+      ? prev.map(x => (x.id === salvo.id ? salvo : x))
+      : [...prev, salvo].sort((x, y) => x.nome.localeCompare(y.nome, 'pt-BR'))));
     setClienteModal(null);
+    setClienteFichaId(salvo.id);
     showToast(editando ? 'Cliente atualizado!' : 'Cliente criado!');
   };
 
-  // Quem pode ser "cliente principal" de um associado: empresas sem grupo (exceto a própria)
-  const gruposPossiveis = useMemo(() => {
-    const atual = clienteModal?.empresa;
-    const temFilhos = atual && empresas.some(x => x.grupo_id === atual.id);
-    if (temFilhos) return []; // um grupo não pode virar associado de outro
-    return empresas.filter(x => !x.grupo_id && (!atual || x.id !== atual.id));
-  }, [empresas, clienteModal]);
+  const clienteFicha = clienteFichaId != null ? empresas.find(x => x.id === clienteFichaId) : null;
 
   // ------------------------------------------
   // Rastreadores (Estoque): filtro, paginação e CRUD
@@ -962,7 +944,7 @@ export default function PainelAdmin() {
                 onChange={setActiveSection}
                 tabs={[
                   { key: 'resumo', label: 'Cliente', count: empresas.length },
-                  { key: 'veiculos', label: 'Banco de veículos', count: veiculos.length },
+                  { key: 'veiculos', label: 'Placas', count: veiculos.length },
                   { key: 'rastreadores', label: 'Estoque', count: rastreadores.length },
                   { key: 'ordens', label: 'Ordens de serviço', count: ordensServico.length },
                   ...(isSuperAdmin ? [
@@ -979,12 +961,13 @@ export default function PainelAdmin() {
                   resumoPorEmpresa={resumoPorEmpresa}
                   onNovo={() => openCliente(null)}
                   onEditar={openCliente}
+                  onVer={(e) => setClienteFichaId(e.id)}
                 />
               )}
 
-              {/* Banco de veículos */}
+              {/* Placas (banco de veículos) */}
               {activeSection === 'veiculos' && (
-                <SectionCard title="Banco de veículos" action={<PrimaryButton onClick={() => openVehicleForm(null)}>Nova placa</PrimaryButton>}>
+                <SectionCard title="Placas" action={<PrimaryButton onClick={() => openVehicleForm(null)}>Nova placa</PrimaryButton>}>
                   <div className="flex flex-wrap items-center gap-2">
                     <SearchInput value={searchPlaca} onChange={setSearchPlaca} placeholder="Buscar por placa, ID, modelo ou empresa" />
                     <FilterDropdown label="Empresa" options={empresaOptions} selected={filterEmpresas} onChange={setFilterEmpresas} searchable />
@@ -1239,38 +1222,27 @@ export default function PainelAdmin() {
         )
       )}
 
-      {/* Criar/editar cliente */}
+      {/* Ficha do cliente */}
+      {clienteFicha && !clienteModal && (
+        <ClienteFicha
+          empresa={clienteFicha}
+          grupoNome={clienteFicha.grupo_id ? empresas.find(x => x.id === clienteFicha.grupo_id)?.nome : null}
+          associados={empresas.filter(x => x.grupo_id === clienteFicha.id)}
+          resumo={hierarquia.gruposComFilhos.find(g => g.grupo.id === clienteFicha.id)?.resumo || resumoPorEmpresa[clienteFicha.id] || RESUMO_VAZIO}
+          onEditar={() => openCliente(clienteFicha)}
+          onClose={() => setClienteFichaId(null)}
+        />
+      )}
+
+      {/* Criar/editar cliente (cadastro completo) */}
       {clienteModal && (
-        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <form onSubmit={handleSaveCliente} className="bg-gray-900 border border-gray-800 rounded-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex justify-between items-center border-b border-gray-800 pb-4">
-              <h3 className="text-lg font-bold text-white">{clienteModal.empresa ? 'Editar cliente' : 'Novo cliente'}</h3>
-              <button type="button" onClick={() => setClienteModal(null)} className="text-gray-400 hover:text-white"><FaTimes /></button>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Nome</label>
-              <input type="text" required autoFocus value={cFormNome} onChange={e => setCFormNome(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-blue-500 uppercase" />
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Associado a</label>
-              <Select value={cFormGrupoId} onChange={e => setCFormGrupoId(e.target.value)} disabled={gruposPossiveis.length === 0 && !cFormGrupoId} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white">
-                <option value="">Nenhum (cliente principal)</option>
-                {gruposPossiveis.map(g => <option key={g.id} value={String(g.id)}>{g.nome}</option>)}
-              </Select>
-              <p className="text-xs text-gray-500 mt-1">Escolha um cliente aqui se este for uma unidade/associado dele (ex.: ADORO - FRANGO dentro de ADORO).</p>
-            </div>
-            <div>
-              <label className="block text-xs text-gray-400 mb-1">Deadline do contrato</label>
-              <DateInput value={cFormContratoFim} onChange={e => setCFormContratoFim(e.target.value)} className="w-full bg-gray-950 border border-gray-700 rounded-lg px-3 py-2 text-sm text-white" />
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button type="submit" disabled={isSavingCliente} className="bg-blue-600 hover:bg-blue-500 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-semibold">
-                {isSavingCliente ? 'Salvando...' : (clienteModal.empresa ? 'Salvar alterações' : 'Criar cliente')}
-              </button>
-              <button type="button" onClick={() => setClienteModal(null)} className="text-gray-400 hover:text-white text-sm px-2">Cancelar</button>
-            </div>
-          </form>
-        </div>
+        <ClienteForm
+          empresa={clienteModal.empresa}
+          empresas={empresas}
+          showToast={showToast}
+          onClose={() => setClienteModal(null)}
+          onSaved={onClienteSalvo}
+        />
       )}
 
       {/* Modal Criar/Editar Veículo */}
