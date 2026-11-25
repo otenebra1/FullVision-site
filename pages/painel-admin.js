@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import {
   FaTruck, FaCheckCircle, FaSpinner, FaArrowLeft, FaExclamationCircle,
-  FaEdit, FaTrashAlt, FaTimes, FaSatelliteDish, FaLink, FaUnlink, FaClipboardList, FaExpandAlt, FaCamera, FaWallet,
+  FaEdit, FaTrashAlt, FaTimes, FaSatelliteDish, FaLink, FaUnlink, FaClipboardList, FaExpandAlt, FaCamera, FaWallet, FaShoppingCart,
 } from 'react-icons/fa';
 import OsHistory from '../components/os/OsHistory';
 import OsWizard from '../components/os/OsWizard';
@@ -12,6 +12,7 @@ import VeiculosAgrupados from '../components/admin/VeiculosAgrupados';
 import PrecosPanel from '../components/admin/PrecosPanel';
 import ClientesPanel from '../components/admin/ClientesPanel';
 import EstoqueCatalogo from '../components/admin/EstoqueCatalogo';
+import SolicitarCompra from '../components/financeiro/SolicitarCompra';
 import VeiculoDetalhe from '../components/admin/VeiculoDetalhe';
 import { reduzirImagem } from '../lib/osSalvar';
 import { ehAdmin, ehEquipe } from '../lib/perfis';
@@ -136,6 +137,8 @@ export default function PainelAdmin() {
   // Catálogo do estoque (categorias e produtos com código). ok=false enquanto as tabelas não existem.
   const [catalogo, setCatalogo] = useState({ ok: false, categorias: [], produtos: [] });
   const [isCatalogoOpen, setIsCatalogoOpen] = useState(false);
+  // Solicitação de compra (cai no /financeiro)
+  const [isSolicitarOpen, setIsSolicitarOpen] = useState(false);
   const [rFormSerial, setRFormSerial] = useState('');
   const [rFormSimCard, setRFormSimCard] = useState('');
   const [rFormOperadora, setRFormOperadora] = useState('');
@@ -922,6 +925,9 @@ export default function PainelAdmin() {
                   <FaWallet size={13} /> Financeiro
                 </a>
               )}
+              <button type="button" onClick={() => setIsSolicitarOpen(true)} className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
+                <FaShoppingCart size={13} /> Solicitar compra
+              </button>
               <a href="/quests" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
                 <FaClipboardList size={13} /> Quest Tracker
               </a>
@@ -1086,6 +1092,7 @@ export default function PainelAdmin() {
               {activeSection === 'rastreadores' && (
                 <SectionCard title="Estoque" action={(
                   <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setIsSolicitarOpen(true)} className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors"><FaShoppingCart size={12} /> Solicitar compra</button>
                     <button type="button" onClick={() => setIsCatalogoOpen(true)} className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">Categorias e produtos</button>
                     <PrimaryButton onClick={() => openRastreadorForm(null)}>Novo item</PrimaryButton>
                   </div>
@@ -1208,6 +1215,10 @@ export default function PainelAdmin() {
       )}
 
       {/* Catálogo do estoque */}
+      {isSolicitarOpen && (
+        <SolicitarCompra showToast={showToast} onClose={() => setIsSolicitarOpen(false)} />
+      )}
+
       {isCatalogoOpen && (
         catalogo.ok ? (
           <EstoqueCatalogo

@@ -17,7 +17,7 @@ const linhaVazia = (ordem = 0) => ({ chave: Math.random().toString(36).slice(2),
 const virgula = (n) => String(n ?? '').replace('.', ',');
 const totalLinha = (l) => Math.round(lerNumero(l.quantidade) * lerNumero(l.valor_unitario) * 100) / 100;
 
-export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml, onClose, onSaved, showToast }) {
+export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml, solicitacoes = [], onClose, onSaved, showToast }) {
   const { categorias, itens, fornecedores, viagens, vinculos } = catalogo;
   const editando = Boolean(despesa?.id);
 
@@ -29,7 +29,7 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
     chave_nfe: despesa?.chave_nfe || '',
     fornecedor_id: despesa?.fornecedor_id || '',
     viagem_id: despesa?.viagem_id || viagemPadrao || '',
-    descricao: despesa?.descricao || '',
+    descricao: despesa?.descricao || (solicitacoes.length ? `Compra solicitada: ${solicitacoes.map(s => s.descricao).join(', ')}` : ''),
     forma_pagamento: despesa?.forma_pagamento || '',
     status: despesa?.status || 'PAGO',
     vencimento: despesa?.vencimento || '',
@@ -44,6 +44,13 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
       codigo_fornecedor: l.codigo_fornecedor || '', quantidade: virgula(l.quantidade ?? 1), unidade: l.unidade || 'UN',
       valor_unitario: virgula(l.valor_unitario ?? 0), ordem: l.ordem,
     }));
+    if (!ls.length && solicitacoes.length) {
+      // Compra que atende solicitações: uma linha por pedido, com item e quantidade
+      return solicitacoes.map((s, i) => {
+        const it = catalogo.itens.find(x => x.id === s.item_id);
+        return { ...linhaVazia(i), item_id: s.item_id || '', categoria_id: it?.categoria_id || '', descricao: s.descricao, quantidade: virgula(s.quantidade), unidade: s.unidade || 'UN' };
+      });
+    }
     return ls.length ? ls : [linhaVazia()];
   });
 
@@ -246,6 +253,13 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
           fornecedor_cnpj: cnpj, codigo: l.codigo_fornecedor, item_id: l.item_id || null, categoria_id: l.categoria_id,
         }));
         if (memoria.length) await supabase.from('fin_item_vinculos').upsert(memoria, { onConflict: 'fornecedor_cnpj,codigo' });
+      }
+
+      // 6) Solicitações atendidas por esta compra
+      if (solicitacoes.length) {
+        await supabase.from('fin_solicitacoes')
+          .update({ status: 'COMPRADA', despesa_id: id, decidido_em: new Date().toISOString() })
+          .in('id', solicitacoes.map(s => s.id));
       }
 
       showToast(editando ? 'Gasto atualizado.' : 'Gasto lançado.');

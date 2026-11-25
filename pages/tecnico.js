@@ -5,13 +5,14 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import {
-  FaSpinner, FaSyncAlt, FaSignOutAlt, FaMapMarkerAlt, FaPhoneAlt, FaWhatsapp, FaClock, FaCar, FaPlay, FaCheckCircle, FaDownload, FaTimes,
+  FaSpinner, FaSyncAlt, FaSignOutAlt, FaMapMarkerAlt, FaPhoneAlt, FaWhatsapp, FaClock, FaCar, FaPlay, FaCheckCircle, FaDownload, FaTimes, FaShoppingCart,
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import { reduzirImagem } from '../lib/osSalvar';
 import { osCodigo, FOTO_TIPOS } from '../lib/osConstants';
 import { ehEquipe } from '../lib/perfis';
 import OsWizard from '../components/os/OsWizard';
+import SolicitarCompra from '../components/financeiro/SolicitarCompra';
 
 const dataBR = (iso) => {
   if (!iso) return '';
@@ -152,6 +153,7 @@ export default function AppTecnico() {
   const [aba, setAba] = useState('abertas');
   const [osEmAndamento, setOsEmAndamento] = useState(null);
   const [toast, setToast] = useState(null);
+  const [solicitarAberto, setSolicitarAberto] = useState(false);
 
   const showToast = useCallback((msg, tipo = 'success') => {
     setToast({ msg, tipo });
@@ -254,6 +256,7 @@ export default function AppTecnico() {
               <div className="text-xs text-gray-500">Técnico</div>
               <div className="text-white font-semibold truncate">{dados?.tecnico?.nome || 'Minhas OS'}</div>
             </div>
+            <button type="button" onClick={() => setSolicitarAberto(true)} aria-label="Solicitar compra" title="Solicitar compra" className="p-2.5 rounded-xl text-gray-300 hover:bg-gray-800"><FaShoppingCart /></button>
             <button type="button" onClick={carregar} disabled={carregando} aria-label="Atualizar" className="p-2.5 rounded-xl text-gray-300 hover:bg-gray-800 disabled:opacity-50">
               <FaSyncAlt className={carregando ? 'animate-spin' : ''} />
             </button>
@@ -311,6 +314,8 @@ export default function AppTecnico() {
           onClose={(salvou) => { setOsEmAndamento(null); if (salvou) { setAba('abertas'); carregar(); } }}
         />
       )}
+
+      {solicitarAberto && <SolicitarCompra showToast={showToast} onClose={() => setSolicitarAberto(false)} />}
 
       <Toast toast={toast} onClose={() => setToast(null)} />
     </>

@@ -15,6 +15,8 @@ import {
 } from '../components/admin/ui';
 import DespesaForm from '../components/financeiro/DespesaForm';
 import { FornecedoresPanel, ViagensPanel, ItensPanel } from '../components/financeiro/Cadastros';
+import SolicitacoesPanel from '../components/financeiro/SolicitacoesPanel';
+import SolicitarCompra from '../components/financeiro/SolicitarCompra';
 import {
   TIPOS_DOCUMENTO, FORMAS_PAGAMENTO, STATUS_PAGAMENTO, GRUPOS_CATEGORIA, rotulo, reais, reaisCurto, dataBR, mesRotulo,
   periodoPreset, estaVencida, baixarCsv, hojeIso, BUCKET_FINANCEIRO,
@@ -53,9 +55,14 @@ export default function Financeiro() {
   const [tecnicos, setTecnicos] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [produtosEstoque, setProdutosEstoque] = useState([]);
+  const [solicitacoes, setSolicitacoes] = useState([]);
+  const [rastreadores, setRastreadores] = useState([]);
+  const [solicitarAberto, setSolicitarAberto] = useState(false);
 
   const [aba, setAba] = useState('gastos');
-  const [formAberto, setFormAberto] = useState(null); // { despesa?, viagemPadrao? }
+  const [formAberto, setFormAberto] = useState(null); // { despesa?, viagemPadrao?, abrirXml?, solicitacoes? }
+  // Abre direto numa aba (ex.: /financeiro?aba=solicitacoes)
+  useEffect(() => { if (router.query.aba) setAba(String(router.query.aba)); }, [router.query.aba]);
 
   // ---------- Acesso: só ADM ----------
   useEffect(() => {
@@ -70,7 +77,7 @@ export default function Financeiro() {
   }, [router]);
 
   const carregar = useCallback(async () => {
-    const [d, c, i, f, v, vi, t, e, p] = await Promise.all([
+    const [d, c, i, f, v, vi, t, e, p, so, ra] = await Promise.all([
       supabase.from('fin_despesas').select('*, fin_despesa_itens(*)').order('data', { ascending: false }).order('created_at', { ascending: false }),
       supabase.from('fin_categorias').select('*').order('ordem').order('nome'),
       supabase.from('fin_itens').select('*').order('nome'),
@@ -80,6 +87,8 @@ export default function Financeiro() {
       supabase.from('tecnicos').select('id, nome').order('nome'),
       supabase.from('empresas').select('id, nome').order('nome'),
       supabase.from('estoque_produtos').select('id, codigo, nome').order('codigo'),
+      supabase.from('fin_solicitacoes').select('*').order('created_at', { ascending: false }),
+      supabase.from('rastreadores').select('id, produto_id, status'),
     ]);
     if (d.error) {
       setErroCarga(d.error.message.includes('fin_despesas')
@@ -95,6 +104,8 @@ export default function Financeiro() {
     setTecnicos(t.data || []);
     setEmpresas(e.data || []);
     setProdutosEstoque(p.data || []);
+    setSolicitacoes(so.data || []);
+    setRastreadores(ra.data || []);
     setCarregando(false);
   }, []);
 
@@ -358,6 +369,7 @@ export default function Financeiro() {
                 onChange={setAba}
                 tabs={[
                   { key: 'gastos', label: 'Gastos', count: despesas.length },
+                  { key: 'solicitacoes', label: solicitacoes.some(s => s.status === 'PENDENTE') ? 'Solicitações •' : 'Solicitações', count: solicitacoes.filter(s => s.status === 'PENDENTE' || s.status === 'APROVADA').length },
                   { key: 'fornecedores', label: 'Fornecedores', count: fornecedores.length },
                   { key: 'viagens', label: 'Viagens', count: viagens.length },
                   { key: 'itens', label: 'Itens e categorias', count: itens.length },
@@ -590,6 +602,16 @@ export default function Financeiro() {
                 </div>
               )}
 
+              {aba === 'solicitacoes' && (
+                <SolicitacoesPanel
+                  solicitacoes={solicitacoes} itens={itens} despesas={despesas} rastreadores={rastreadores}
+                  recarregar={carregar} showToast={showToast}
+                  onLancarCompra={(lista) => setFormAberto({ solicitacoes: lista })}
+                  onAbrirGasto={(d) => setFormAberto({ despesa: d })}
+                  onNovaSolicitacao={() => setSolicitarAberto(true)}
+                />
+              )}
+
               {aba === 'fornecedores' && (
                 <FornecedoresPanel
                   fornecedores={fornecedores} categorias={categorias} despesas={despesas}
@@ -622,11 +644,15 @@ export default function Financeiro() {
           despesa={formAberto.despesa}
           viagemPadrao={formAberto.viagemPadrao}
           abrirXml={formAberto.abrirXml}
+          solicitacoes={formAberto.solicitacoes}
           catalogo={catalogo}
           showToast={showToast}
           onClose={() => setFormAberto(null)}
           onSaved={() => { setFormAberto(null); carregar(); }}
         />
+      )}
+      {solicitarAberto && (
+        <SolicitarCompra showToast={showToast} onClose={() => { setSolicitarAberto(false); carregar(); }} />
       )}
     </>
   );
