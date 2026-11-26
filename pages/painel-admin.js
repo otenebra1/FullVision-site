@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '../lib/supabase';
 import {
   FaTruck, FaCheckCircle, FaSpinner, FaArrowLeft, FaExclamationCircle,
-  FaEdit, FaTrashAlt, FaTimes, FaSatelliteDish, FaLink, FaUnlink, FaClipboardList, FaExpandAlt, FaCamera, FaWallet, FaShoppingCart, FaFileInvoiceDollar
+  FaEdit, FaTrashAlt, FaTimes, FaSatelliteDish, FaLink, FaUnlink, FaClipboardList, FaExpandAlt, FaCamera, FaWallet, FaShoppingCart,
 } from 'react-icons/fa';
 import OsHistory from '../components/os/OsHistory';
 import OsWizard from '../components/os/OsWizard';
@@ -915,11 +915,6 @@ export default function PainelAdmin() {
               {isSuperAdmin && (
                 <a href="/financeiro" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
                   <FaWallet size={13} /> Financeiro
-                </a>
-              )}
-              {isSuperAdmin && (
-                <a href="/notas-fiscais" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
-                  <FaFileInvoiceDollar size={13} /> Notas fiscais
                 </a>
               )}
               <button type="button" onClick={() => setIsSolicitarOpen(true)} className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
