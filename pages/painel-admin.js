@@ -6,6 +6,7 @@ import {
   FaTruck, FaCheckCircle, FaSpinner, FaArrowLeft, FaExclamationCircle,
   FaEdit, FaTrashAlt, FaTimes, FaSatelliteDish, FaLink, FaUnlink, FaClipboardList, FaExpandAlt, FaCamera, FaWallet, FaShoppingCart,
   FaFileSignature,
+  FaHeadset,
 } from 'react-icons/fa';
 import OsHistory from '../components/os/OsHistory';
 import OsWizard from '../components/os/OsWizard';
@@ -16,6 +17,7 @@ import ClientesPanel from '../components/admin/ClientesPanel';
 import ClienteForm from '../components/admin/ClienteForm';
 import ClienteFicha from '../components/admin/ClienteFicha';
 import EstoqueCatalogo from '../components/admin/EstoqueCatalogo';
+import EstoqueNiveis from '../components/admin/EstoqueNiveis';
 import SolicitarCompra from '../components/financeiro/SolicitarCompra';
 import Notificacoes from '../components/Notificacoes';
 import VeiculoDetalhe from '../components/admin/VeiculoDetalhe';
@@ -925,6 +927,9 @@ export default function PainelAdmin() {
                   <FaFileSignature size={13} /> Contratos
                 </a>
               )}
+              <a href="/suporte" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
+                <FaHeadset size={13} /> Chamados
+              </a>
               <button type="button" onClick={() => setIsSolicitarOpen(true)} className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
                 <FaShoppingCart size={13} /> Solicitar compra
               </button>
@@ -965,6 +970,7 @@ export default function PainelAdmin() {
                   { key: 'resumo', label: 'Cliente', count: empresas.length },
                   { key: 'veiculos', label: 'Placas', count: veiculos.length },
                   { key: 'rastreadores', label: 'Estoque', count: rastreadores.length },
+                  { key: 'niveis', label: 'Estoque mínimo' },
                   { key: 'ordens', label: 'Ordens de serviço', count: ordensServico.length },
                   ...(isSuperAdmin ? [
                     { key: 'precos-cliente', label: 'Tabela de preço cliente' },
@@ -1091,6 +1097,10 @@ export default function PainelAdmin() {
               )}
 
               {/* Rastreadores (estoque) */}
+              {activeSection === 'niveis' && (
+                <EstoqueNiveis isAdmin={isSuperAdmin} showToast={showToast} onSolicitar={() => setIsSolicitarOpen(true)} />
+              )}
+
               {activeSection === 'rastreadores' && (
                 <SectionCard title="Estoque" action={(
                   <div className="flex items-center gap-2">
