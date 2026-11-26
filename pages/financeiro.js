@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import {
-  FaSpinner, FaArrowLeft, FaCheckCircle, FaExclamationCircle, FaEdit, FaTrashAlt, FaPaperclip, FaFileCsv, FaCheck, FaFileCode,
+  FaSpinner, FaArrowLeft, FaCheckCircle, FaExclamationCircle, FaEdit, FaTrashAlt, FaPaperclip, FaFileCsv, FaCheck, FaFileCode, FaRedoAlt,
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import { ehAdmin } from '../lib/perfis';
@@ -19,7 +19,7 @@ import SolicitacoesPanel from '../components/financeiro/SolicitacoesPanel';
 import SolicitarCompra from '../components/financeiro/SolicitarCompra';
 import {
   TIPOS_DOCUMENTO, FORMAS_PAGAMENTO, STATUS_PAGAMENTO, GRUPOS_CATEGORIA, rotulo, reais, reaisCurto, dataBR, mesRotulo,
-  periodoPreset, estaVencida, baixarCsv, hojeIso, BUCKET_FINANCEIRO,
+  periodoPreset, estaVencida, baixarCsv, hojeIso, BUCKET_FINANCEIRO, precisaConferir, TIPOS_VALOR_RECORRENTE,
 } from '../lib/financeiro';
 
 const POR_PAGINA = 25;
@@ -77,6 +77,8 @@ export default function Financeiro() {
   }, [router]);
 
   const carregar = useCallback(async () => {
+    // Gastos recorrentes: cria os lançamentos do mês que ainda não existem (sem o SQL novo, só ignora)
+    try { await supabase.rpc('fv_fin_gerar_recorrentes'); } catch (e) { /* ignora */ }
     const [d, c, i, f, v, vi, t, e, p, so, ra] = await Promise.all([
       supabase.from('fin_despesas').select('*, fin_despesa_itens(*)').order('data', { ascending: false }).order('created_at', { ascending: false }),
       supabase.from('fin_categorias').select('*').order('ordem').order('nome'),
@@ -123,13 +125,14 @@ export default function Financeiro() {
   const [fTipos, setFTipos] = useState([]);
   const [fFormas, setFFormas] = useState([]);
   const [soVencidas, setSoVencidas] = useState(false);
+  const [soConferir, setSoConferir] = useState(false); // gastos variáveis gerados que falta conferir
   const [visao, setVisao] = useState('gasto'); // 'gasto' | 'item'
   const [sort, setSort] = useState({ key: 'data', dir: 'desc' });
   const [pagina, setPagina] = useState(1);
 
   const limparFiltros = () => {
     setBusca(''); setFCategorias([]); setFFornecedores([]); setFViagens([]); setFItens([]);
-    setFStatus([]); setFTipos([]); setFFormas([]); setSoVencidas(false);
+    setFStatus([]); setFTipos([]); setFFormas([]); setSoVencidas(false); setSoConferir(false);
   };
   const escolherPreset = (k) => { setPreset(k); setPeriodo(periodoPreset(k)); };
 
@@ -175,6 +178,7 @@ export default function Financeiro() {
       if (fTipos.length && !fTipos.includes(d.tipo_documento)) return null;
       if (fFormas.length && !fFormas.includes(d.forma_pagamento)) return null;
       if (soVencidas && !estaVencida(d)) return null;
+      if (soConferir && !precisaConferir(d)) return null;
       const linhas = (d.fin_despesa_itens || []).filter(linhaPassa);
       if (filtraLinha && !linhas.length) return null;
       if (q) {
@@ -185,7 +189,7 @@ export default function Financeiro() {
       const valorFiltrado = filtraLinha ? linhas.reduce((s, l) => s + (Number(l.valor_total) || 0), 0) : Number(d.valor_total) || 0;
       return { ...d, linhasFiltradas: filtraLinha ? linhas : (d.fin_despesa_itens || []), valorFiltrado };
     }).filter(Boolean);
-  }, [despesas, periodo, fFornecedores, fViagens, fStatus, fTipos, fFormas, soVencidas, linhaPassa, filtraLinha, busca, fornPorId, viagemPorId, itemPorId, catPorId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [despesas, periodo, fFornecedores, fViagens, fStatus, fTipos, fFormas, soVencidas, soConferir, linhaPassa, filtraLinha, busca, fornPorId, viagemPorId, itemPorId, catPorId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Linhas (visão "por item")
   const linhasFiltradas = useMemo(() => filtradas.flatMap(d => d.linhasFiltradas.map(l => ({ ...l, despesa: d }))), [filtradas]);
@@ -247,7 +251,7 @@ export default function Financeiro() {
   const totalPaginas = Math.max(1, Math.ceil(ordenadas.length / POR_PAGINA));
   const paginaAtual = Math.min(pagina, totalPaginas);
   const visiveis = ordenadas.slice((paginaAtual - 1) * POR_PAGINA, paginaAtual * POR_PAGINA);
-  useEffect(() => { setPagina(1); }, [busca, periodo, fCategorias, fFornecedores, fViagens, fItens, fStatus, fTipos, fFormas, soVencidas, visao]);
+  useEffect(() => { setPagina(1); }, [busca, periodo, fCategorias, fFornecedores, fViagens, fItens, fStatus, fTipos, fFormas, soVencidas, soConferir, visao]);
   const onSort = (key) => setSort(s => nextSort(s, key));
 
   // Chips dos filtros aplicados
@@ -264,6 +268,7 @@ export default function Financeiro() {
   addChip('tipo', 'Documento', opcoesTipo, fTipos, setFTipos);
   addChip('forma', 'Pagamento', opcoesForma, fFormas, setFFormas);
   if (soVencidas) chips.push({ key: 'venc', label: 'Só vencidas', onRemove: () => setSoVencidas(false) });
+  if (soConferir) chips.push({ key: 'conf', label: 'Variáveis a conferir', onRemove: () => setSoConferir(false) });
 
   // Atalhos vindos das outras abas
   const verGastos = (campo, id) => {
@@ -281,6 +286,13 @@ export default function Financeiro() {
     showToast('Marcado como pago.');
     carregar();
   };
+  const marcarConferido = async (d) => {
+    const { error } = await supabase.from('fin_despesas').update({ conferido: true }).eq('id', d.id);
+    if (error) { showToast(error.message, 'error'); return; }
+    showToast('Valor conferido.');
+    carregar();
+  };
+  const aConferir = despesas.filter(precisaConferir);
   const excluir = (d) => askConfirm(`Excluir o gasto "${d.descricao || nomeForn(d.fornecedor_id) || dataBR(d.data)}" de ${reais(d.valor_total)}? Os anexos também são apagados.`, async () => {
     if ((d.anexos || []).length) await supabase.storage.from(BUCKET_FINANCEIRO).remove(d.anexos.map(a => a.path));
     const { error } = await supabase.from('fin_despesas').delete().eq('id', d.id);
@@ -368,7 +380,7 @@ export default function Financeiro() {
                 active={aba}
                 onChange={setAba}
                 tabs={[
-                  { key: 'gastos', label: 'Gastos', count: despesas.length },
+                  { key: 'gastos', label: aConferir.length ? 'Gastos •' : 'Gastos', count: despesas.length },
                   { key: 'solicitacoes', label: solicitacoes.some(s => s.status === 'PENDENTE') ? 'Solicitações •' : 'Solicitações', count: solicitacoes.filter(s => s.status === 'PENDENTE' || s.status === 'APROVADA').length },
                   { key: 'fornecedores', label: 'Fornecedores', count: fornecedores.length },
                   { key: 'viagens', label: 'Viagens', count: viagens.length },
@@ -384,6 +396,19 @@ export default function Financeiro() {
                     <DateRangeFilter label="Datas" from={periodo.from} to={periodo.to} onChange={(p) => { setPreset(''); setPeriodo(p); }} />
                     {(periodo.from || periodo.to) && <span className="text-xs text-gray-500">{periodo.from ? dataBR(periodo.from) : 'início'} a {periodo.to ? dataBR(periodo.to) : 'hoje'}</span>}
                   </div>
+
+                  {aConferir.length > 0 && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-amber-200 bg-amber-950/40 border border-amber-500/40 rounded-xl px-4 py-3">
+                      <span className="inline-flex items-start gap-2">
+                        <FaExclamationCircle className="mt-0.5 shrink-0 text-amber-400" />
+                        <span>
+                          <b className="tabular-nums">{aConferir.length}</b> {aConferir.length === 1 ? 'gasto variável nasceu' : 'gastos variáveis nasceram'} com o valor do mês anterior.
+                          Entre em cada um, confira o valor deste mês e salve.
+                        </span>
+                      </span>
+                      <button type="button" onClick={() => { limparFiltros(); escolherPreset('tudo'); setSoConferir(true); }} className="shrink-0 rounded-lg border border-amber-500/50 px-3 py-1.5 text-amber-100 hover:bg-amber-500/10">Ver quais são</button>
+                    </div>
+                  )}
 
                   <StatStrip
                     colsClass="grid-cols-2 lg:grid-cols-5"
@@ -491,6 +516,7 @@ export default function Financeiro() {
                       <FilterDropdown label="Documento" options={opcoesTipo} selected={fTipos} onChange={setFTipos} />
                       <FilterDropdown label="Pagamento" options={opcoesForma} selected={fFormas} onChange={setFFormas} />
                       <ToggleFilter label="Só vencidas" active={soVencidas} onClick={() => setSoVencidas(v => !v)} />
+                      <ToggleFilter label={`Variáveis a conferir${aConferir.length ? ` · ${aConferir.length}` : ''}`} active={soConferir} onClick={() => setSoConferir(v => !v)} />
                     </div>
                     <FilterSummary
                       total={visao === 'gasto' ? filtradas.length : linhasFiltradas.length}
@@ -522,10 +548,24 @@ export default function Financeiro() {
                               const cats = [...new Set(d.linhasFiltradas.map(l => catPorId[l.categoria_id]?.nome).filter(Boolean))];
                               const venc = estaVencida(d);
                               return (
-                                <tr key={d.id} className={rowClass}>
+                                <tr key={d.id} className={`${rowClass} ${precisaConferir(d) ? 'bg-amber-500/[0.04]' : ''}`}>
                                   <td className="px-4 py-3 text-gray-300 whitespace-nowrap">{dataBR(d.data)}</td>
                                   <td className="px-4 py-3">
                                     <div className="text-white">{d.descricao || d.linhasFiltradas[0]?.descricao || <Dash />}</div>
+                                    {(d.recorrencia === 'RECORRENTE' || precisaConferir(d)) && (
+                                      <div className="flex flex-wrap items-center gap-1.5 mt-0.5">
+                                        {d.recorrencia === 'RECORRENTE' && (
+                                          <span className="inline-flex items-center gap-1 text-[11px] rounded-full px-2 py-0.5 bg-blue-500/10 text-blue-300" title={d.recorrencia_ate ? `Repete até ${dataBR(d.recorrencia_ate)}` : 'Repete todo mês, sem data limite'}>
+                                            <FaRedoAlt size={8} /> Recorrente · {rotulo(TIPOS_VALOR_RECORRENTE, d.valor_tipo)}{d.recorrencia_ate ? ` até ${dataBR(d.recorrencia_ate)}` : ''}
+                                          </span>
+                                        )}
+                                        {precisaConferir(d) && (
+                                          <span className="inline-flex items-center gap-1 text-[11px] font-semibold rounded-full px-2 py-0.5 bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/40">
+                                            <FaExclamationCircle size={9} /> Conferir valor
+                                          </span>
+                                        )}
+                                      </div>
+                                    )}
                                     <div className="text-xs text-gray-500">
                                       {d.linhasFiltradas.length} {d.linhasFiltradas.length === 1 ? 'item' : 'itens'}
                                       {d.viagem_id && viagemPorId[d.viagem_id] ? ` · viagem: ${viagemPorId[d.viagem_id].titulo}` : ''}
@@ -552,6 +592,7 @@ export default function Financeiro() {
                                   </td>
                                   <td className="px-4 py-3">
                                     <div className="flex justify-end gap-1">
+                                      {precisaConferir(d) && <ActionButton title="Valor conferido (está certo)" hover="hover:text-amber-300" onClick={() => marcarConferido(d)}><FaCheckCircle size={12} /></ActionButton>}
                                       {d.status === 'A_PAGAR' && <ActionButton title="Marcar como pago" hover="hover:text-emerald-400" onClick={() => marcarPago(d)}><FaCheck size={12} /></ActionButton>}
                                       <ActionButton title="Editar" onClick={() => setFormAberto({ despesa: d })}><FaEdit size={12} /></ActionButton>
                                       <ActionButton title="Excluir" hover="hover:text-red-400" onClick={() => excluir(d)}><FaTrashAlt size={12} /></ActionButton>

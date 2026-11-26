@@ -6,7 +6,7 @@ import { salvarOS } from '../../lib/osSalvar';
 import { BRL, inputBase } from '../admin/ui';
 import SignaturePad from './SignaturePad';
 import {
-  SERVICO_TAGS, FOTO_TIPOS, CHECKLIST_ITENS, CHECKLIST_RESPOSTAS, REGIOES,
+  SERVICO_TAGS, FOTO_TIPOS, FOTOS_ANTES, FOTOS_DEPOIS, CHECKLIST_ITENS, CHECKLIST_RESPOSTAS, REGIOES,
   TAGS_QUE_RETIRAM, normalizaPlaca, SERVICOS_PRIMARIOS, rotuloOpcao,
   categoriaInstalada, ehDaCategoria, itemInstaladoNaPlaca, SERVICOS_INSTALACAO_UNICA,
   CAT_LOCALIZADOR, CAT_ATUADOR, CAT_SENSOR,
@@ -14,12 +14,15 @@ import {
 import { Select, DateInput, Combobox } from '../ui/FormControls';
 
 const STEPS = [
+  { key: 'fotosAntes', titulo: 'Fotos antes do serviço' },
   { key: 'servico', titulo: 'Serviço' },
   { key: 'veiculo', titulo: 'Veículo' },
-  { key: 'fotos', titulo: 'Fotos' },
+  { key: 'fotosDepois', titulo: 'Fotos depois do serviço' },
   { key: 'estado', titulo: 'Estado do veículo' },
   { key: 'revisao', titulo: 'Revisão' },
 ];
+// Número de cada etapa pelo nome (assim dá para mudar a ordem sem caçar números no código)
+const E = Object.fromEntries(STEPS.map((s, i) => [s.key, i]));
 
 const campo = `w-full px-3.5 py-2.5 text-base sm:text-sm ${inputBase}`;
 const hoje = () => new Date().toLocaleDateString('en-CA');
@@ -141,7 +144,7 @@ export default function OsWizard({
 
   // Localização: só no modo técnico (no escritório ela não prova nada sobre onde o serviço foi feito)
   useEffect(() => {
-    if (!(exigeEvidencias && step === 4) || geoStatus !== 'idle') return;
+    if (!(exigeEvidencias && step === E.revisao) || geoStatus !== 'idle') return;
     if (typeof navigator === 'undefined' || !navigator.geolocation) { setGeoStatus('indisponivel'); return; }
     setGeoStatus('buscando');
     navigator.geolocation.getCurrentPosition(
@@ -286,31 +289,54 @@ export default function OsWizard({
 
   // ---------------- validação de cada etapa ----------------
   const erroDaEtapa = (i) => {
-    if (i === 0) {
+    if (i === E.servico) {
       if (!f.data) return 'Informe a data';
       if (!tecnico) return 'Escolha o técnico';
       if (!f.empresaId) return 'Escolha o cliente';
       if (nomesSel.length === 0 && !f.cobraKm) return 'Marque ao menos um serviço';
     }
-    if (i === 1 && normalizaPlaca(f.placaTexto).length < 5) return 'Informe a placa';
-    if (i === 1 && nomesSel.includes('INSTALAÇÃO LOCALIZADOR') && rastreadorNaPlaca && !precisaRetirada) {
+    if (i === E.veiculo && normalizaPlaca(f.placaTexto).length < 5) return 'Informe a placa';
+    if (i === E.veiculo && nomesSel.includes('INSTALAÇÃO LOCALIZADOR') && rastreadorNaPlaca && !precisaRetirada) {
       return `Esta placa já tem o rastreador ${rastreadorNaPlaca.serial}. Só cabe 1 por veículo: use Troca de equipamento ou Upgrade`;
     }
-    if (i === 1 && instalaAtuador && atuadorNaPlaca && !retiraAtuador) {
+    if (i === E.veiculo && instalaAtuador && atuadorNaPlaca && !retiraAtuador) {
       return `Esta placa já tem o atuador ${atuadorNaPlaca.serial}. Só cabe 1 por veículo: marque a retirada dele antes`;
     }
-    if (i === 1 && f.cobraKm && !(Number(String(f.km).replace(',', '.')) > 0)) return 'Informe os KM percorridos';
-    if (i === 2) {
-      const falta = FOTO_TIPOS.filter(ft => !fotos[ft.key]).length;
+    if (i === E.veiculo && f.cobraKm && !(Number(String(f.km).replace(',', '.')) > 0)) return 'Informe os KM percorridos';
+    if (i === E.fotosAntes || i === E.fotosDepois) {
+      const falta = (i === E.fotosAntes ? FOTOS_ANTES : FOTOS_DEPOIS).filter(ft => !fotos[ft.key]).length;
       if (falta > 0) return `Faltam ${falta} ${falta === 1 ? 'foto' : 'fotos'}`;
     }
-    if (i === 3 && exigeEvidencias && CHECKLIST_ITENS.some(it => !f.checklist[it.key])) return 'Responda todos os itens do estado do veículo';
-    if (i === 4 && exigeEvidencias) {
+    if (i === E.estado && exigeEvidencias && CHECKLIST_ITENS.some(it => !f.checklist[it.key])) return 'Responda todos os itens do estado do veículo';
+    if (i === E.revisao && exigeEvidencias) {
       if (!f.assinanteNome.trim()) return 'Informe o nome de quem assinou';
       if (!assinatura) return 'Falta a assinatura do responsável';
     }
     return null;
   };
+  // Grade de fotos (usada nas etapas de fotos antes e depois)
+  const gradeFotos = (tipos) => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      {tipos.map(ft => {
+        const tem = Boolean(fotos[ft.key]);
+        return (
+          <label key={ft.key} className={`relative aspect-[4/3] rounded-xl border overflow-hidden cursor-pointer flex flex-col items-center justify-center text-center p-2 transition-colors focus-within:ring-2 focus-within:ring-blue-500/60 ${tem ? 'border-emerald-500/50' : 'border-dashed border-gray-700 hover:border-gray-500'}`}>
+            <input type="file" accept="image/*" capture="environment" className="sr-only" aria-label={ft.label} onChange={e => escolheFoto(ft.key, e.target.files && e.target.files[0])} />
+            {tem && previews[ft.key] && <img src={previews[ft.key]} alt="" className="absolute inset-0 w-full h-full object-cover" />}
+            {tem ? (
+              <span className="absolute bottom-0 inset-x-0 bg-black/65 text-[11px] text-white py-1 px-2 flex items-center justify-center gap-1.5"><FaCheck size={9} className="text-emerald-400" /> {ft.curto}</span>
+            ) : (
+              <>
+                <FaCamera className="text-gray-500 mb-2" size={18} />
+                <span className="text-xs text-gray-300 leading-tight">{ft.curto}</span>
+              </>
+            )}
+          </label>
+        );
+      })}
+    </div>
+  );
+
   const erroAtual = erroDaEtapa(step);
   const ultima = step === STEPS.length - 1;
 
@@ -319,8 +345,8 @@ export default function OsWizard({
   const finalizar = async () => {
     if (erroAtual) return;
     // A regra de 1 rastreador / 1 atuador por placa vale mesmo pulando etapas
-    const erroVeiculo = erroDaEtapa(1);
-    if (erroVeiculo) { showToast(erroVeiculo, 'error'); setStep(1); return; }
+    const erroVeiculo = erroDaEtapa(E.veiculo);
+    if (erroVeiculo) { showToast(erroVeiculo, 'error'); setStep(E.veiculo); return; }
     setSalvando(true);
     try {
       const dados = {
@@ -391,7 +417,7 @@ export default function OsWizard({
         {/* Conteúdo (sem barra de rolagem aparente) */}
         <div ref={bodyRef} className={`flex-1 overflow-y-auto px-6 py-6 ${SEM_BARRA}`}>
           {/* ===== 1. Serviço ===== */}
-          {step === 0 && (
+          {step === E.servico && (
             <Passo>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -485,7 +511,7 @@ export default function OsWizard({
           )}
 
           {/* ===== 2. Veículo ===== */}
-          {step === 1 && (
+          {step === E.veiculo && (
             <Passo>
               <div>
                 <Rotulo>Placa</Rotulo>
@@ -497,7 +523,7 @@ export default function OsWizard({
                 />
                 <div className="mt-1.5 text-xs min-h-[1rem]">
                   {veiculoMatch && !placaDeOutroCliente && <span className="text-gray-500">Placa cadastrada.</span>}
-                  {placaDeOutroCliente && <span className="text-amber-400">Esta placa está cadastrada em outro cliente. Confira se o cliente da etapa 1 está certo, pois os preços dependem dele.</span>}
+                  {placaDeOutroCliente && <span className="text-amber-400">Esta placa está cadastrada em outro cliente. Confira se o cliente da etapa Serviço está certo, pois os preços dependem dele.</span>}
                   {placaNova && <span className="text-amber-400">Placa não cadastrada: a OS será salva como placa nova, sem vínculo com o cadastro de veículos.</span>}
                 </div>
               </div>
@@ -594,37 +620,30 @@ export default function OsWizard({
             </Passo>
           )}
 
-          {/* ===== 3. Fotos ===== */}
-          {step === 2 && (
+          {/* ===== Fotos antes do serviço (primeira etapa: tiradas antes de mexer no veículo) ===== */}
+          {step === E.fotosAntes && (
             <Passo>
               <div className="flex items-baseline justify-between">
-                <p className="text-sm text-gray-400">Todas as 7 fotos são obrigatórias. Elas provam como o veículo estava antes e depois.</p>
-                <span className="text-sm text-white tabular-nums whitespace-nowrap ml-3">{Object.keys(fotos).length} de {FOTO_TIPOS.length}</span>
+                <p className="text-sm text-gray-400">Antes de começar o serviço, tire estas {FOTOS_ANTES.length} fotos. Elas provam como o veículo estava quando chegamos.</p>
+                <span className="text-sm text-white tabular-nums whitespace-nowrap ml-3">{FOTOS_ANTES.filter(ft => fotos[ft.key]).length} de {FOTOS_ANTES.length}</span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {FOTO_TIPOS.map(ft => {
-                  const tem = Boolean(fotos[ft.key]);
-                  return (
-                    <label key={ft.key} className={`relative aspect-[4/3] rounded-xl border overflow-hidden cursor-pointer flex flex-col items-center justify-center text-center p-2 transition-colors focus-within:ring-2 focus-within:ring-blue-500/60 ${tem ? 'border-emerald-500/50' : 'border-dashed border-gray-700 hover:border-gray-500'}`}>
-                      <input type="file" accept="image/*" capture="environment" className="sr-only" aria-label={ft.label} onChange={e => escolheFoto(ft.key, e.target.files && e.target.files[0])} />
-                      {tem && previews[ft.key] && <img src={previews[ft.key]} alt="" className="absolute inset-0 w-full h-full object-cover" />}
-                      {tem ? (
-                        <span className="absolute bottom-0 inset-x-0 bg-black/65 text-[11px] text-white py-1 px-2 flex items-center justify-center gap-1.5"><FaCheck size={9} className="text-emerald-400" /> {ft.curto}</span>
-                      ) : (
-                        <>
-                          <FaCamera className="text-gray-500 mb-2" size={18} />
-                          <span className="text-xs text-gray-300 leading-tight">{ft.curto}</span>
-                        </>
-                      )}
-                    </label>
-                  );
-                })}
+              {gradeFotos(FOTOS_ANTES)}
+            </Passo>
+          )}
+
+          {/* ===== Fotos depois do serviço ===== */}
+          {step === E.fotosDepois && (
+            <Passo>
+              <div className="flex items-baseline justify-between">
+                <p className="text-sm text-gray-400">Com o serviço pronto, tire as {FOTOS_DEPOIS.length} fotos finais. Todas são obrigatórias.</p>
+                <span className="text-sm text-white tabular-nums whitespace-nowrap ml-3">{FOTOS_DEPOIS.filter(ft => fotos[ft.key]).length} de {FOTOS_DEPOIS.length}</span>
               </div>
+              {gradeFotos(FOTOS_DEPOIS)}
             </Passo>
           )}
 
           {/* ===== 4. Estado do veículo ===== */}
-          {step === 3 && (
+          {step === E.estado && (
             <Passo>
               <div>
                 <div className="flex items-center justify-between mb-2">
@@ -672,7 +691,7 @@ export default function OsWizard({
           )}
 
           {/* ===== 5. Revisão ===== */}
-          {step === 4 && (
+          {step === E.revisao && (
             <Passo>
               <dl className="rounded-xl border border-gray-800 divide-y divide-gray-800/70 text-sm">
                 <div className="flex justify-between gap-4 px-4 py-2.5"><dt className="text-gray-500">Cliente</dt><dd className="text-white text-right">{empresas.find(e => String(e.id) === String(f.empresaId))?.nome}</dd></div>

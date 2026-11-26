@@ -48,7 +48,7 @@ export default function SolicitacoesPanel({
     const q = norm(busca);
     return solicitacoes
       .filter(s => (!fStatus.length || fStatus.includes(s.status)) && (!soUrgentes || s.urgencia === 'URGENTE')
-        && (!q || norm(`${s.descricao} ${s.motivo} ${s.solicitante_nome}`).includes(q)))
+        && (!q || norm(`${s.descricao} ${s.motivo} ${s.solicitante_nome} ${s.local_entrega || ''} ${s.centro_custo || ''}`).includes(q)))
       .sort((a, b) => (ABERTAS.includes(b.status) - ABERTAS.includes(a.status))
         || ((b.urgencia === 'URGENTE') - (a.urgencia === 'URGENTE'))
         || (a.created_at < b.created_at ? 1 : -1));
@@ -83,7 +83,7 @@ export default function SolicitacoesPanel({
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
-        <SearchInput value={busca} onChange={setBusca} placeholder="Buscar item, motivo ou quem pediu" />
+        <SearchInput value={busca} onChange={setBusca} placeholder="Buscar item, motivo, quem pediu, local ou centro de custo" />
         <FilterDropdown label="Situação" options={opcoesStatus} selected={fStatus} onChange={setFStatus} />
         <ToggleFilter label="Só urgentes" active={soUrgentes} onClick={() => setSoUrgentes(v => !v)} />
         {selecionadas.length > 0 && (
@@ -98,13 +98,13 @@ export default function SolicitacoesPanel({
           <thead className={theadClass}>
             <tr>
               <th className="w-10" />
-              {['Pedido em', 'Quem pediu', 'Item', 'Qtd', 'Motivo', 'Estoque', 'Estimativa', 'Situação', ''].map((h, i) => (
+              {['Pedido em', 'Quem pediu', 'Item', 'Qtd', 'Motivo', 'Entrega / C. custo', 'Estoque', 'Estimativa', 'Situação', ''].map((h, i) => (
                 <th key={i} className={`px-4 py-3 text-xs font-medium text-gray-400 whitespace-nowrap ${['Qtd', 'Estimativa', 'Estoque'].includes(h) || h === '' ? 'text-right' : 'text-left'}`}>{h}</th>
               ))}
             </tr>
           </thead>
           <tbody className={tbodyClass}>
-            {lista.length === 0 && <tr><td colSpan={10} className="px-4 py-10 text-center text-gray-500">Nenhuma solicitação.</td></tr>}
+            {lista.length === 0 && <tr><td colSpan={11} className="px-4 py-10 text-center text-gray-500">Nenhuma solicitação.</td></tr>}
             {lista.map(s => {
               const aberta = ABERTAS.includes(s.status);
               const est = estimativa(s);
@@ -131,6 +131,14 @@ export default function SolicitacoesPanel({
                   <td className="px-4 py-3 text-gray-300 max-w-[260px]">
                     <div className="whitespace-pre-wrap">{s.motivo}</div>
                     {s.resposta && <div className="text-xs text-gray-500 mt-1">Resposta: {s.resposta}</div>}
+                  </td>
+                  <td className="px-4 py-3 text-gray-300 max-w-[200px]">
+                    {s.local_entrega || s.centro_custo ? (
+                      <>
+                        <div>{s.local_entrega || <Dash />}</div>
+                        {s.centro_custo && <div className="text-xs text-gray-500">{s.centro_custo}</div>}
+                      </>
+                    ) : <Dash />}
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums whitespace-nowrap">
                     {prodId ? <span className={emEstoque[prodId] ? 'text-gray-200' : 'text-red-400'}>{emEstoque[prodId] || 0} disp.</span> : <Dash />}

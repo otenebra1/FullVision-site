@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { FaTimes, FaSpinner, FaShoppingCart, FaTrashAlt } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
 import { Select } from '../ui/FormControls';
-import { UNIDADES, lerNumero, STATUS_SOLICITACAO, rotulo } from '../../lib/financeiro';
+import { UNIDADES, lerNumero, STATUS_SOLICITACAO, rotulo, CENTROS_CUSTO } from '../../lib/financeiro';
 
 const campo = 'w-full px-3 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-500 outline-none focus:border-blue-500';
 const rotuloCls = 'block text-xs font-medium text-gray-400 mb-1';
@@ -20,7 +20,7 @@ export default function SolicitarCompra({ onClose, showToast, itemInicial }) {
   const [itens, setItens] = useState([]);
   const [minhas, setMinhas] = useState([]);
   const [aba, setAba] = useState('nova');
-  const [f, setF] = useState({ item_id: '', descricao: itemInicial || '', quantidade: '1', unidade: 'UN', motivo: '', urgencia: 'NORMAL' });
+  const [f, setF] = useState({ item_id: '', descricao: itemInicial || '', quantidade: '1', unidade: 'UN', motivo: '', urgencia: 'NORMAL', local_entrega: '', centro_custo: '' });
   const [salvando, setSalvando] = useState(false);
   const [erro, setErro] = useState('');
   const set = (k) => (e) => setF(p => ({ ...p, [k]: e?.target ? e.target.value : e }));
@@ -36,6 +36,11 @@ export default function SolicitarCompra({ onClose, showToast, itemInicial }) {
     if (m.error) setErro(m.error.message.includes('fin_solicitacoes') ? 'A função de solicitação ainda não foi ligada no banco (falta rodar o SQL).' : m.error.message);
   };
   useEffect(() => { carregar(); }, []);
+
+  // Sugestões para local de entrega e centro de custo: o que a pessoa já usou antes
+  const sugestoes = (campoNome, base = []) => [...new Set([...base, ...minhas.map(m => m[campoNome]).filter(Boolean)])];
+  const sugLocal = sugestoes('local_entrega');
+  const sugCentro = sugestoes('centro_custo', CENTROS_CUSTO);
 
   const opcoesItem = useMemo(() => [{ value: '', label: 'Outro (escrever abaixo)' }, ...itens.map(i => ({ value: i.id, label: i.nome }))], [itens]);
 
@@ -53,11 +58,14 @@ export default function SolicitarCompra({ onClose, showToast, itemInicial }) {
     const { error } = await supabase.from('fin_solicitacoes').insert([{
       item_id: f.item_id || null, descricao: f.descricao.trim(), quantidade: lerNumero(f.quantidade),
       unidade: f.unidade, motivo: f.motivo.trim(), urgencia: f.urgencia,
+      // só manda quando preenchido (assim não quebra se o SQL novo ainda não rodou)
+      ...(f.local_entrega.trim() ? { local_entrega: f.local_entrega.trim() } : {}),
+      ...(f.centro_custo.trim() ? { centro_custo: f.centro_custo.trim() } : {}),
     }]);
     setSalvando(false);
     if (error) { setErro(error.message); return; }
     showToast?.('Solicitação enviada para o financeiro.');
-    setF({ item_id: '', descricao: '', quantidade: '1', unidade: 'UN', motivo: '', urgencia: 'NORMAL' });
+    setF(p => ({ item_id: '', descricao: '', quantidade: '1', unidade: 'UN', motivo: '', urgencia: 'NORMAL', local_entrega: p.local_entrega, centro_custo: p.centro_custo }));
     setAba('minhas');
     carregar();
   };
@@ -104,6 +112,16 @@ export default function SolicitarCompra({ onClose, showToast, itemInicial }) {
               <label className="block"><span className={rotuloCls}>Motivo da compra *</span>
                 <textarea rows={3} value={f.motivo} onChange={set('motivo')} className={campo} placeholder="Ex.: acabou no estoque, instalação da frota X na semana que vem" />
               </label>
+              <div className="grid grid-cols-2 gap-3">
+                <label><span className={rotuloCls}>Local de entrega</span>
+                  <input value={f.local_entrega} onChange={set('local_entrega')} list="sc-locais" className={campo} placeholder="Ex.: Base Uberlândia" />
+                  <datalist id="sc-locais">{sugLocal.map(v => <option key={v} value={v} />)}</datalist>
+                </label>
+                <label><span className={rotuloCls}>Centro de custo</span>
+                  <input value={f.centro_custo} onChange={set('centro_custo')} list="sc-centros" className={campo} placeholder="Ex.: Operacional" />
+                  <datalist id="sc-centros">{sugCentro.map(v => <option key={v} value={v} />)}</datalist>
+                </label>
+              </div>
               <div className="flex gap-2">
                 {[{ k: 'NORMAL', l: 'Normal' }, { k: 'URGENTE', l: 'Urgente' }].map(u => (
                   <button key={u.k} type="button" onClick={() => setF(p => ({ ...p, urgencia: u.k }))}
@@ -125,6 +143,13 @@ export default function SolicitarCompra({ onClose, showToast, itemInicial }) {
                     <span className={`shrink-0 text-[11px] font-semibold rounded-full px-2 py-0.5 ${COR_STATUS[s.status] || ''}`}>{rotulo(STATUS_SOLICITACAO, s.status)}</span>
                   </div>
                   <div className="text-xs text-gray-400">{s.motivo}</div>
+                  {(s.local_entrega || s.centro_custo) && (
+                    <div className="text-xs text-gray-500">
+                      {s.local_entrega && <>Entrega: <span className="text-gray-300">{s.local_entrega}</span></>}
+                      {s.local_entrega && s.centro_custo && ' · '}
+                      {s.centro_custo && <>Centro de custo: <span className="text-gray-300">{s.centro_custo}</span></>}
+                    </div>
+                  )}
                   <div className="flex items-center justify-between text-xs text-gray-500">
                     <span>{dataBR(s.created_at)}{s.urgencia === 'URGENTE' ? ' · urgente' : ''}</span>
                     {s.status === 'PENDENTE' && (

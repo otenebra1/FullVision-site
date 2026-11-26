@@ -8,6 +8,7 @@ import {
 } from 'react-icons/fa';
 import OsHistory from '../components/os/OsHistory';
 import OsWizard from '../components/os/OsWizard';
+import OsDetalhe from '../components/os/OsDetalhe';
 import VeiculosAgrupados from '../components/admin/VeiculosAgrupados';
 import PrecosPanel from '../components/admin/PrecosPanel';
 import ClientesPanel from '../components/admin/ClientesPanel';
@@ -157,6 +158,7 @@ export default function PainelAdmin() {
 
   const [isOsModalOpen, setIsOsModalOpen] = useState(false);
   const [osAberta, setOsAberta] = useState(null); // OS aberta (de solicitação) sendo finalizada
+  const [osDaPlaca, setOsDaPlaca] = useState(null); // OS aberta a partir do histórico da ficha do veículo
 
 
   // ------------------------------------------
@@ -1194,6 +1196,19 @@ export default function PainelAdmin() {
           onClose={() => setViewingVehicle(null)}
           onEdit={openVehicleForm}
           onDelete={isSuperAdmin ? handleDeleteVehicle : undefined}
+          onOpenOs={(os) => setOsDaPlaca(os)}
+        />
+      )}
+
+      {/* OS aberta pelo histórico da ficha do veículo (fica por cima da ficha) */}
+      {osDaPlaca && (
+        <OsDetalhe
+          os={osDaPlaca}
+          rastreadores={rastreadores}
+          onClose={() => setOsDaPlaca(null)}
+          onDelete={isSuperAdmin ? (id) => { setOsDaPlaca(null); handleDeleteOs(id); } : undefined}
+          onFinalizar={(os) => { setOsDaPlaca(null); setViewingVehicle(null); setOsAberta(os); setIsOsModalOpen(true); }}
+          onUpdated={(os) => { setOrdensServico(prev => prev.map(o => (o.id === os.id ? os : o))); setOsDaPlaca(os); }}
         />
       )}
 

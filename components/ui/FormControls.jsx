@@ -184,7 +184,7 @@ export function Select({
         onClick={() => setOpen(o => !o)}
         className={`${field} ${fieldBase} ${open ? 'border-blue-500' : ''}`}
       >
-        <span className={`truncate tabular-nums ${isPlaceholder ? 'text-gray-400' : ''}`}>{current ? current.label : placeholder}</span>
+        <span className={`truncate tabular-nums lining-nums ${isPlaceholder ? 'text-gray-400' : ''}`}>{current ? current.label : placeholder}</span>
         <FaChevronDown size={10} className={`shrink-0 text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
       <RequiredProxy value={value} required={required} name={name} />
@@ -212,7 +212,7 @@ export function Select({
                 onClick={() => pick(o)}
                 className={`flex items-center justify-between gap-3 px-3 py-2 cursor-pointer ${o.disabled ? 'opacity-40 cursor-not-allowed' : ''} ${i === active ? 'bg-gray-800' : ''} ${sel ? 'text-white' : 'text-gray-300'} ${o.value === '' ? 'text-gray-400' : ''}`}
               >
-                <span className="truncate tabular-nums">{o.label}</span>
+                <span className="truncate tabular-nums lining-nums">{o.label}</span>
                 {sel && <FaCheck size={10} className="text-blue-400 shrink-0" />}
               </li>
             );
@@ -302,9 +302,9 @@ export function DateInput({
           onBlur={onTextCommit}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); onTextCommit(); } if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); } }}
           onFocus={() => setOpen(true)}
-          className="min-w-0 flex-1 bg-transparent outline-none placeholder-gray-500 tabular-nums"
+          className="min-w-0 flex-1 bg-transparent outline-none placeholder-gray-500 tabular-nums lining-nums"
         />
-        {withTime && datePart && <span className="text-gray-400 tabular-nums">{timePart}</span>}
+        {withTime && datePart && <span className="text-gray-400 tabular-nums lining-nums">{timePart}</span>}
         <button type="button" tabIndex={-1} disabled={disabled} onClick={() => setOpen(o => !o)} aria-label="Abrir calendário" className="text-gray-500 hover:text-white shrink-0">
           <FaRegCalendarAlt size={13} />
         </button>
@@ -318,7 +318,7 @@ export function DateInput({
             <div className="flex items-center gap-1 font-semibold">
               <span>{MESES[mes]}</span>
               <button type="button" onClick={() => setView(new Date(ano - 1, mes, 1))} className="px-1 text-gray-500 hover:text-white" aria-label="Ano anterior">‹</button>
-              <span className="tabular-nums">{ano}</span>
+              <span className="tabular-nums lining-nums">{ano}</span>
               <button type="button" onClick={() => setView(new Date(ano + 1, mes, 1))} className="px-1 text-gray-500 hover:text-white" aria-label="Próximo ano">›</button>
             </div>
             <button type="button" onClick={() => setView(new Date(ano, mes + 1, 1))} aria-label="Próximo mês" className="p-2 rounded-md text-gray-400 hover:text-white hover:bg-gray-800"><FaChevronRight size={11} /></button>
@@ -336,7 +336,7 @@ export function DateInput({
                 <button
                   key={iso} type="button" disabled={off}
                   onClick={() => { emit(iso); if (!withTime) setOpen(false); }}
-                  className={`h-8 rounded-md text-sm tabular-nums transition-colors disabled:opacity-25 disabled:cursor-not-allowed
+                  className={`h-8 rounded-md text-sm tabular-nums lining-nums transition-colors disabled:opacity-25 disabled:cursor-not-allowed
                     ${sel ? 'bg-blue-600 text-white font-semibold' : doMes ? 'text-gray-200 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-800/60'}
                     ${!sel && iso === hojeIso ? 'ring-1 ring-inset ring-blue-500/60' : ''}`}
                 >
@@ -402,7 +402,7 @@ export function Combobox({
             else if (e.key === 'Enter' && open && active >= 0 && shown[active]) { e.preventDefault(); pick(shown[active]); }
             else if (e.key === 'Tab') setOpen(false);
           }}
-          className={`min-w-0 flex-1 bg-transparent outline-none placeholder-gray-500 ${inputClassName}`}
+          className={`min-w-0 flex-1 bg-transparent outline-none placeholder-gray-500 tabular-nums lining-nums ${inputClassName}`}
         />
         {lista.length > 0 && (
           <button type="button" tabIndex={-1} onClick={() => setOpen(o => !o)} aria-label="Ver opções" className="text-gray-500 hover:text-white shrink-0">
@@ -416,7 +416,7 @@ export function Combobox({
             <li
               key={`${o.value}-${i}`} role="option" aria-selected={o.value === value}
               onMouseEnter={() => setActive(i)} onMouseDown={e => e.preventDefault()} onClick={() => pick(o)}
-              className={`flex items-center justify-between gap-3 px-3 py-2 cursor-pointer ${i === active ? 'bg-gray-800' : ''} ${o.value === value ? 'text-white' : 'text-gray-300'} tabular-nums`}
+              className={`flex items-center justify-between gap-3 px-3 py-2 cursor-pointer ${i === active ? 'bg-gray-800' : ''} ${o.value === value ? 'text-white' : 'text-gray-300'} tabular-nums lining-nums`}
             >
               <span className="truncate">{o.label}</span>
               {o.hint && <span className="text-xs text-gray-500 shrink-0">{o.hint}</span>}

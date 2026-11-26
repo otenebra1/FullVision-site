@@ -1,7 +1,7 @@
 // Formulário de um gasto (NF-e, NF, romaneio, cupom, recibo...) com as linhas de itens.
 // Dá para importar a nota (XML da NF-e ou NFS-e, ou o PDF): preenche fornecedor, número, data e itens.
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FaTimes, FaPlus, FaTrashAlt, FaFileCode, FaPaperclip, FaSpinner, FaExclamationTriangle, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaTimes, FaPlus, FaTrashAlt, FaFileCode, FaPaperclip, FaSpinner, FaExclamationTriangle, FaExternalLinkAlt, FaRedoAlt } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
 import { inputBase } from '../admin/ui';
 import { Select, DateInput } from '../ui/FormControls';
@@ -10,6 +10,7 @@ import { ehXmlNfse, lerXmlNfse } from '../../lib/nfse';
 import { lerPdfNota } from '../../lib/notaPdf';
 import {
   TIPOS_DOCUMENTO, FORMAS_PAGAMENTO, STATUS_PAGAMENTO, UNIDADES, BUCKET_FINANCEIRO,
+  TIPOS_RECORRENCIA, TIPOS_VALOR_RECORRENTE, precisaConferir,
   reais, lerNumero, hojeIso, dataBR,
 } from '../../lib/financeiro';
 
@@ -29,6 +30,20 @@ async function lerArquivoNota(file) {
 
 const linhaVazia = (ordem = 0) => ({ chave: Math.random().toString(36).slice(2), item_id: '', categoria_id: '', descricao: '', codigo_fornecedor: '', quantidade: '1', unidade: 'UN', valor_unitario: '', ordem });
 const virgula = (n) => String(n ?? '').replace('.', ',');
+// Botões lado a lado (escolha única)
+function Opcoes({ value, onChange, options, ariaLabel }) {
+  return (
+    <div className="flex gap-2" role="radiogroup" aria-label={ariaLabel}>
+      {options.map(o => (
+        <button
+          key={o.value} type="button" role="radio" aria-checked={value === o.value} onClick={() => onChange(o.value)}
+          className={`flex-1 rounded-lg py-2 px-3 text-sm border transition-colors ${value === o.value ? 'border-blue-500 bg-blue-600/15 text-white' : 'border-gray-800 text-gray-400 hover:text-white hover:border-gray-700'}`}
+        >{o.label}</button>
+      ))}
+    </div>
+  );
+}
+
 const totalLinha = (l) => Math.round(lerNumero(l.quantidade) * lerNumero(l.valor_unitario) * 100) / 100;
 
 export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml, solicitacoes = [], onClose, onSaved, showToast }) {
@@ -49,7 +64,11 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
     vencimento: despesa?.vencimento || '',
     data_pagamento: despesa?.data_pagamento || '',
     observacao: despesa?.observacao || '',
+    recorrencia: despesa?.recorrencia || 'PONTUAL',
+    valor_tipo: despesa?.valor_tipo || 'FIXO',
+    recorrencia_ate: despesa?.recorrencia_ate || '',
   }));
+  const conferir = editando && precisaConferir(despesa);
   const set = (k) => (e) => setF(prev => ({ ...prev, [k]: e?.target ? e.target.value : e }));
 
   const [linhas, setLinhas] = useState(() => {
@@ -202,6 +221,7 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
     if (validas.some(l => !l.categoria_id)) { setErro('Toda linha precisa de categoria.'); return; }
     if (!f.data) { setErro('Informe a data.'); return; }
     if (f.status === 'A_PAGAR' && !f.vencimento) { setErro('Gasto a pagar precisa de vencimento.'); return; }
+    if (f.recorrencia === 'RECORRENTE' && f.recorrencia_ate && f.recorrencia_ate.slice(0, 7) < f.data.slice(0, 7)) { setErro('O prazo da recorrência não pode ser antes da data do gasto.'); return; }
 
     setSalvando(true);
     try {
@@ -218,8 +238,18 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
       }
 
       // 2) Cabeçalho
+      const { recorrencia, valor_tipo, recorrencia_ate, ...resto } = f;
+      const recorrente = recorrencia === 'RECORRENTE';
+      // Campos de recorrência só vão quando usados (ou quando o banco já tem as colunas), para não quebrar antes do SQL novo
+      const temColunasRecorrencia = recorrente || (despesa && 'recorrencia' in despesa);
       const cab = {
-        ...f,
+        ...resto,
+        ...(temColunasRecorrencia ? {
+          recorrencia,
+          valor_tipo: recorrente ? valor_tipo : null,
+          recorrencia_ate: recorrente ? (recorrencia_ate || null) : null,
+          conferido: true, // salvar = operador conferiu o valor
+        } : {}),
         fornecedor_id: fornecedorId,
         viagem_id: f.viagem_id || null,
         chave_nfe: f.chave_nfe || null,
@@ -328,6 +358,13 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
             </ul>
           )}
 
+          {conferir && (
+            <div className="flex items-start gap-2 text-sm text-amber-200 bg-amber-950/40 border border-amber-500/40 rounded-lg px-3 py-2">
+              <FaExclamationTriangle className="mt-0.5 shrink-0 text-amber-400" />
+              <span>Gasto variável criado automaticamente com o valor do mês anterior. Confira os valores deste mês e salve: o aviso some.</span>
+            </div>
+          )}
+
           {/* Documento */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <label className="col-span-2 md:col-span-1"><span className={rotuloCls}>Documento</span>
@@ -380,6 +417,36 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
               <label><span className={rotuloCls}>Pago em</span>
                 <DateInput value={f.data_pagamento} onChange={set('data_pagamento')} className={campo} placeholder="Mesma data da compra" />
               </label>
+            )}
+          </div>
+
+          {/* Recorrência */}
+          <div className="rounded-xl border border-gray-800 bg-gray-950/40 p-4 space-y-3">
+            <h4 className="text-sm font-semibold text-white inline-flex items-center gap-2"><FaRedoAlt size={11} className="text-blue-400" /> Tipo de recorrência</h4>
+            <div className="grid md:grid-cols-3 gap-3">
+              <div><span className={rotuloCls}>Recorrência</span>
+                <Opcoes value={f.recorrencia} onChange={set('recorrencia')} options={TIPOS_RECORRENCIA} ariaLabel="Tipo de recorrência" />
+              </div>
+              {f.recorrencia === 'RECORRENTE' && (
+                <>
+                  <div><span className={rotuloCls}>Valor</span>
+                    <Opcoes value={f.valor_tipo} onChange={set('valor_tipo')} options={TIPOS_VALOR_RECORRENTE} ariaLabel="Valor fixo ou variável" />
+                  </div>
+                  <label><span className={rotuloCls}>Prazo (opcional)</span>
+                    <DateInput value={f.recorrencia_ate} onChange={set('recorrencia_ate')} className={campo} placeholder="Sem data limite" />
+                  </label>
+                </>
+              )}
+            </div>
+            {f.recorrencia === 'RECORRENTE' && (
+              <p className="text-xs text-gray-400">
+                Todo mês um novo lançamento nasce sozinho, a pagar, copiando o do mês anterior
+                {f.recorrencia_ate ? `, até ${dataBR(f.recorrencia_ate)}` : ', sem data para acabar'}.
+                {f.valor_tipo === 'VARIAVEL'
+                  ? ' Como é variável, ele vem com o valor do mês anterior e fica marcado "Conferir valor" até alguém abrir, ajustar e salvar.'
+                  : ' Como é fixo, o valor é sempre o mesmo.'}
+                {' '}Para parar, mude o último lançamento para Pontual.
+              </p>
             )}
           </div>
 

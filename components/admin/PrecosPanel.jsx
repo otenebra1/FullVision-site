@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FaSpinner, FaTimes, FaPlus } from 'react-icons/fa';
+import { FaSpinner, FaTimes, FaPlus, FaPercent } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
 import { carregarTabelas } from '../../lib/precos';
 import { SERVICOS_VEICULO } from '../../lib/veiculos';
@@ -107,6 +107,82 @@ function PriceGrid({ servicos, valores, referencia, referenciaLabel, onCommit })
   );
 }
 
+const arred = (n) => Math.round(n * 100) / 100;
+
+// Reajuste geral em % de uma tabela de preço inteira (serviços e, se marcado, mensalidades)
+function ReajusteGeral({ nomeTabela, itens, onAplicar, onClose }) {
+  const [pctTxt, setPctTxt] = useState('');
+  const [comMensalidade, setComMensalidade] = useState(true);
+  const [aplicando, setAplicando] = useState(false);
+  const pct = parseFloat(String(pctTxt).replace(',', '.'));
+  const valido = Number.isFinite(pct) && pct !== 0 && pct > -100;
+  const alvo = itens.filter(i => comMensalidade || i.tipo !== 'mensalidade');
+  const aplicar = async () => {
+    if (!valido || !alvo.length) return;
+    setAplicando(true);
+    await onAplicar(alvo.map(i => ({ ...i, novo: arred(i.atual * (1 + pct / 100)) })), pct);
+    setAplicando(false);
+  };
+  return (
+    <div className="fixed inset-0 z-[70] bg-black/70 overflow-y-auto p-4" onMouseDown={e => { if (e.target === e.currentTarget && !aplicando) onClose(); }}>
+      <div className="bg-gray-900 border border-gray-800 rounded-2xl w-full max-w-xl mx-auto my-8 p-6 space-y-4" role="dialog" aria-modal="true" aria-label="Reajuste geral">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h3 className="text-lg font-semibold text-white">Reajuste geral: {nomeTabela}</h3>
+            <p className="text-sm text-gray-400 mt-1">Todos os valores da tabela sobem (ou descem, com número negativo) na mesma porcentagem.</p>
+          </div>
+          <button type="button" onClick={onClose} disabled={aplicando} aria-label="Fechar" className="text-gray-500 hover:text-white p-2"><FaTimes /></button>
+        </div>
+        <div className="flex flex-wrap items-end gap-4">
+          <label className="text-xs text-gray-400">Reajuste (%)
+            <div className="relative mt-1 w-32">
+              <input
+                type="text" inputMode="decimal" autoFocus value={pctTxt} placeholder="5"
+                onChange={e => setPctTxt(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') aplicar(); }}
+                aria-label="Porcentagem do reajuste"
+                className={`w-full pl-3 pr-8 py-2 text-right tabular-nums ${inputBase}`}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">%</span>
+            </div>
+          </label>
+          <label className="flex items-center gap-2 text-sm text-gray-300 pb-2">
+            <input type="checkbox" checked={comMensalidade} onChange={e => setComMensalidade(e.target.checked)} className="accent-blue-500" />
+            Incluir mensalidades por serviço
+          </label>
+        </div>
+        {alvo.length === 0 ? (
+          <p className="text-sm text-amber-400">Esta tabela ainda não tem valores para reajustar.</p>
+        ) : (
+          <div className={`${tableWrap} max-h-72 overflow-y-auto`}>
+            <table className="w-full text-sm">
+              <thead className={theadClass}><tr><Th>Item</Th><Th align="right">Hoje</Th><Th align="right">Depois</Th></tr></thead>
+              <tbody className={tbodyClass}>
+                {alvo.map(i => (
+                  <tr key={i.chave} className={rowClass}>
+                    <td className="px-4 py-1.5 text-gray-200">{i.nome}{i.herdado && <span className="text-xs text-gray-500"> (do padrão)</span>}</td>
+                    <td className="px-4 py-1.5 text-right tabular-nums text-gray-400">{BRL(i.atual)}</td>
+                    <td className="px-4 py-1.5 text-right tabular-nums text-white">{valido ? BRL(arred(i.atual * (1 + pct / 100))) : <Dash />}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <div className="flex justify-end gap-2">
+          <button type="button" onClick={onClose} disabled={aplicando} className="text-sm text-gray-300 hover:text-white px-4 py-2">Cancelar</button>
+          <button
+            type="button" onClick={aplicar} disabled={!valido || !alvo.length || aplicando}
+            className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white px-4 py-2 rounded-lg text-sm font-semibold"
+          >
+            {aplicando ? <FaSpinner className="animate-spin" /> : <FaPercent size={11} />} Aplicar {valido ? `${pct > 0 ? '+' : ''}${String(pct).replace('.', ',')}%` : 'reajuste'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const mapa = (rows, filtro, chave = 'servico_id') => new Map((rows || []).filter(filtro).map(r => [r[chave], Number(r.valor)]));
 
 export default function PrecosPanel({ empresas = [], showToast = () => {}, modo = 'tecnico', onMensalidadeChanged = () => {} }) {
@@ -120,6 +196,7 @@ export default function PrecosPanel({ empresas = [], showToast = () => {}, modo 
   const [clienteEscopo, setClienteEscopo] = useState('padrao');
   const [novoTecnico, setNovoTecnico] = useState({ nome: '', email: '' });
   const [novoServico, setNovoServico] = useState('');
+  const [reajusteAberto, setReajusteAberto] = useState(false);
 
   // Mensalidade por serviço de cada cliente (tabela mensalidade_cliente; vazia até rodar a migração)
   const [mensalidadeCliente, setMensalidadeCliente] = useState({});
@@ -225,6 +302,47 @@ export default function PrecosPanel({ empresas = [], showToast = () => {}, modo 
   const salvarMensalidadeCliente = (coluna, valor) => salvarMensalidade(run(
     supabase.from('mensalidade_cliente').upsert([{ ...(mensalidadeEscopo || {}), empresa_id: empresaEscopo.id, [coluna]: valor }], { onConflict: 'empresa_id' }),
   ));
+
+  // ---- Reajuste geral da tabela selecionada ----
+  // No cliente, o reajuste parte do valor que ele paga hoje (o dele ou, se vazio, o padrão) e grava na tabela dele.
+  const itensReajuste = () => {
+    const lista = [];
+    const ehPadrao = clienteEscopo === 'padrao';
+    servicos.forEach(sv => {
+      const proprio = ehPadrao ? precosPadrao.get(sv.id) : precosEmpresa.get(sv.id);
+      const base = proprio ?? (ehPadrao ? undefined : precosPadrao.get(sv.id));
+      if (base != null && base > 0) lista.push({ chave: `s-${sv.id}`, tipo: 'servico', id: sv.id, nome: sv.nome, atual: base, herdado: proprio == null });
+    });
+    SERVICOS_VEICULO.forEach(sv => {
+      const proprio = ehPadrao ? cfg[sv.coluna] : mensalidadeEscopo?.[sv.coluna];
+      const base = proprio ?? (ehPadrao ? undefined : cfg[sv.coluna]);
+      if (base != null && Number(base) > 0) lista.push({ chave: `m-${sv.key}`, tipo: 'mensalidade', coluna: sv.coluna, nome: `Mensalidade ${sv.label}`, atual: Number(base), herdado: proprio == null });
+    });
+    return lista;
+  };
+  const aplicarReajuste = async (itens, pct) => {
+    const servs = itens.filter(i => i.tipo === 'servico');
+    const mens = itens.filter(i => i.tipo === 'mensalidade');
+    let error = null;
+    if (servs.length) {
+      const r = clienteEscopo === 'padrao'
+        ? await supabase.from('precos_cliente_padrao').upsert(servs.map(i => ({ servico_id: i.id, valor: i.novo })), { onConflict: 'servico_id' })
+        : await supabase.from('precos_cliente_empresa').upsert(servs.map(i => ({ empresa_id: clienteEscopo, servico_id: i.id, valor: i.novo })), { onConflict: 'empresa_id,servico_id' });
+      error = r.error;
+    }
+    if (!error && mens.length) {
+      const campos = Object.fromEntries(mens.map(i => [i.coluna, i.novo]));
+      const r = clienteEscopo === 'padrao'
+        ? await supabase.from('financeiro_config').update(campos).eq('id', 1)
+        : await supabase.from('mensalidade_cliente').upsert([{ ...(mensalidadeEscopo || {}), empresa_id: empresaEscopo.id, ...campos }], { onConflict: 'empresa_id' });
+      error = r.error;
+    }
+    if (error) { showToast('Erro no reajuste: ' + error.message, 'error'); await reload(); return; }
+    await reload();
+    if (mens.length) await onMensalidadeChanged();
+    setReajusteAberto(false);
+    showToast(`Reajuste de ${String(pct).replace('.', ',')}% aplicado em ${itens.length} ${itens.length === 1 ? 'valor' : 'valores'}`);
+  };
 
   const adicionarServico = async (e) => {
     e.preventDefault();
@@ -369,12 +487,29 @@ export default function PrecosPanel({ empresas = [], showToast = () => {}, modo 
       {secao === 'cliente' && (
         <div className="space-y-5">
           <p className="text-sm text-gray-400">A tabela padrão vale para todos os clientes. Para um cliente com preço diferente, escolha-o abaixo e preencha só o que muda.</p>
-          <label className="block text-xs text-gray-400">Tabela
-            <Select value={clienteEscopo} onChange={e => setClienteEscopo(e.target.value)} aria-label="Tabela de preços do cliente" className={`mt-1 block w-80 max-w-full px-3 py-2 ${inputBase}`}>
-              <option value="padrao">Padrão (todos os clientes)</option>
-              {empresasOrdenadas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
-            </Select>
-          </label>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="block text-xs text-gray-400">Tabela
+              <Select value={clienteEscopo} onChange={e => setClienteEscopo(e.target.value)} aria-label="Tabela de preços do cliente" className={`mt-1 block w-80 max-w-full px-3 py-2 ${inputBase}`}>
+                <option value="padrao">Padrão (todos os clientes)</option>
+                {empresasOrdenadas.map(e => <option key={e.id} value={e.id}>{e.nome}</option>)}
+              </Select>
+            </label>
+            <button
+              type="button"
+              onClick={() => setReajusteAberto(true)}
+              className="inline-flex items-center gap-2 border border-blue-500/50 text-blue-300 hover:bg-blue-500/10 px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            >
+              <FaPercent size={11} /> Reajuste geral
+            </button>
+          </div>
+          {reajusteAberto && (
+            <ReajusteGeral
+              nomeTabela={clienteEscopo === 'padrao' ? 'Padrão' : (empresaEscopo?.nome || 'cliente')}
+              itens={itensReajuste()}
+              onAplicar={aplicarReajuste}
+              onClose={() => setReajusteAberto(false)}
+            />
+          )}
           <PriceGrid
             servicos={servicos}
             valores={clienteEscopo === 'padrao' ? precosPadrao : precosEmpresa}
