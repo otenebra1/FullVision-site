@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import {
-  FaSpinner, FaArrowLeft, FaCheckCircle, FaExclamationCircle, FaEdit, FaTrashAlt, FaPaperclip, FaFileCsv, FaCheck, FaFileCode, FaRedoAlt, FaShoppingCart,
+  FaSpinner, FaArrowLeft, FaCheckCircle, FaExclamationCircle, FaEdit, FaTrashAlt, FaPaperclip, FaFileCsv, FaCheck, FaFileCode, FaRedoAlt, FaShoppingCart, FaFileInvoiceDollar,
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import { ehAdmin } from '../lib/perfis';
@@ -366,6 +366,9 @@ export default function Financeiro() {
               </button>
               <a href="/compras" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
                 <FaShoppingCart size={12} /> Compras
+              </a>
+              <a href="/notas-fiscais" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
+                <FaFileInvoiceDollar size={12} /> Notas fiscais
               </a>
               <a href="/painel-admin" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
                 <FaArrowLeft size={12} /> Painel administrativo
