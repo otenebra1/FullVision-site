@@ -921,7 +921,7 @@ export default function PainelAdmin() {
                 <FaShoppingCart size={13} /> Solicitar compra
               </button>
               <a href="/quests" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
-                <FaClipboardList size={13} /> Quest Tracker
+                <FaClipboardList size={13} /> Agenda da equipe
               </a>
               <a href="/area-cliente" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
                 <FaArrowLeft size={12} /> Voltar para a área do cliente

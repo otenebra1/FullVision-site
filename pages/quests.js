@@ -347,7 +347,7 @@ export default function Quests() {
 
   return (
     <>
-      <Head><title>Quest Tracker | Full Vision</title></Head>
+      <Head><title>Agenda da equipe | Full Vision</title></Head>
 
       {toast && (
         <div className={`fixed top-24 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-2 px-5 py-3 rounded-xl shadow-2xl border text-sm font-semibold ${
@@ -378,14 +378,13 @@ export default function Quests() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-3">
-                <FaTasks className="text-purple-400" /> Quest Tracker
+                <FaTasks className="text-purple-400" /> Agenda da equipe
               </h1>
               <p className="text-gray-400 text-sm mt-1">Quadro de tarefas internas da equipe Full Vision</p>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
               <a href="/quests/clientes" className="inline-flex items-center gap-2 text-sm text-purple-300 hover:text-white border border-purple-500/40 hover:border-purple-400 rounded-xl px-4 py-2"><FaHandshake /> Novos clientes</a>
-              <a href="/painel-admin" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white border border-gray-800 rounded-xl px-4 py-2"><FaChartPie /> Painel Admin</a>
-              <a href="/area-cliente" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white border border-gray-800 rounded-xl px-4 py-2"><FaArrowLeft /> Área do Cliente</a>
+              <a href="/painel-admin" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white border border-gray-800 rounded-xl px-4 py-2"><FaArrowLeft /> Painel administrativo</a>
             </div>
           </div>
 
@@ -555,4 +554,4 @@ export default function Quests() {
       </div>
     </>
   );
-}
+}

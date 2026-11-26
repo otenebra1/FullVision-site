@@ -460,9 +460,8 @@ export default function NovosClientes() {
               <p className="text-gray-400 text-sm mt-1">Funil de prospecção: em que etapa está cada cliente e qual é o próximo passo</p>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
-              <a href="/quests" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white border border-gray-800 rounded-xl px-4 py-2"><FaTasks /> Quest Tracker</a>
-              <a href="/painel-admin" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white border border-gray-800 rounded-xl px-4 py-2"><FaChartPie /> Painel Admin</a>
-              <a href="/area-cliente" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white border border-gray-800 rounded-xl px-4 py-2"><FaArrowLeft /> Área do Cliente</a>
+              <a href="/quests" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white border border-gray-800 rounded-xl px-4 py-2"><FaTasks /> Agenda da equipe</a>
+              <a href="/painel-admin" className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white border border-gray-800 rounded-xl px-4 py-2"><FaArrowLeft /> Painel administrativo</a>
             </div>
           </div>
 
@@ -684,4 +683,4 @@ export default function NovosClientes() {
       </div>
     </>
   );
-}
+}

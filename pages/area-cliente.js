@@ -991,7 +991,7 @@ export default function AreaDoCliente() {
                       )}
                     </button>
                     {isSuperAdmin && <button onClick={() => setIsAdminUsersModalOpen(true)} className="flex items-center gap-2 bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg"><FaUsers /> Gerenciar Usuários</button>}
-                    <a href="/quests" className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg"><FaClipboardList /> Quest Tracker</a>
+                    <a href="/quests" className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg"><FaClipboardList /> Agenda da equipe</a>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

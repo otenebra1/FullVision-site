@@ -676,7 +676,7 @@ export default function Financeiro() {
                   viagens={viagens} despesas={despesas} tecnicos={tecnicos} empresas={empresas} categorias={categorias}
                   recarregar={carregar} showToast={showToast} askConfirm={askConfirm}
                   onVerGastos={(id) => verGastos('viagem', id)}
-                  onNovoGasto={(id) => setFormAberto({ viagemPadrao: id })}
+                  onAbrirGasto={(d) => setFormAberto({ despesa: d })}
                 />
               )}
               {aba === 'notas' && <NotasFiscaisPanel showToast={showToast} />}

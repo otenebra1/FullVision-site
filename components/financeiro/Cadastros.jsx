@@ -1,6 +1,6 @@
 // Cadastros do financeiro: fornecedores, viagens, itens e categorias
 import React, { useMemo, useState } from 'react';
-import { FaTimes, FaSpinner, FaEdit, FaTrashAlt, FaListUl } from 'react-icons/fa';
+import { FaTimes, FaSpinner, FaEdit, FaTrashAlt, FaListUl, FaBoxOpen } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
 import {
   inputBase, tableWrap, theadClass, tbodyClass, rowClass, Dash, SectionCard, PrimaryButton, ActionButton,
@@ -9,6 +9,7 @@ import {
 import { Select, DateInput } from '../ui/FormControls';
 import { formatarCnpj, soDigitos } from '../../lib/nfe';
 import { GRUPOS_CATEGORIA, UNIDADES, reais, dataBR, lerNumero, hojeIso } from '../../lib/financeiro';
+import ViagemDetalhe from './ViagemDetalhe';
 
 const campo = `w-full px-3 py-2 ${inputBase}`;
 const rotuloCls = 'block text-xs font-medium text-gray-400 mb-1';
@@ -219,8 +220,10 @@ export function FornecedoresPanel({ fornecedores, categorias, despesas, recarreg
 // =====================================================================
 // VIAGENS
 // =====================================================================
-export function ViagensPanel({ viagens, despesas, tecnicos, empresas, categorias, recarregar, showToast, askConfirm, onVerGastos, onNovoGasto }) {
+export function ViagensPanel({ viagens, despesas, tecnicos, empresas, categorias, recarregar, showToast, askConfirm, onVerGastos, onAbrirGasto }) {
   const cad = useCadastro('fin_viagens', recarregar, showToast);
+  const [aberta, setAberta] = useState(null); // { id, aba } viagem aberta (gastos rápidos e inventário)
+  const viagemAberta = aberta && viagens.find(v => v.id === aberta.id);
   const [busca, setBusca] = useState('');
   const [form, setForm] = useState({});
   const set = (k) => (e) => setForm(p => ({ ...p, [k]: e?.target ? e.target.value : e }));
@@ -282,7 +285,7 @@ export function ViagensPanel({ viagens, despesas, tecnicos, empresas, categorias
               const top = Object.entries(n.porCat).sort((a, b) => b[1] - a[1]).slice(0, 3);
               return (
                 <tr key={v.id} className={rowClass}>
-                  <td className="px-4 py-3"><div className="text-white font-medium">{v.titulo}</div>{v.destino && <div className="text-xs text-gray-500">{v.destino}</div>}</td>
+                  <td className="px-4 py-3"><button type="button" onClick={() => setAberta({ id: v.id, aba: 'gastos' })} className="text-left text-white font-medium hover:text-blue-300">{v.titulo}</button>{v.destino && <div className="text-xs text-gray-500">{v.destino}</div>}</td>
                   <td className="px-4 py-3 text-gray-300 whitespace-nowrap">{dataBR(v.data_ida)}{v.data_volta && v.data_volta !== v.data_ida ? ` a ${dataBR(v.data_volta)}` : ''}</td>
                   <td className="px-4 py-3 text-gray-300">{tecNome[String(v.tecnico_id)] || <Dash />}</td>
                   <td className="px-4 py-3 text-gray-300">{empNome[String(v.empresa_id)] || <Dash />}</td>
@@ -291,7 +294,8 @@ export function ViagensPanel({ viagens, despesas, tecnicos, empresas, categorias
                   <td className="px-4 py-3 text-right tabular-nums text-gray-300 whitespace-nowrap">{v.km ? reais(n.total / v.km) : <Dash />}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-1">
-                      <button type="button" onClick={() => onNovoGasto(v.id)} className="text-xs text-blue-400 hover:text-blue-300 px-2 whitespace-nowrap">+ gasto</button>
+                      <button type="button" onClick={() => setAberta({ id: v.id, aba: 'gastos' })} className="text-xs text-blue-400 hover:text-blue-300 px-2 whitespace-nowrap">+ gasto</button>
+                      <ActionButton title="Inventário (itens do estoque)" onClick={() => setAberta({ id: v.id, aba: 'inventario' })}><FaBoxOpen size={12} /></ActionButton>
                       <ActionButton title="Ver gastos da viagem" onClick={() => onVerGastos(v.id)}><FaListUl size={12} /></ActionButton>
                       <ActionButton title="Editar" onClick={() => abrir(v)}><FaEdit size={12} /></ActionButton>
                       <ActionButton title="Excluir" hover="hover:text-red-400" onClick={() => cad.excluir(v.id, askConfirm, 'Excluir esta viagem? Os gastos dela continuam lançados, só perdem o vínculo.')}><FaTrashAlt size={12} /></ActionButton>
@@ -303,6 +307,17 @@ export function ViagensPanel({ viagens, despesas, tecnicos, empresas, categorias
           </tbody>
         </table>
       </div>
+
+      {viagemAberta && (
+        <ViagemDetalhe
+          key={viagemAberta.id}
+          viagem={viagemAberta} abaInicial={aberta.aba}
+          tecnicos={tecnicos} empresas={empresas} categorias={categorias} despesas={despesas}
+          recarregar={recarregar} showToast={showToast} askConfirm={askConfirm}
+          onAbrirGasto={onAbrirGasto}
+          onClose={() => setAberta(null)}
+        />
+      )}
 
       {cad.aberto && (
         <Modal titulo={cad.aberto.id ? 'Editar viagem' : 'Nova viagem'} onClose={cad.fechar} onSalvar={salvar} salvando={cad.salvando} erro={cad.erro}>
