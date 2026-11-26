@@ -5,12 +5,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import {
-  FaSpinner, FaSyncAlt, FaSignOutAlt, FaMapMarkerAlt, FaPhoneAlt, FaWhatsapp, FaClock, FaCar, FaPlay, FaCheckCircle, FaDownload, FaTimes, FaShoppingCart,
+  FaSpinner, FaSyncAlt, FaSignOutAlt, FaMapMarkerAlt, FaPhoneAlt, FaWhatsapp, FaClock, FaCar, FaPlay, FaCheckCircle, FaDownload, FaTimes, FaShoppingCart, FaClipboardCheck,
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import { reduzirImagem } from '../lib/osSalvar';
 import { osCodigo, FOTO_TIPOS } from '../lib/osConstants';
-import { ehEquipe } from '../lib/perfis';
+import { ehEquipe, podeCompras } from '../lib/perfis';
+import Notificacoes from '../components/Notificacoes';
 import OsWizard from '../components/os/OsWizard';
 import SolicitarCompra from '../components/financeiro/SolicitarCompra';
 
@@ -154,6 +155,16 @@ export default function AppTecnico() {
   const [osEmAndamento, setOsEmAndamento] = useState(null);
   const [toast, setToast] = useState(null);
   const [solicitarAberto, setSolicitarAberto] = useState(false);
+  // Técnico com a permissão "Área de compras" vê o atalho para /compras
+  const [acessoCompras, setAcessoCompras] = useState(false);
+  useEffect(() => {
+    (async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+      const { data: p } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
+      setAcessoCompras(podeCompras(p));
+    })();
+  }, []);
 
   const showToast = useCallback((msg, tipo = 'success') => {
     setToast({ msg, tipo });
@@ -256,6 +267,10 @@ export default function AppTecnico() {
               <div className="text-xs text-gray-500">Técnico</div>
               <div className="text-white font-semibold truncate">{dados?.tecnico?.nome || 'Minhas OS'}</div>
             </div>
+            <Notificacoes />
+            {acessoCompras && (
+              <a href="/compras" aria-label="Compras" title="Compras" className="p-2.5 rounded-xl text-gray-300 hover:bg-gray-800"><FaClipboardCheck /></a>
+            )}
             <button type="button" onClick={() => setSolicitarAberto(true)} aria-label="Solicitar compra" title="Solicitar compra" className="p-2.5 rounded-xl text-gray-300 hover:bg-gray-800"><FaShoppingCart /></button>
             <button type="button" onClick={carregar} disabled={carregando} aria-label="Atualizar" className="p-2.5 rounded-xl text-gray-300 hover:bg-gray-800 disabled:opacity-50">
               <FaSyncAlt className={carregando ? 'animate-spin' : ''} />

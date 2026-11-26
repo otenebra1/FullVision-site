@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import {
-  FaSpinner, FaArrowLeft, FaCheckCircle, FaExclamationCircle, FaEdit, FaTrashAlt, FaPaperclip, FaFileCsv, FaCheck, FaFileCode, FaRedoAlt,
+  FaSpinner, FaArrowLeft, FaCheckCircle, FaExclamationCircle, FaEdit, FaTrashAlt, FaPaperclip, FaFileCsv, FaCheck, FaFileCode, FaRedoAlt, FaShoppingCart,
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import { ehAdmin } from '../lib/perfis';
@@ -17,9 +17,10 @@ import DespesaForm from '../components/financeiro/DespesaForm';
 import { FornecedoresPanel, ViagensPanel, ItensPanel } from '../components/financeiro/Cadastros';
 import SolicitacoesPanel from '../components/financeiro/SolicitacoesPanel';
 import SolicitarCompra from '../components/financeiro/SolicitarCompra';
+import Notificacoes from '../components/Notificacoes';
 import {
   TIPOS_DOCUMENTO, FORMAS_PAGAMENTO, STATUS_PAGAMENTO, GRUPOS_CATEGORIA, rotulo, reais, reaisCurto, dataBR, mesRotulo,
-  periodoPreset, estaVencida, baixarCsv, hojeIso, BUCKET_FINANCEIRO, precisaConferir, TIPOS_VALOR_RECORRENTE,
+  periodoPreset, estaVencida, baixarCsv, hojeIso, BUCKET_FINANCEIRO, precisaConferir, TIPOS_VALOR_RECORRENTE, solicitacaoAberta,
 } from '../lib/financeiro';
 
 const POR_PAGINA = 25;
@@ -56,6 +57,7 @@ export default function Financeiro() {
   const [empresas, setEmpresas] = useState([]);
   const [produtosEstoque, setProdutosEstoque] = useState([]);
   const [solicitacoes, setSolicitacoes] = useState([]);
+  const [orcamentos, setOrcamentos] = useState([]);
   const [rastreadores, setRastreadores] = useState([]);
   const [solicitarAberto, setSolicitarAberto] = useState(false);
 
@@ -79,7 +81,7 @@ export default function Financeiro() {
   const carregar = useCallback(async () => {
     // Gastos recorrentes: cria os lançamentos do mês que ainda não existem (sem o SQL novo, só ignora)
     try { await supabase.rpc('fv_fin_gerar_recorrentes'); } catch (e) { /* ignora */ }
-    const [d, c, i, f, v, vi, t, e, p, so, ra] = await Promise.all([
+    const [d, c, i, f, v, vi, t, e, p, so, ra, orc] = await Promise.all([
       supabase.from('fin_despesas').select('*, fin_despesa_itens(*)').order('data', { ascending: false }).order('created_at', { ascending: false }),
       supabase.from('fin_categorias').select('*').order('ordem').order('nome'),
       supabase.from('fin_itens').select('*').order('nome'),
@@ -91,6 +93,7 @@ export default function Financeiro() {
       supabase.from('estoque_produtos').select('id, codigo, nome').order('codigo'),
       supabase.from('fin_solicitacoes').select('*').order('created_at', { ascending: false }),
       supabase.from('rastreadores').select('id, produto_id, status'),
+      supabase.from('fin_orcamentos').select('id, solicitacao_id, fornecedor_id, fornecedor_nome, quantidade, valor_unitario, frete, valor_total'),
     ]);
     if (d.error) {
       setErroCarga(d.error.message.includes('fin_despesas')
@@ -108,6 +111,7 @@ export default function Financeiro() {
     setProdutosEstoque(p.data || []);
     setSolicitacoes(so.data || []);
     setRastreadores(ra.data || []);
+    setOrcamentos(orc.data || []); // sem o SQL do fluxo de compras, fica vazio
     setCarregando(false);
   }, []);
 
@@ -360,9 +364,13 @@ export default function Financeiro() {
               <button type="button" onClick={() => setFormAberto({ abrirXml: true })} className="inline-flex items-center gap-2 text-sm border border-blue-500/50 bg-blue-500/10 text-blue-300 hover:text-white rounded-lg px-3.5 py-2">
                 <FaFileCode size={13} /> Lançar nota (XML ou PDF)
               </button>
+              <a href="/compras" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
+                <FaShoppingCart size={12} /> Compras
+              </a>
               <a href="/painel-admin" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
                 <FaArrowLeft size={12} /> Painel administrativo
               </a>
+              <Notificacoes />
             </div>
           </div>
 
@@ -381,7 +389,7 @@ export default function Financeiro() {
                 onChange={setAba}
                 tabs={[
                   { key: 'gastos', label: aConferir.length ? 'Gastos •' : 'Gastos', count: despesas.length },
-                  { key: 'solicitacoes', label: solicitacoes.some(s => s.status === 'PENDENTE') ? 'Solicitações •' : 'Solicitações', count: solicitacoes.filter(s => s.status === 'PENDENTE' || s.status === 'APROVADA').length },
+                  { key: 'solicitacoes', label: solicitacoes.some(s => s.status === 'PENDENTE' || s.status === 'ORCADA') ? 'Solicitações •' : 'Solicitações', count: solicitacoes.filter(s => solicitacaoAberta(s.status)).length },
                   { key: 'fornecedores', label: 'Fornecedores', count: fornecedores.length },
                   { key: 'viagens', label: 'Viagens', count: viagens.length },
                   { key: 'itens', label: 'Itens e categorias', count: itens.length },
@@ -646,6 +654,7 @@ export default function Financeiro() {
               {aba === 'solicitacoes' && (
                 <SolicitacoesPanel
                   solicitacoes={solicitacoes} itens={itens} despesas={despesas} rastreadores={rastreadores}
+                  orcamentos={orcamentos} fornecedores={fornecedores}
                   recarregar={carregar} showToast={showToast}
                   onLancarCompra={(lista) => setFormAberto({ solicitacoes: lista })}
                   onAbrirGasto={(d) => setFormAberto({ despesa: d })}

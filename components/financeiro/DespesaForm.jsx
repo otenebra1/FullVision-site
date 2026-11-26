@@ -56,7 +56,8 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
     numero: despesa?.numero || '',
     serie: despesa?.serie || '',
     chave_nfe: despesa?.chave_nfe || '',
-    fornecedor_id: despesa?.fornecedor_id || '',
+    // Compra vinda de solicitação com orçamento escolhido: já traz o fornecedor
+    fornecedor_id: despesa?.fornecedor_id || solicitacoes.find(s => s.orcamento?.fornecedor_id)?.orcamento.fornecedor_id || '',
     viagem_id: despesa?.viagem_id || viagemPadrao || '',
     descricao: despesa?.descricao || (solicitacoes.length ? `Compra solicitada: ${solicitacoes.map(s => s.descricao).join(', ')}` : ''),
     forma_pagamento: despesa?.forma_pagamento || '',
@@ -79,10 +80,20 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
     }));
     if (!ls.length && solicitacoes.length) {
       // Compra que atende solicitações: uma linha por pedido, com item e quantidade
-      return solicitacoes.map((s, i) => {
+      const linhas = [];
+      solicitacoes.forEach((s) => {
         const it = catalogo.itens.find(x => x.id === s.item_id);
-        return { ...linhaVazia(i), item_id: s.item_id || '', categoria_id: it?.categoria_id || '', descricao: s.descricao, quantidade: virgula(s.quantidade), unidade: s.unidade || 'UN' };
+        const orc = s.orcamento; // orçamento escolhido pelo ADM (quantidade e preço combinados)
+        linhas.push({
+          ...linhaVazia(linhas.length), item_id: s.item_id || '', categoria_id: it?.categoria_id || '', descricao: s.descricao,
+          quantidade: virgula(orc?.quantidade ?? s.quantidade), unidade: s.unidade || 'UN',
+          ...(orc && Number(orc.valor_unitario) > 0 ? { valor_unitario: virgula(orc.valor_unitario) } : {}),
+        });
+        if (orc && Number(orc.frete) > 0) {
+          linhas.push({ ...linhaVazia(linhas.length), descricao: `Frete - ${s.descricao}`, quantidade: '1', unidade: 'SERV', valor_unitario: virgula(orc.frete) });
+        }
       });
+      return linhas;
     }
     return ls.length ? ls : [linhaVazia()];
   });
@@ -310,11 +321,14 @@ export default function DespesaForm({ despesa, catalogo, viagemPadrao, abrirXml,
         if (memoria.length) await supabase.from('fin_item_vinculos').upsert(memoria, { onConflict: 'fornecedor_cnpj,codigo' });
       }
 
-      // 6) Solicitações atendidas por esta compra
+      // 6) Solicitações atendidas por esta compra: ligam ao gasto; as que ainda não
+      //    chegaram em "Compra realizada" passam para essa etapa (as já entregues/finalizadas ficam como estão)
       if (solicitacoes.length) {
+        const ids = solicitacoes.map(s => s.id);
+        await supabase.from('fin_solicitacoes').update({ despesa_id: id }).in('id', ids);
         await supabase.from('fin_solicitacoes')
-          .update({ status: 'COMPRADA', despesa_id: id, decidido_em: new Date().toISOString() })
-          .in('id', solicitacoes.map(s => s.id));
+          .update({ status: 'COMPRADA', decidido_em: new Date().toISOString() })
+          .in('id', ids).in('status', ['PENDENTE', 'APROVADA', 'ORCADA', 'COMPRA_APROVADA', 'EM_COMPRA']);
       }
 
       showToast(editando ? 'Gasto atualizado.' : 'Gasto lançado.');

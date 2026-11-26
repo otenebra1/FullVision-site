@@ -24,7 +24,7 @@ export default async function handler(req, res) {
   const admin = await getRequestingAdmin(req);
   if (!admin) return res.status(403).json({ error: 'Apenas administradores podem editar usuários.' });
 
-  const { userId, username, role, trackingUrl, empresaId, newPassword } = req.body;
+  const { userId, username, role, trackingUrl, empresaId, newPassword, compras } = req.body;
   if (!userId) return res.status(400).json({ error: 'userId é obrigatório.' });
 
   // Empresa é obrigatória só para cliente (ADM, funcionário e técnico são da equipe)
@@ -41,6 +41,8 @@ export default async function handler(req, res) {
       ...(role && { role }),
       ...(trackingUrl !== undefined && { tracking_url: trackingUrl }),
       ...(role !== undefined && { empresa_id: perfilTemEmpresa(role) ? empresaId : null }),
+      // permissão "Área de compras" (cliente nunca tem)
+      ...(compras !== undefined && { compras: Boolean(compras) && role !== 'cliente' }),
     })
     .eq('id', userId)
     .select()
@@ -57,4 +59,4 @@ export default async function handler(req, res) {
   }
 
   return res.status(200).json({ profile });
-}
+}

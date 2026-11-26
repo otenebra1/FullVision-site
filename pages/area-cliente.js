@@ -157,6 +157,7 @@ export default function AreaDoCliente() {
   const [userFormEmail, setUserFormEmail] = useState('');
   const [userFormPassword, setUserFormPassword] = useState('');
   const [userFormRole, setUserFormRole] = useState('cliente');
+  const [userFormCompras, setUserFormCompras] = useState(false); // permissão "Área de compras"
   const [userFormTrackingUrl, setUserFormTrackingUrl] = useState('');
   const [userFormEmpresaId, setUserFormEmpresaId] = useState('');
   const [empresas, setEmpresas] = useState([]);
@@ -340,6 +341,7 @@ export default function AreaDoCliente() {
       setUserFormEmail(''); // edição não altera e-mail nesta versão
       setUserFormPassword('');
       setUserFormRole(user.role);
+      setUserFormCompras(user.compras === true);
       setUserFormTrackingUrl(user.tracking_url || '');
       setUserFormEmpresaId(user.empresa_id || '');
     } else {
@@ -348,6 +350,7 @@ export default function AreaDoCliente() {
       setUserFormEmail('');
       setUserFormPassword('');
       setUserFormRole('cliente');
+      setUserFormCompras(false);
       setUserFormTrackingUrl('');
       setUserFormEmpresaId('');
     }
@@ -374,6 +377,8 @@ export default function AreaDoCliente() {
           trackingUrl: userFormTrackingUrl,
           empresaId: perfilTemEmpresa(userFormRole) ? userFormEmpresaId : null,
           newPassword: userFormPassword || undefined, // só reseta se preenchido
+          // só manda quando muda algo (assim não quebra se o SQL do fluxo de compras ainda não rodou)
+          ...(('compras' in editingUser) || userFormCompras ? { compras: userFormCompras && userFormRole !== 'cliente' } : {}),
         }),
       });
       const result = await res.json();
@@ -391,6 +396,7 @@ export default function AreaDoCliente() {
           role: userFormRole,
           trackingUrl: userFormTrackingUrl,
           empresaId: perfilTemEmpresa(userFormRole) ? userFormEmpresaId : null,
+          ...(userFormCompras && userFormRole !== 'cliente' ? { compras: true } : {}),
         }),
       });
       const result = await res.json();
@@ -1250,6 +1256,15 @@ export default function AreaDoCliente() {
                     {userFormRole === 'funcionario' && (
                       <p className="text-xs text-gray-400">Funcionário vê todas as telas, sem preços, valores em R$, gestão de usuários e exclusões.</p>
                     )}
+                    {userFormRole !== 'cliente' && (
+                      <label className="flex items-start gap-2 text-sm text-gray-300 cursor-pointer">
+                        <input type="checkbox" checked={userFormCompras} onChange={e => setUserFormCompras(e.target.checked)} className="mt-0.5 accent-purple-500 w-4 h-4" />
+                        <span>
+                          Área de compras
+                          <span className="block text-xs text-gray-500">Recebe as solicitações aprovadas, faz os orçamentos e atualiza a compra até finalizar (tela Compras). {userFormRole === 'admin' ? 'ADM já acessa; marcando, também recebe os avisos de compras.' : ''}</span>
+                        </span>
+                      </label>
+                    )}
                     {perfilTemEmpresa(userFormRole) && (
                       <div className="flex-1 w-full">
                         <label className="block text-xs text-gray-400 mb-1">Empresa</label>
@@ -1273,7 +1288,7 @@ export default function AreaDoCliente() {
                       <thead className="bg-gray-950 text-gray-400 text-xs uppercase"><tr><th className="p-3">Usuário</th><th className="p-3">Cargo</th><th className="p-3">Empresa</th><th className="p-3">Link de Rastreio</th><th className="p-3 text-right">Ações</th></tr></thead>
                       <tbody className="divide-y divide-gray-800">
                         {users.map(u => (
-                          <tr key={u.id} className="hover:bg-gray-800/50"><td className="p-3 text-white font-medium"><FaUser className="inline text-gray-500 mr-2"/>{u.username}</td><td className="p-3"><span className={`text-xs font-bold px-2 py-1 rounded uppercase ${u.role === 'admin' ? 'text-purple-400 bg-purple-500/10' : u.role === 'funcionario' ? 'text-emerald-400 bg-emerald-500/10' : u.role === 'tecnico' ? 'text-amber-400 bg-amber-500/10' : 'text-blue-400 bg-blue-500/10'}`}>{rotuloPerfil(u.role)}</span></td><td className="p-3 text-gray-400 text-xs">{empresas.find(emp => emp.id === u.empresa_id)?.nome || '—'}</td><td className="p-3 text-gray-400 text-xs truncate max-w-[160px]">{u.tracking_url || '—'}</td><td className="p-3 text-right"><button onClick={() => openUserForm(u)} className="text-gray-400 hover:text-blue-400 p-2"><FaEdit /></button><button onClick={() => handleDeleteUser(u.id)} className="text-gray-400 hover:text-red-400 p-2"><FaTrashAlt /></button></td></tr>
+                          <tr key={u.id} className="hover:bg-gray-800/50"><td className="p-3 text-white font-medium"><FaUser className="inline text-gray-500 mr-2"/>{u.username}</td><td className="p-3"><span className={`text-xs font-bold px-2 py-1 rounded uppercase ${u.role === 'admin' ? 'text-purple-400 bg-purple-500/10' : u.role === 'funcionario' ? 'text-emerald-400 bg-emerald-500/10' : u.role === 'tecnico' ? 'text-amber-400 bg-amber-500/10' : 'text-blue-400 bg-blue-500/10'}`}>{rotuloPerfil(u.role)}</span>{u.compras && u.role !== 'cliente' && <span className="ml-1 text-[10px] font-bold px-1.5 py-0.5 rounded uppercase text-cyan-300 bg-cyan-500/10">Compras</span>}</td><td className="p-3 text-gray-400 text-xs">{empresas.find(emp => emp.id === u.empresa_id)?.nome || '—'}</td><td className="p-3 text-gray-400 text-xs truncate max-w-[160px]">{u.tracking_url || '—'}</td><td className="p-3 text-right"><button onClick={() => openUserForm(u)} className="text-gray-400 hover:text-blue-400 p-2"><FaEdit /></button><button onClick={() => handleDeleteUser(u.id)} className="text-gray-400 hover:text-red-400 p-2"><FaTrashAlt /></button></td></tr>
                         ))}
                       </tbody>
                     </table>
@@ -1659,4 +1674,4 @@ export default function AreaDoCliente() {
       </div>
     </div>
   );
-}
+}

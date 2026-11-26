@@ -1,19 +1,14 @@
 // Janela "Solicitar compra": qualquer pessoa da equipe (ADM, funcionário, técnico) pede um item.
-// O pedido cai na aba "Solicitações" do /financeiro com o nome de quem pediu.
+// O pedido fica aguardando a aprovação do ADM (aba "Solicitações" do /financeiro), depois vai
+// para a equipe de compras (/compras). Quem pediu acompanha a etapa em "Minhas" e recebe avisos no sino.
 import React, { useEffect, useMemo, useState } from 'react';
 import { FaTimes, FaSpinner, FaShoppingCart, FaTrashAlt } from 'react-icons/fa';
 import { supabase } from '../../lib/supabase';
 import { Select } from '../ui/FormControls';
-import { UNIDADES, lerNumero, STATUS_SOLICITACAO, rotulo, CENTROS_CUSTO } from '../../lib/financeiro';
+import { UNIDADES, lerNumero, statusInfo, CENTROS_CUSTO } from '../../lib/financeiro';
 
 const campo = 'w-full px-3 py-2.5 bg-gray-950 border border-gray-800 rounded-xl text-sm text-white placeholder-gray-500 outline-none focus:border-blue-500';
 const rotuloCls = 'block text-xs font-medium text-gray-400 mb-1';
-const COR_STATUS = {
-  PENDENTE: 'bg-amber-500/15 text-amber-300',
-  APROVADA: 'bg-blue-500/15 text-blue-300',
-  COMPRADA: 'bg-emerald-500/15 text-emerald-300',
-  RECUSADA: 'bg-red-500/15 text-red-300',
-};
 const dataBR = (iso) => (iso ? new Date(iso).toLocaleDateString('pt-BR') : '');
 
 export default function SolicitarCompra({ onClose, showToast, itemInicial }) {
@@ -64,7 +59,7 @@ export default function SolicitarCompra({ onClose, showToast, itemInicial }) {
     }]);
     setSalvando(false);
     if (error) { setErro(error.message); return; }
-    showToast?.('Solicitação enviada para o financeiro.');
+    showToast?.('Solicitação enviada para aprovação do ADM.');
     setF(p => ({ item_id: '', descricao: '', quantidade: '1', unidade: 'UN', motivo: '', urgencia: 'NORMAL', local_entrega: p.local_entrega, centro_custo: p.centro_custo }));
     setAba('minhas');
     carregar();
@@ -140,7 +135,7 @@ export default function SolicitarCompra({ onClose, showToast, itemInicial }) {
                 <li key={s.id} className="rounded-xl border border-gray-800 bg-gray-950/60 p-3 space-y-1">
                   <div className="flex items-start justify-between gap-2">
                     <div className="text-sm text-white">{Number(s.quantidade).toLocaleString('pt-BR')} {s.unidade} · {s.descricao}</div>
-                    <span className={`shrink-0 text-[11px] font-semibold rounded-full px-2 py-0.5 ${COR_STATUS[s.status] || ''}`}>{rotulo(STATUS_SOLICITACAO, s.status)}</span>
+                    <span className={`shrink-0 text-[11px] font-semibold rounded-full px-2 py-0.5 ${statusInfo(s.status).badge}`}>{statusInfo(s.status).label}</span>
                   </div>
                   <div className="text-xs text-gray-400">{s.motivo}</div>
                   {(s.local_entrega || s.centro_custo) && (

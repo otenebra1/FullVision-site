@@ -25,7 +25,7 @@ export default async function handler(req, res) {
   const admin = await getRequestingAdmin(req);
   if (!admin) return res.status(403).json({ error: 'Apenas administradores podem criar usuários.' });
 
-  const { email, password, username, role, trackingUrl, empresaId } = req.body;
+  const { email, password, username, role, trackingUrl, empresaId, compras } = req.body;
 
   if (!email || !password || !username) {
     return res.status(400).json({ error: 'email, password e username são obrigatórios.' });
@@ -58,6 +58,8 @@ export default async function handler(req, res) {
       role: finalRole,
       tracking_url: trackingUrl || null,
       empresa_id: perfilTemEmpresa(finalRole) ? empresaId : null,
+      // permissão "Área de compras" (só equipe); só vai quando marcada
+      ...(compras && finalRole !== 'cliente' ? { compras: true } : {}),
     }])
     .select()
     .single();
@@ -69,4 +71,4 @@ export default async function handler(req, res) {
   }
 
   return res.status(200).json({ profile: { ...profile, email } });
-}
+}

@@ -16,9 +16,10 @@ import ClienteForm from '../components/admin/ClienteForm';
 import ClienteFicha from '../components/admin/ClienteFicha';
 import EstoqueCatalogo from '../components/admin/EstoqueCatalogo';
 import SolicitarCompra from '../components/financeiro/SolicitarCompra';
+import Notificacoes from '../components/Notificacoes';
 import VeiculoDetalhe from '../components/admin/VeiculoDetalhe';
 import { reduzirImagem } from '../lib/osSalvar';
-import { ehAdmin, ehEquipe } from '../lib/perfis';
+import { ehAdmin, ehEquipe, podeCompras } from '../lib/perfis';
 import { ehDaCategoria, itemInstaladoNaPlaca, categoriaDoItem, CAT_LOCALIZADOR, CAT_ATUADOR } from '../lib/osConstants';
 import { SERVICOS_VEICULO, calcularDrePlaca, calcularMensalidade, comMensalidadeEfetiva, ordensPorVeiculo, rastreadorPorVeiculo } from '../lib/veiculos';
 import {
@@ -65,6 +66,7 @@ export default function PainelAdmin() {
   const [isAuthorized, setIsAuthorized] = useState(false);
   // ADM vê tudo; funcionário vê o painel sem preços, valores em R$ e exclusões
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+  const [acessoCompras, setAcessoCompras] = useState(false); // ADM ou permissão "Área de compras"
 
   // Toast (sucesso/erro) e modal de confirmação genérico — substituem alert()/confirm() nativos
   const [toast, setToast] = useState(null); // { message, type: 'success' | 'error' }
@@ -174,7 +176,7 @@ export default function PainelAdmin() {
 
       const { data: profile } = await supabase
         .from('profiles')
-        .select('role')
+        .select('*')
         .eq('id', session.user.id)
         .single();
 
@@ -190,6 +192,7 @@ export default function PainelAdmin() {
       const adm = ehAdmin(profile.role);
       setOcultarValores(!adm);
       setIsSuperAdmin(adm);
+      setAcessoCompras(podeCompras(profile));
       setIsAuthorized(true);
       setAuthChecked(true);
     };
@@ -904,6 +907,11 @@ export default function PainelAdmin() {
               <p className="text-gray-400 text-sm mt-1">Visão geral da operação Full Vision</p>
             </div>
             <div className="flex items-center gap-2 flex-wrap">
+              {acessoCompras && (
+                <a href="/compras" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
+                  <FaShoppingCart size={13} /> Compras
+                </a>
+              )}
               {isSuperAdmin && (
                 <a href="/financeiro" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
                   <FaWallet size={13} /> Financeiro
@@ -918,6 +926,7 @@ export default function PainelAdmin() {
               <a href="/area-cliente" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
                 <FaArrowLeft size={12} /> Voltar para a área do cliente
               </a>
+              <Notificacoes />
             </div>
           </div>
 
