@@ -7,6 +7,7 @@ import {
   FaEdit, FaTrashAlt, FaTimes, FaSatelliteDish, FaLink, FaUnlink, FaClipboardList, FaExpandAlt, FaCamera, FaWallet, FaShoppingCart,
   FaFileSignature,
   FaHeadset,
+  FaChartLine,
 } from 'react-icons/fa';
 import OsHistory from '../components/os/OsHistory';
 import OsWizard from '../components/os/OsWizard';
@@ -18,6 +19,7 @@ import ClienteForm from '../components/admin/ClienteForm';
 import ClienteFicha from '../components/admin/ClienteFicha';
 import EstoqueCatalogo from '../components/admin/EstoqueCatalogo';
 import EstoqueNiveis from '../components/admin/EstoqueNiveis';
+import AuditoriaPanel from '../components/admin/AuditoriaPanel';
 import SolicitarCompra from '../components/financeiro/SolicitarCompra';
 import Notificacoes from '../components/Notificacoes';
 import VeiculoDetalhe from '../components/admin/VeiculoDetalhe';
@@ -927,6 +929,9 @@ export default function PainelAdmin() {
                   <FaFileSignature size={13} /> Contratos
                 </a>
               )}
+              <a href="/indicadores" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
+                <FaChartLine size={13} /> Indicadores
+              </a>
               <a href="/suporte" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
                 <FaHeadset size={13} /> Chamados
               </a>
@@ -975,6 +980,7 @@ export default function PainelAdmin() {
                   ...(isSuperAdmin ? [
                     { key: 'precos-cliente', label: 'Tabela de preço cliente' },
                     { key: 'precos-tecnico', label: 'Tabela de preço técnico' },
+                    { key: 'auditoria', label: 'Registro de alterações' },
                   ] : []),
                 ]}
               />
@@ -1097,6 +1103,8 @@ export default function PainelAdmin() {
               )}
 
               {/* Rastreadores (estoque) */}
+              {activeSection === 'auditoria' && isSuperAdmin && <AuditoriaPanel />}
+
               {activeSection === 'niveis' && (
                 <EstoqueNiveis isAdmin={isSuperAdmin} showToast={showToast} onSolicitar={() => setIsSolicitarOpen(true)} />
               )}
