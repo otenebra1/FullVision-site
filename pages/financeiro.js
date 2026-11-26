@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import {
-  FaSpinner, FaArrowLeft, FaCheckCircle, FaExclamationCircle, FaEdit, FaTrashAlt, FaPaperclip, FaFileCsv, FaCheck, FaFileCode, FaRedoAlt, FaShoppingCart, FaFileInvoiceDollar,
+  FaSpinner, FaArrowLeft, FaCheckCircle, FaExclamationCircle, FaEdit, FaTrashAlt, FaPaperclip, FaFileCsv, FaCheck, FaFileCode, FaRedoAlt, FaShoppingCart,
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import { ehAdmin } from '../lib/perfis';
@@ -17,6 +17,7 @@ import DespesaForm from '../components/financeiro/DespesaForm';
 import { FornecedoresPanel, ViagensPanel, ItensPanel } from '../components/financeiro/Cadastros';
 import SolicitacoesPanel from '../components/financeiro/SolicitacoesPanel';
 import SolicitarCompra from '../components/financeiro/SolicitarCompra';
+import NotasFiscaisPanel from '../components/financeiro/NotasFiscaisPanel';
 import Notificacoes from '../components/Notificacoes';
 import {
   TIPOS_DOCUMENTO, FORMAS_PAGAMENTO, STATUS_PAGAMENTO, GRUPOS_CATEGORIA, rotulo, reais, reaisCurto, dataBR, mesRotulo,
@@ -367,9 +368,6 @@ export default function Financeiro() {
               <a href="/compras" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
                 <FaShoppingCart size={12} /> Compras
               </a>
-              <a href="/notas-fiscais" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
-                <FaFileInvoiceDollar size={12} /> Notas fiscais
-              </a>
               <a href="/painel-admin" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
                 <FaArrowLeft size={12} /> Painel administrativo
               </a>
@@ -394,6 +392,7 @@ export default function Financeiro() {
                   { key: 'gastos', label: aConferir.length ? 'Gastos •' : 'Gastos', count: despesas.length },
                   { key: 'solicitacoes', label: solicitacoes.some(s => s.status === 'PENDENTE' || s.status === 'ORCADA') ? 'Solicitações •' : 'Solicitações', count: solicitacoes.filter(s => solicitacaoAberta(s.status)).length },
                   { key: 'fornecedores', label: 'Fornecedores', count: fornecedores.length },
+                  { key: 'notas', label: 'Notas fiscais' },
                   { key: 'viagens', label: 'Viagens', count: viagens.length },
                   { key: 'itens', label: 'Itens e categorias', count: itens.length },
                 ]}
@@ -680,6 +679,8 @@ export default function Financeiro() {
                   onNovoGasto={(id) => setFormAberto({ viagemPadrao: id })}
                 />
               )}
+              {aba === 'notas' && <NotasFiscaisPanel showToast={showToast} />}
+
               {aba === 'itens' && (
                 <ItensPanel
                   itens={itens} categorias={categorias} produtosEstoque={produtosEstoque} despesas={despesas}
