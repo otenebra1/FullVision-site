@@ -18,6 +18,7 @@ import { FornecedoresPanel, ViagensPanel, ItensPanel } from '../components/finan
 import SolicitacoesPanel from '../components/financeiro/SolicitacoesPanel';
 import SolicitarCompra from '../components/financeiro/SolicitarCompra';
 import NotasFiscaisPanel from '../components/financeiro/NotasFiscaisPanel';
+import ReceberPanel from '../components/financeiro/ReceberPanel';
 import Notificacoes from '../components/Notificacoes';
 import {
   TIPOS_DOCUMENTO, FORMAS_PAGAMENTO, STATUS_PAGAMENTO, GRUPOS_CATEGORIA, rotulo, reais, reaisCurto, dataBR, mesRotulo,
@@ -393,6 +394,7 @@ export default function Financeiro() {
                   { key: 'solicitacoes', label: solicitacoes.some(s => s.status === 'PENDENTE' || s.status === 'ORCADA') ? 'Solicitações •' : 'Solicitações', count: solicitacoes.filter(s => solicitacaoAberta(s.status)).length },
                   { key: 'fornecedores', label: 'Fornecedores', count: fornecedores.length },
                   { key: 'notas', label: 'Emitir NF' },
+                  { key: 'receber', label: 'A receber' },
                   { key: 'viagens', label: 'Viagens', count: viagens.length },
                   { key: 'itens', label: 'Itens e categorias', count: itens.length },
                 ]}
@@ -680,6 +682,7 @@ export default function Financeiro() {
                 />
               )}
               {aba === 'notas' && <NotasFiscaisPanel showToast={showToast} />}
+              {aba === 'receber' && <ReceberPanel showToast={showToast} />}
 
               {aba === 'itens' && (
                 <ItensPanel
