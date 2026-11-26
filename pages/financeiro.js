@@ -392,7 +392,7 @@ export default function Financeiro() {
                   { key: 'gastos', label: aConferir.length ? 'Gastos •' : 'Gastos', count: despesas.length },
                   { key: 'solicitacoes', label: solicitacoes.some(s => s.status === 'PENDENTE' || s.status === 'ORCADA') ? 'Solicitações •' : 'Solicitações', count: solicitacoes.filter(s => solicitacaoAberta(s.status)).length },
                   { key: 'fornecedores', label: 'Fornecedores', count: fornecedores.length },
-                  { key: 'notas', label: 'Notas fiscais' },
+                  { key: 'notas', label: 'Emitir NF' },
                   { key: 'viagens', label: 'Viagens', count: viagens.length },
                   { key: 'itens', label: 'Itens e categorias', count: itens.length },
                 ]}

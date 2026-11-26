@@ -1,5 +1,5 @@
 // components/financeiro/NotasFiscaisPanel.jsx
-// Aba "Notas fiscais" do /financeiro (só ADM): NFS-e das mensalidades dos clientes.
+// Aba "Emitir NF" do /financeiro (só ADM): NFS-e das mensalidades dos clientes.
 // Emitir: mensalidade do mês por cliente (soma das placas), uma por uma ou o mês inteiro.
 // Notas emitidas: histórico com PDF/XML, status, atualizar e cancelar.
 // Configuração fiscal: dados da Full Vision, código do serviço, ISS e regime.
