@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase';
 import {
   FaTruck, FaCheckCircle, FaSpinner, FaArrowLeft, FaExclamationCircle,
   FaEdit, FaTrashAlt, FaTimes, FaSatelliteDish, FaLink, FaUnlink, FaClipboardList, FaExpandAlt, FaCamera, FaWallet, FaShoppingCart,
+  FaFileSignature,
 } from 'react-icons/fa';
 import OsHistory from '../components/os/OsHistory';
 import OsWizard from '../components/os/OsWizard';
@@ -207,6 +208,8 @@ export default function PainelAdmin() {
 
     const fetchData = async () => {
       setIsLoadingData(true);
+      // Avisos de contrato vencendo / reajuste (só faz algo para o ADM; ignora se o SQL ainda não rodou)
+      try { await supabase.rpc('fv_contratos_alertas'); } catch (e) { /* ignora */ }
 
       const { data: empresasData } = await supabase
         .from('empresas')
@@ -915,6 +918,11 @@ export default function PainelAdmin() {
               {isSuperAdmin && (
                 <a href="/financeiro" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
                   <FaWallet size={13} /> Financeiro
+                </a>
+              )}
+              {isSuperAdmin && (
+                <a href="/contratos" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
+                  <FaFileSignature size={13} /> Contratos
                 </a>
               )}
               <button type="button" onClick={() => setIsSolicitarOpen(true)} className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">

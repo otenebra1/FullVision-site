@@ -5,6 +5,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import {
   FaSpinner, FaArrowLeft, FaCheckCircle, FaExclamationCircle, FaEdit, FaTrashAlt, FaPaperclip, FaFileCsv, FaCheck, FaFileCode, FaRedoAlt, FaShoppingCart,
+  FaFileSignature,
 } from 'react-icons/fa';
 import { supabase } from '../lib/supabase';
 import { ehAdmin } from '../lib/perfis';
@@ -19,6 +20,7 @@ import SolicitacoesPanel from '../components/financeiro/SolicitacoesPanel';
 import SolicitarCompra from '../components/financeiro/SolicitarCompra';
 import NotasFiscaisPanel from '../components/financeiro/NotasFiscaisPanel';
 import ReceberPanel from '../components/financeiro/ReceberPanel';
+import DreCaixaPanel from '../components/financeiro/DreCaixaPanel';
 import Notificacoes from '../components/Notificacoes';
 import {
   TIPOS_DOCUMENTO, FORMAS_PAGAMENTO, STATUS_PAGAMENTO, GRUPOS_CATEGORIA, rotulo, reais, reaisCurto, dataBR, mesRotulo,
@@ -83,6 +85,7 @@ export default function Financeiro() {
   const carregar = useCallback(async () => {
     // Gastos recorrentes: cria os lançamentos do mês que ainda não existem (sem o SQL novo, só ignora)
     try { await supabase.rpc('fv_fin_gerar_recorrentes'); } catch (e) { /* ignora */ }
+    try { await supabase.rpc('fv_contratos_alertas'); } catch (e) { /* ignora */ }
     const [d, c, i, f, v, vi, t, e, p, so, ra, orc] = await Promise.all([
       supabase.from('fin_despesas').select('*, fin_despesa_itens(*)').order('data', { ascending: false }).order('created_at', { ascending: false }),
       supabase.from('fin_categorias').select('*').order('ordem').order('nome'),
@@ -366,6 +369,9 @@ export default function Financeiro() {
               <button type="button" onClick={() => setFormAberto({ abrirXml: true })} className="inline-flex items-center gap-2 text-sm border border-blue-500/50 bg-blue-500/10 text-blue-300 hover:text-white rounded-lg px-3.5 py-2">
                 <FaFileCode size={13} /> Lançar nota (XML ou PDF)
               </button>
+              <a href="/contratos" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
+                <FaFileSignature size={12} /> Contratos
+              </a>
               <a href="/compras" className="inline-flex items-center gap-2 text-sm text-gray-300 hover:text-white border border-gray-800 hover:border-gray-700 rounded-lg px-3.5 py-2 transition-colors">
                 <FaShoppingCart size={12} /> Compras
               </a>
@@ -395,6 +401,7 @@ export default function Financeiro() {
                   { key: 'fornecedores', label: 'Fornecedores', count: fornecedores.length },
                   { key: 'notas', label: 'Emitir NF' },
                   { key: 'receber', label: 'A receber' },
+                  { key: 'dre', label: 'DRE e caixa' },
                   { key: 'viagens', label: 'Viagens', count: viagens.length },
                   { key: 'itens', label: 'Itens e categorias', count: itens.length },
                 ]}
@@ -683,6 +690,7 @@ export default function Financeiro() {
               )}
               {aba === 'notas' && <NotasFiscaisPanel showToast={showToast} />}
               {aba === 'receber' && <ReceberPanel showToast={showToast} />}
+              {aba === 'dre' && <DreCaixaPanel despesas={despesas} categorias={categorias} fornecedores={fornecedores} showToast={showToast} />}
 
               {aba === 'itens' && (
                 <ItensPanel
